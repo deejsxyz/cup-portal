@@ -4471,7 +4471,7 @@ pool.query(`CREATE TABLE IF NOT EXISTS cat_sections (
     term TEXT NOT NULL,
     academic_year TEXT NOT NULL,
     UNIQUE (user_id, course_code, term, academic_year))`))
-  .then(() => seedTestAccounts())
+  .then(() => (process.env.RUN_STARTUP_TASKS !== 'false' ? seedTestAccounts() : null))
   .catch((err) => console.error('test accounts:', err.message))
   .catch((err) => console.error('cat_sections table:', err.message));
 
@@ -5387,7 +5387,7 @@ async function backfillApplicantIds() {
   for (const r of rows) await assignApplicantId(r.account_id);
   return rows.length;
 }
-backfillApplicantIds()
+(process.env.RUN_STARTUP_TASKS !== 'false' ? backfillApplicantIds() : Promise.resolve(0))
   .then((n) => console.log('Applicant IDs assigned to existing accounts:', n))
   .catch((err) => console.error('Applicant ID backfill failed:', err.message));
 
