@@ -559,7 +559,7 @@
       '</div>' +
       '<span class="text-[11px] text-indigo-800 font-semibold">Tip: Check any subject from another year level or term to add it to this student.</span>' +
       '</div>';
-    box.innerHTML = filterBar + '<div class="max-h-96 overflow-y-auto"><table class="w-full text-xs"><thead class="bg-slate-100 text-[10px] uppercase text-slate-600 sticky top-0"><tr><th class="px-2 py-2 text-left">Take</th><th class="px-2 py-2 text-left">Code</th><th class="px-2 py-2 text-left">Descriptive Title</th><th class="px-2 py-2 text-left">Units</th><th class="px-2 py-2 text-left">Year &amp; Sem</th><th class="px-2 py-2 text-left">Instructor</th></tr></thead><tbody class="reg-subj-tbody">' +
+    box.innerHTML = filterBar + '<div class="max-h-[55vh] overflow-y-auto"><table class="w-full text-xs"><thead class="bg-slate-100 text-[10px] uppercase text-slate-600 sticky top-0"><tr><th class="px-2 py-2 text-left">Take</th><th class="px-2 py-2 text-left">Code</th><th class="px-2 py-2 text-left">Descriptive Title</th><th class="px-2 py-2 text-left">Units</th><th class="px-2 py-2 text-left">Year &amp; Sem</th><th class="px-2 py-2 text-left">Instructor</th></tr></thead><tbody class="reg-subj-tbody">' +
       list.map(function (c, i) {
         var sameYear = Number(c.year_level) === yr;
         var sameSem = !c.semester || !reg.term || c.semester === reg.term;
