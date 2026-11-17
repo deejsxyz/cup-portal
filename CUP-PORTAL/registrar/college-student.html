@@ -185,7 +185,7 @@
         <button type="button" id="toggleSubjectsBtn" class="w-full flex items-center justify-between px-4 py-2.5 rounded-lg bg-indigo-50 hover:bg-indigo-100 border border-indigo-200 text-[11px] uppercase font-bold text-indigo-900 cursor-pointer">
           <span>Standard Curriculum Subjects &amp; Instructors</span><span id="toggleSubjectsLabel">▼ Show subjects</span></button>
         <div id="subjectWrap" hidden class="mt-2">
-          <div id="subjectChecklist" class="p-4 bg-slate-50 rounded-lg border border-slate-200 text-xs"></div>
+          <div id="subjectChecklist" class="p-3 bg-white rounded-lg border border-slate-200 text-xs"></div>
         </div>
       </div>
       <div class="flex gap-3">
@@ -555,7 +555,7 @@
       '<option value="3">3rd Year Subjects</option>' +
       '<option value="4">4th Year Subjects</option>' +
       '</select>' +
-      '<input type="text" class="subj-search" placeholder="Search subject code or title..." class="bg-white px-2.5 py-1 rounded border border-slate-300 text-xs w-56">' +
+      '<input type="text" class="subj-search bg-white px-2.5 py-1 rounded border border-slate-300 text-xs w-56" placeholder="Search subject code or title...">' +
       '</div>' +
       '<span class="text-[11px] text-indigo-800 font-semibold">Tip: Check any subject from another year level or term to add it to this student.</span>' +
       '</div>';
@@ -570,7 +570,7 @@
         var colLabel = (c.college && c.college !== COLLEGE) ? (' [' + esc(c.college) + ']') : '';
         return '<tr class="border-t border-slate-200 reg-subj-row" data-yr="' + esc(c.year_level || '') + '" data-q="' + esc((c.course_code + ' ' + c.descriptive_title + ' ' + (c.college || '')).toLowerCase()) + '">' +
           '<td class="px-2 py-2"><input type="checkbox" class="reg-take" data-i="' + i + '"' + (autoCheck ? ' checked' : '') + '></td>' +
-          '<td class="px-2 py-2 font-mono font-bold">' + esc(c.course_code) + colLabel + '</td>' +
+          '<td class="px-2 py-2 font-mono font-bold whitespace-nowrap">' + esc(c.course_code) + colLabel + '</td>' +
           '<td class="px-2 py-2">' + esc(c.descriptive_title) + '</td>' +
           '<td class="px-2 py-2">' + esc(c.units) + '</td>' +
           '<td class="px-2 py-2 ' + (sameYear ? 'text-slate-700' : 'text-amber-700 font-bold') + '">' + yrLabel + semLabel + (sameYear ? '' : ' (cross-year)') + '</td>' +
@@ -857,8 +857,7 @@
     var block = document.getElementById('toggleSubjectsBtn').parentElement;
     var wrap = document.createElement('div');
     wrap.className = 'bg-white rounded-xl shadow-sm border border-slate-200 p-5 space-y-4';
-    wrap.innerHTML = '<h3 class="text-sm font-bold uppercase tracking-wider text-indigo-900">Enroll for the Active Term</h3>' +
-      '<p id="advEnrollMsg" class="text-xs font-semibold text-rose-600"></p>';
+    wrap.innerHTML = '<h3 class="text-sm font-bold uppercase tracking-wider text-indigo-900">Enroll for the Active Term</h3>';
     wrap.appendChild(block);
     var row = document.createElement('div');
     row.className = 'flex justify-end';
@@ -886,7 +885,6 @@
         btn.disabled = !!cur;
         btn.classList.toggle('opacity-50', !!cur);
         btn.classList.toggle('cursor-not-allowed', !!cur);
-        document.getElementById('advEnrollMsg').textContent = cur ? 'Already enrolled for the active term.' : '';
       });
     }
     refreshEnrolled();
