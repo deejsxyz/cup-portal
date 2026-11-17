@@ -105,8 +105,7 @@
     evalInfo.innerHTML =
       labelled('First Name', s.first_name) + labelled('Middle Name', s.middle_name) + labelled('Last Name', s.last_name) + labelled('Extension', s.name_extension) +
       labelled('Gender', s.gender) + labelled('Birthday', s.birthday) + labelled('Email Address', s.email) + labelled('Contact Number', s.contact_number) +
-      labelled('Program', s.program) + labelled('Year Level', s.year_level) + labelled('Section', s.section) + labelled('Student ID', s.student_no) +
-      labelled('Status', ev ? fmtStatus(ev) : '—');
+      labelled('Program', s.program) + labelled('Year & Section', (s.year_level || '') + (s.section || '')) + labelled('Student ID', s.student_no);
     evalBanner.className = 'mb-4 px-4 py-2.5 rounded-lg border text-xs font-semibold ' + (done ? 'bg-emerald-50 border-emerald-200 text-emerald-800' : 'bg-amber-50 border-amber-200 text-amber-800');
     evalBanner.textContent = TASK_NAME[cur] + (done ? ' is done.' : ' is not yet done.');
     evalDone.className = 'px-4 py-2 rounded-lg text-xs font-bold shadow-md cursor-pointer ' + (done ? 'bg-emerald-600 text-white' : 'bg-indigo-700 hover:bg-indigo-800 text-white');
