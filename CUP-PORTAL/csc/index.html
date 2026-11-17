@@ -1,0 +1,267 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>CUP CSC Portal</title>
+<link rel="icon" href="/images/favicon-cup.png">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Libre+Franklin:wght@400;600;700;800&display=swap">
+<style>
+  :root { --green: #106010; --dg: #0b4a0b; --gold: #f2c200; --ink: #222; --line: #d6dbd6; }
+  * { box-sizing: border-box; }
+  html, body { margin: 0; background: #f4f6f4; color: var(--ink); }
+  body { font-family: 'Libre Franklin', Arial, Helvetica, sans-serif; min-height: 100vh; }
+  header { background: var(--green); color: #fff; display: flex; align-items: center; justify-content: space-between; gap: 12px; padding: 12px 20px; flex-wrap: wrap; }
+  header .brand { display: flex; align-items: center; gap: 12px; }
+  header img { width: 52px; height: 52px; background: transparent; padding: 0; }
+  header h1 { font-size: 1.05rem; margin: 0; font-weight: 800; }
+  header .who { font-size: .92rem; opacity: .92; }
+  header button { background: rgba(255,255,255,.18); color: #fff; border: 1px solid rgba(255,255,255,.6); border-radius: 4px; padding: 7px 14px; font: inherit; cursor: pointer; }
+  main { max-width: 1000px; margin: 0 auto; padding: 22px 16px 60px; }
+  .card { background: #fff; border: 1px solid var(--line); border-radius: 8px; padding: 18px; margin-bottom: 18px; }
+  h2 { font-size: 1.1rem; margin: 0 0 6px; color: var(--dg); }
+  .hint { color: #5b6b5b; font-size: .9rem; margin: 0 0 12px; }
+  .tabs { display: flex; flex-wrap: wrap; gap: 6px; margin-bottom: 16px; }
+  .tabs button { background: #fff; border: 1px solid var(--line); border-radius: 4px; padding: 8px 14px; font: inherit; font-weight: 700; cursor: pointer; color: var(--green); }
+  .tabs button.on { background: var(--green); color: #fff; border-color: var(--green); }
+  .toolbar { display: flex; gap: 10px; align-items: center; flex-wrap: wrap; margin-bottom: 12px; }
+  .head { display: flex; flex-direction: column; gap: 12px; margin-bottom: 12px; }
+  .toolbar { display: flex; gap: 8px; flex-wrap: wrap; align-items: center; width: 100%; }
+  .toolbar input[type=search] { flex: 1 1 240px; padding: 9px 10px; border: 1px solid var(--line); border-radius: 4px; font: inherit; }
+  .toolbar select { padding: 9px 10px; border: 1px solid var(--line); border-radius: 4px; font: inherit; font-weight: 700; background: #fff; }
+  .btn-indigo, .btn-slate { border: 0; border-radius: 6px; padding: 9px 14px; font: inherit; font-size: .85rem; font-weight: 700; color: #fff; cursor: pointer; }
+  .btn-indigo { background: #4f46e5; }
+  .btn-slate { background: #334155; }
+  .btn-slate:disabled { opacity: .4; cursor: default; }
+  .pager { display: flex; justify-content: space-between; align-items: center; gap: 10px; flex-wrap: wrap; margin-top: 12px; }
+  .pager-btns { display: flex; gap: 8px; }
+  .count { font-size: .9rem; color: #5b6b5b; }
+  table { width: 100%; border-collapse: collapse; font-size: .92rem; }
+  th, td { text-align: left; padding: 10px 8px; border-bottom: 1px solid var(--line); }
+  th { font-size: .8rem; text-transform: uppercase; color: #5b6b5b; letter-spacing: .03em; }
+  .toggle { display: inline-flex; align-items: center; gap: 8px; cursor: pointer; font-weight: 700; }
+  .toggle input { width: 44px; height: 24px; accent-color: var(--green); cursor: pointer; }
+  .paid { color: var(--dg); font-weight: 800; }
+  .unpaid { color: #7a6a00; font-weight: 700; }
+  .msg { min-height: 1.2em; font-size: .92rem; margin-top: 10px; }
+  .msg.err { color: #b42318; }
+  .field { margin-bottom: 12px; }
+  .field label { display: block; font-size: .85rem; font-weight: 700; margin-bottom: 4px; }
+  .field input { width: 100%; padding: 10px; border: 1px solid var(--line); border-radius: 4px; font: inherit; }
+  .go { background: var(--green); color: #fff; border: 0; border-radius: 4px; padding: 11px 18px; font: inherit; font-weight: 700; cursor: pointer; }
+  .narrow { max-width: 380px; margin: 40px auto; }
+  [hidden] { display: none !important; }
+</style>
+<script src="/CUP-PORTAL/portal-session.js" data-logout="/api/csc/logout" data-login="/CUP-PORTAL/csc/" data-expire="reload"></script>
+</head>
+<body>
+<header>
+  <div class="brand"><a href="/CUP-PORTAL/" aria-label="Back to the CUP Central Portal" style="display:inline-block"><img src="/images/csc-logo.png" alt="Central Student Council seal"></a><h1>CUP Central Portal</h1></div>
+  <div style="display:flex;align-items:center;gap:12px;flex-wrap:wrap">
+    <span class="who" id="who"></span>
+    <button type="button" id="logout" hidden>Log Out</button>
+  </div>
+</header>
+
+<main>
+  <section id="login" class="card narrow" hidden>
+    <h2>CSC Portal Login</h2>
+    <p class="hint">Enter the CSC account username and password.</p>
+    <form id="loginForm" novalidate>
+      <div class="field"><label for="lu">Username</label><input id="lu" autocomplete="username" required></div>
+      <div class="field"><label for="lp">Password</label><input id="lp" type="password" autocomplete="current-password" required></div>
+      <button class="go" type="submit">Log in</button>
+      <p class="msg err" id="loginMsg"></p>
+      <p style="margin-top:14px;font-size:.9rem"><a href="#" id="forgotLink" style="color:var(--green);font-weight:700">Forgot Password</a></p>
+    </form>
+  </section>
+
+  <section id="app" hidden>
+    <div class="tabs" id="collegeTabs" role="tablist"></div>
+    <div class="card">
+      <div class="head">
+        <div>
+          <h2 id="feeTitle">CSC FEE</h2>
+          <p class="hint">Mark each student PAID once the CSC fee (R407) is paid. A PAID student is forwarded to Step 6 (Registrar Office).</p>
+        </div>
+        <div class="toolbar">
+          <input type="search" id="search" placeholder="Search student number or name" autocomplete="off" aria-label="Search students">
+          <button type="button" id="viewAllBtn" class="btn-indigo">View All Students</button>
+          <button type="button" id="printPaidBtn" class="btn-slate">🖨️ Print Paid Students</button>
+          <select id="yearFilter" aria-label="Year level">
+            <option value="">All Year Levels</option><option value="1">BSN1</option><option value="2">BSN2</option><option value="3">BSN3</option><option value="4">BSN4</option>
+          </select>
+          <select id="secFilter" aria-label="Section">
+            <option value="">All Sections</option><option value="A">Section A</option><option value="B">Section B</option><option value="C">Section C</option>
+          </select>
+        </div>
+      </div>
+      <div style="overflow-x:auto">
+        <table>
+          <thead><tr><th>Student ID</th><th>Last Name</th><th>First Name</th><th>Middle Name</th><th>Year</th><th>Section</th><th>Status</th><th>PAID</th></tr></thead>
+          <tbody id="rows"></tbody>
+        </table>
+      </div>
+      <div class="pager">
+        <span class="count" id="pageInfo"></span>
+        <div class="pager-btns">
+          <button type="button" id="prevBtn" class="btn-slate">◀ Prev</button>
+          <button type="button" id="nextBtn" class="btn-slate">Next ▶</button>
+        </div>
+      </div>
+      <p class="msg" id="msg"></p>
+    </div>
+  </section>
+</main>
+
+<script>
+(function () {
+  var COLLEGES = ['COACS', 'CAS', 'CONM', 'COED', 'COBM', 'LAW', 'GS', 'TESDA-TVI'];
+  var PER_PAGE = 10;
+  var current = COLLEGES[0];
+  var students = [];
+  var page = 1, showAll = false;
+  function $(id) { return document.getElementById(id); }
+  function esc(v) { return String(v == null ? '' : v).replace(/[&<>"']/g, function (c) { return { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]; }); }
+  function lastFirst(s) { return [s.last_name + ',', s.first_name, s.middle_name || ''].join(' ').replace(/\s+/g, ' ').trim(); }
+
+  function showLogin(msg) {
+    $('app').hidden = true; $('login').hidden = false; $('logout').hidden = true; $('who').textContent = '';
+    $('loginMsg').textContent = msg || '';
+  }
+  function showApp() {
+    $('login').hidden = true; $('app').hidden = false; $('logout').hidden = false; $('who').textContent = 'CSC Portal';
+    $('collegeTabs').innerHTML = COLLEGES.map(function (c) {
+      return '<button type="button" role="tab" data-college="' + c + '" class="' + (c === current ? 'on' : '') + '">' + c + '</button>';
+    }).join('');
+    loadStudents();
+  }
+
+  function listActive() { return showAll || $('search').value.trim() !== '' || $('yearFilter').value !== '' || $('secFilter').value !== ''; }
+  function filtered(paidOnly) {
+    if (!paidOnly && !listActive()) return [];
+    var q = $('search').value.trim().toLowerCase();
+    var yr = $('yearFilter').value, sec = $('secFilter').value;
+    return students.filter(function (s) {
+      if (paidOnly && !s.csc_paid_at) return false;
+      if (yr && String(s.year_level) !== yr) return false;
+      if (sec && s.section !== sec) return false;
+      if (!q) return true;
+      return String(s.student_no).toLowerCase().indexOf(q) !== -1 || lastFirst(s).toLowerCase().indexOf(q) !== -1;
+    });
+  }
+
+  function render() {
+    $('feeTitle').textContent = 'CSC FEE · ' + current;
+    var rows = filtered(false);
+    var pages = Math.max(1, Math.ceil(rows.length / PER_PAGE));
+    if (page > pages) page = pages;
+    if (page < 1) page = 1;
+    var tb = $('rows');
+    if (!listActive()) {
+      tb.innerHTML = '<tr><td colspan="8" style="padding:20px;text-align:center;color:#5b6b5b;font-style:italic">Type a student number or name to search, use the filters, or click "View All Students".</td></tr>';
+    } else if (!rows.length) {
+      tb.innerHTML = '<tr><td colspan="8" style="padding:20px;text-align:center;color:#5b6b5b;font-style:italic">No students match.</td></tr>';
+    } else {
+      tb.innerHTML = rows.slice((page - 1) * PER_PAGE, page * PER_PAGE).map(function (s) {
+        var paid = !!s.csc_paid_at;
+        return '<tr>' +
+          '<td>' + esc(s.student_no) + '</td>' +
+          '<td style="text-transform:uppercase;font-weight:700">' + esc(s.last_name) + '</td>' +
+          '<td style="text-transform:uppercase">' + esc(s.first_name) + '</td>' +
+          '<td style="text-transform:uppercase">' + esc(s.middle_name || '—') + '</td>' +
+          '<td>BSN' + esc(s.year_level) + '</td>' +
+          '<td>' + esc(s.section) + '</td>' +
+          '<td class="' + (paid ? 'paid' : 'unpaid') + '">' + (paid ? 'PAID' : 'UNPAID') + '</td>' +
+          '<td><label class="toggle"><input type="checkbox" data-paid="' + esc(s.student_no) + '"' + (paid ? ' checked' : '') + '> ' + (paid ? 'Paid' : 'Not paid') + '</label></td>' +
+          '</tr>';
+      }).join('');
+    }
+    $('pageInfo').textContent = listActive() ? rows.length + ' student(s) · Page ' + page + ' of ' + pages : '';
+    $('prevBtn').disabled = page <= 1;
+    $('nextBtn').disabled = page >= pages;
+    $('viewAllBtn').textContent = showAll ? 'Paged View' : 'View All Students';
+  }
+
+  function loadStudents() {
+    $('msg').textContent = '';
+    fetch('/api/csc/students?college=' + encodeURIComponent(current), { credentials: 'same-origin' })
+      .then(function (r) { if (r.status === 401) { showLogin('Please log in again.'); throw new Error('auth'); } return r.json(); })
+      .then(function (j) { students = j.students || []; render(); })
+      .catch(function () { if (!$('login').hidden) return; $('msg').textContent = 'Could not load students.'; $('msg').className = 'msg err'; });
+  }
+
+  $('collegeTabs').addEventListener('click', function (e) {
+    var c = e.target.getAttribute('data-college');
+    if (!c) return;
+    current = c; page = 1; showAll = false;
+    Array.prototype.forEach.call($('collegeTabs').querySelectorAll('button'), function (b) { b.classList.toggle('on', b === e.target); });
+    $('search').value = ''; $('yearFilter').value = ''; $('secFilter').value = '';
+    loadStudents();
+  });
+  $('search').addEventListener('input', function () { page = 1; render(); });
+  $('yearFilter').addEventListener('change', function () { page = 1; render(); });
+  $('secFilter').addEventListener('change', function () { page = 1; render(); });
+  $('viewAllBtn').addEventListener('click', function () { showAll = !showAll; page = 1; render(); });
+  $('prevBtn').addEventListener('click', function () { page--; render(); });
+  $('nextBtn').addEventListener('click', function () { page++; render(); });
+
+  $('printPaidBtn').addEventListener('click', function () {
+    var rows = filtered(true);
+    var w = window.open('', '_blank');
+    if (!w) return;
+    w.document.write('<!doctype html><html><head><meta charset="utf-8"><title>' + current + ' CSC Paid Students</title><style>body{font-family:Arial,sans-serif;margin:24px}table{width:100%;border-collapse:collapse;font-size:12px}th,td{border:1px solid #888;padding:4px 6px;text-align:left}</style></head><body><h2>' + current + ' | CSC Fee Paid Students</h2><p>' + rows.length + ' student(s)</p><table><thead><tr><th>Student ID</th><th>Last Name</th><th>First Name</th><th>Middle Name</th><th>Year</th><th>Section</th><th>Paid On</th></tr></thead><tbody>' +
+      rows.map(function (s) { return '<tr><td>' + esc(s.student_no) + '</td><td>' + esc(s.last_name) + '</td><td>' + esc(s.first_name) + '</td><td>' + esc(s.middle_name || '') + '</td><td>BSN' + esc(s.year_level) + '</td><td>' + esc(s.section) + '</td><td>' + esc(new Date(s.csc_paid_at).toLocaleDateString('en-PH')) + '</td></tr>'; }).join('') +
+      '</tbody></table></body></html>');
+    w.document.close(); w.focus(); w.print();
+  });
+
+  $('rows').addEventListener('change', function (e) {
+    var box = e.target;
+    if (!box.hasAttribute('data-paid')) return;
+    var no = box.getAttribute('data-paid');
+    var paid = box.checked;
+    box.disabled = true;
+    fetch('/api/csc/students/' + encodeURIComponent(no) + '/paid', {
+      method: 'POST', credentials: 'same-origin', headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ paid: paid })
+    }).then(function (r) { return r.json().then(function (j) { return { ok: r.ok, j: j }; }); })
+      .then(function (res) {
+        if (!res.ok) { $('msg').textContent = res.j.error || 'Could not update the status.'; $('msg').className = 'msg err'; box.checked = !paid; box.disabled = false; return; }
+        students.forEach(function (s) { if (s.student_no === no) s.csc_paid_at = res.j.csc_paid_at; });
+        $('msg').className = 'msg';
+        $('msg').textContent = paid ? no + ' marked PAID and forwarded to Step 6.' : no + ' set back to UNPAID.';
+        render();
+      })
+      .catch(function () { $('msg').textContent = 'Connection problem. The status was not changed.'; $('msg').className = 'msg err'; box.checked = !paid; box.disabled = false; });
+  });
+
+  $('loginForm').addEventListener('submit', function (e) {
+    e.preventDefault();
+    $('loginMsg').textContent = '';
+    fetch('/api/csc/login', { method: 'POST', credentials: 'same-origin', headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ username: $('lu').value.trim(), password: $('lp').value }) })
+      .then(function (r) { return r.json().then(function (j) { return { ok: r.ok, j: j }; }); })
+      .then(function (res) {
+        if (!res.ok) { $('loginMsg').textContent = res.j.error || 'Could not log in.'; return; }
+        if (res.j.must_change) { window.location.href = '/CUP-PORTAL/staff/first-login/?token=' + encodeURIComponent(res.j.token); return; }
+        $('lp').value = ''; try { sessionStorage.setItem('cupPortalTab', '1'); } catch (e) {}
+        showApp();
+      })
+      .catch(function () { $('loginMsg').textContent = 'Connection problem. Please try again.'; });
+  });
+
+  $('forgotLink').addEventListener('click', function (e) { e.preventDefault(); alert('To reset your CSC password, contact the University Registrar.'); });
+  $('logout').addEventListener('click', function () {
+    fetch('/api/csc/logout', { method: 'POST', credentials: 'same-origin' }).finally(function () { showLogin(''); });
+  });
+
+  fetch('/api/csc/me', { credentials: 'same-origin' })
+    .then(function (r) { if (!r.ok) throw new Error('no session'); showApp(); })
+    .catch(function () { showLogin(''); });
+})();
+</script>
+</body>
+</html>

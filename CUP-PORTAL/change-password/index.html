@@ -1,0 +1,76 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="claude:viewport-fit-sides" content="cover">
+<title>CUP Portal - Change Password</title>
+<link rel="icon" href="/images/favicon-cup.png">
+<style>
+  :root { --g:#0f5a12; --gold:#f2c200; --dg:#0a3a0a; --ink:#1f2a1f; --line:#7fa37f; --bg:#eef3ee; }
+  * { box-sizing: border-box; }
+  body { margin: 0; background: var(--bg); color: var(--ink); font-family: Arial, Helvetica, sans-serif; }
+  header { background: var(--g); color: #fff; padding: 12px max(16px, env(safe-area-inset-left, 0px)); }
+  header h1 { font-size: 1.1rem; margin: 0; letter-spacing: .04em; }
+  main { max-width: 460px; margin: 24px auto; padding: 0 max(16px, env(safe-area-inset-left, 0px)); }
+  .card { background: #fff; border: 1px solid var(--line); padding: 20px; }
+  label { display: block; margin: 12px 0 6px; font-size: .95rem; }
+  input { width: 100%; padding: 9px; font-size: 1rem; border: 1px solid var(--line); }
+  button { margin-top: 18px; width: 100%; background: var(--gold); color: var(--dg); border: 0; padding: 11px; font-weight: 700; font-size: 1rem; cursor: pointer; }
+  button:disabled { opacity: .6; cursor: default; }
+  .msg { margin-top: 12px; color: #a11; font-weight: 700; min-height: 1.2em; }
+  .notice { background: #fff8d6; border: 1px solid #e6c200; padding: 10px; margin-bottom: 12px; font-size: .95rem; }
+</style>
+<link rel="stylesheet" href="/CUP-PORTAL/portal-controls.css">
+<script src="/CUP-PORTAL/portal-session.js" data-logout="/api/portal/logout" data-login="/CUP-PORTAL/student/login"></script>
+</head>
+<body>
+<header><h1>CUP PORTAL · CHANGE PASSWORD</h1></header>
+<main>
+  <div class="card">
+    <p class="notice" id="notice">Please change your temporary password before you continue.</p>
+    <form id="cp-form" novalidate>
+      <div id="curWrap"><label for="cur">Current password</label>
+      <input id="cur" type="password" autocomplete="current-password" required></div>
+      <label for="new">New password (8 characters or more)</label>
+      <input id="new" type="password" autocomplete="new-password" required>
+      <label for="conf">Confirm new password</label>
+      <input id="conf" type="password" autocomplete="new-password" required>
+      <button type="submit" id="go">Change password</button>
+      <p class="msg" id="msg" role="status"></p>
+    </form>
+  </div>
+</main>
+<script>
+(function () {
+  var $ = function (id) { return document.getElementById(id); };
+  fetch('/api/portal/me', { credentials: 'same-origin' }).then(function (r) {
+    if (!r.ok) { window.location.href = '/CUP-PORTAL/student/login'; return null; }
+    return r.json();
+  }).then(function (me) {
+    if (!me) return;
+    $('notice').hidden = !me.must_change;
+    window.__role = me.role;
+    if (me.reset) { $('curWrap').hidden = true; $('cur').required = false; }
+  });
+  $('cp-form').addEventListener('submit', function (e) {
+    e.preventDefault();
+    $('msg').textContent = '';
+    var cur = $('cur').value, nw = $('new').value, conf = $('conf').value;
+    if ((!cur && !$('curWrap').hidden) || !nw) { $('msg').textContent = 'Fill in all fields.'; return; }
+    if (nw.length < 8) { $('msg').textContent = 'The new password must be at least 8 characters.'; return; }
+    if (nw !== conf) { $('msg').textContent = 'New password and confirmation do not match.'; return; }
+    $('go').disabled = true;
+    fetch('/api/portal/change-password', {
+      method: 'POST', credentials: 'same-origin', headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ current: cur, new: nw })
+    }).then(function (r) { return r.json().catch(function () { return {}; }).then(function (j) { return { ok: r.ok, j: j }; }); })
+      .then(function (res) {
+        if (!res.ok) { $('go').disabled = false; $('msg').textContent = res.j.error || 'Could not change the password.'; return; }
+        window.location.href = window.__role === 'faculty' ? '/CUP-PORTAL/faculty/grades' : '/CUP-PORTAL/student/grades';
+      }).catch(function () { $('go').disabled = false; $('msg').textContent = 'Could not change the password. Try again.'; });
+  });
+})();
+</script>
+</body>
+</html>

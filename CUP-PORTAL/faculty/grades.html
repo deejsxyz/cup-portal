@@ -1,0 +1,470 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>CUP Faculty Portal</title>
+<link rel="icon" href="/images/favicon-cup.png">
+<link rel="stylesheet" href="/CUP-PORTAL/portal-controls.css">
+<style>
+  :root { --dg: #1f4d1f; --gold: #f5c518; --line: #cdd9cd; }
+  body { margin: 0; font-family: 'Libre Franklin', system-ui, sans-serif; background: #f4f7f4; color: #1d2a1d; }
+  header { background: var(--dg); color: #fff; border-bottom: 4px solid var(--gold); }
+  .top { display: flex; align-items: center; justify-content: space-between; gap: 12px; padding: 10px 16px; flex-wrap: wrap; }
+  .forms { margin: 0; padding-left: 18px; display: grid; gap: 8px; }
+  .top h1 { margin: 0; font-size: 1.05rem; letter-spacing: .04em; }
+  .top small { display: block; color: #cfe3cf; font-size: .75rem; }
+  .who { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; font-size: .75rem; }
+  .who a { color: var(--gold); text-decoration: none; font-weight: 700; }
+  .colleges { display: flex; flex-wrap: wrap; gap: 6px; padding: 10px 16px; background: #173d17; }
+  .colleges button { background: transparent; color: #fff; border: 1px solid #3d6e3d; border-radius: 8px; font-weight: 700; cursor: pointer; }
+  .colleges button.on { background: var(--gold); color: var(--dg); border-color: var(--gold); }
+  main { max-width: 1100px; margin: 0 auto; padding: 16px; display: grid; gap: 14px; }
+  .card { background: #fff; border: 1px solid var(--line); border-radius: 12px; padding: 14px; }
+  .period { background: #e3f1e3; border-color: #a9cfa9; font-weight: 700; color: var(--dg); }
+  .filters { display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 10px; align-items: end; }
+  .filters label { display: flex; flex-direction: column; gap: 4px; font-size: .7rem; font-weight: 700; text-transform: uppercase; color: #4a5a4a; }
+  .filters select { background: #fff; border: 1px solid #b8c8b8; border-radius: 8px; }
+  .bar { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; justify-content: space-between; }
+  .btn { background: var(--dg); color: #fff; border: 0; border-radius: 8px; font-weight: 700; cursor: pointer; }
+  .btn.gold { background: var(--gold); color: var(--dg); }
+  .btn.light { background: #e6ece6; color: #1d2a1d; }
+  .wrap { overflow: auto; max-height: 62vh; border: 1px solid var(--line); border-radius: 8px; }
+  table { width: 100%; border-collapse: collapse; }
+  th { position: sticky; top: 0; background: #e6ece6; text-align: left; text-transform: uppercase; font-size: .7rem; color: #3a4a3a; }
+  td, th { border-bottom: 1px solid var(--line); padding: .45em .6em; font-size: .75rem; }
+  td select, td input { width: 100%; background: #fff; border: 1px solid #b8c8b8; border-radius: 6px; }
+  .muted { color: #5a6a5a; font-size: .8rem; }
+  .msg { font-size: .8rem; min-height: 1.1em; }
+  .msg.err { color: #9b1c1c; }
+  .msg.ok { color: #1f6b2f; font-weight: 700; }
+  .colleges .dl-nav { background: #e6ece6; color: #1d2a1d; border: 0; border-radius: 8px; padding: 8px 14px; font-weight: 700; cursor: pointer; margin-left: auto; }
+  .dl-action { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 10px; margin-top: 12px; }
+  .dl-action[hidden] { display: none; }
+  .dl-line { display: flex; flex-wrap: wrap; align-items: center; gap: 10px; }
+  .dl-title { font-weight: 700; color: var(--dg); }
+  .dl-buttons { display: flex; gap: 8px; }
+  .dl-btn { padding: 9px 16px; font-size: .85rem; }
+  .dl-progress { display: flex; align-items: center; gap: 10px; margin-top: 10px; }
+  .dl-progress[hidden] { display: none; }
+  .dl-bar { flex: 1; height: 8px; background: #e2e8e2; border-radius: 999px; overflow: hidden; }
+  .dl-bar > div { height: 100%; width: 0; background: var(--dg); transition: width .15s; }
+  .dl-pct { font-size: .85rem; font-weight: 700; min-width: 3.5em; text-align: right; }
+  .dl-btn.ready { background: #1f6b2f; color: #fff; }
+  .dl-btn:disabled { opacity: .55; cursor: not-allowed; }
+  .dl-status { font-size: .85rem; font-weight: 700; }
+  .dl-status.ok { color: #1f6b2f; }
+  .dl-status.err { color: #9b1c1c; }
+  .dl-status.muted { color: #5a6a5a; font-weight: 400; }
+</style>
+<script src="/CUP-PORTAL/portal-session.js" data-logout="/api/portal/logout" data-login="/CUP-PORTAL/faculty/"></script>
+</head>
+<body>
+<header>
+  <div class="top">
+    <div>
+      <h1>CUP CENTRAL PORTAL</h1>
+      <small>Faculty · Grade Sheet</small>
+    </div>
+    <div class="who">
+      <span id="who"></span>
+      <a href="/CUP-PORTAL/change-password">Change Password</a>
+      <button class="btn gold" id="logout" type="button">Log Out</button>
+    </div>
+  </div>
+  <nav class="colleges" id="colleges"></nav>
+</header>
+
+<main>
+  <div class="card period" id="period">Loading the grading period…</div>
+
+  <div class="card" id="filterCard" hidden>
+    <div class="filters">
+      <label>1. Subject Handled
+        <select id="fSubject"></select></label>
+      <label>2. Year Level
+        <select id="fYear"></select></label>
+      <label>3. Section
+        <select id="fSection"></select></label>
+    </div>
+    <div class="dl-action" id="dlAction" hidden>
+      <div class="dl-line">
+        <span class="dl-title">Download Report of Grades</span>
+        <span class="dl-status" id="ror-status"></span>
+      </div>
+      <div class="dl-buttons">
+        <button type="button" class="btn light dl-btn" id="ror-xlsx" disabled>XLSX File</button>
+        <button type="button" class="btn light dl-btn" id="ror-pdf" disabled>PDF File</button>
+      </div>
+      <div class="dl-progress" id="ror-progress" hidden>
+        <div class="dl-bar"><div id="ror-bar"></div></div>
+        <span class="dl-pct" id="ror-pct"></span>
+      </div>
+    </div>
+  </div>
+
+  <div class="card" id="sheetCard" hidden>
+    <div class="bar">
+      <div>
+        <strong id="sheetTitle"></strong>
+        <div class="muted" id="sheetSub"></div>
+      </div>
+      <div class="bar">
+        <span class="muted" id="sheetCount"></span>
+        <button class="btn light" id="closeSheet" type="button">✕ Close Sheet</button>
+      </div>
+    </div>
+    <div class="bar" style="margin-top:10px">
+      <label class="muted">Rows per page
+        <select id="pageSize"><option>10</option><option>25</option><option>50</option><option>100</option></select></label>
+      <div class="bar">
+        <button class="btn light" id="prev" type="button">‹ Prev</button>
+        <span id="pageInfo" class="muted"></span>
+        <button class="btn light" id="next" type="button">Next ›</button>
+      </div>
+    </div>
+    <div class="wrap" style="margin-top:10px">
+      <table>
+        <thead><tr><th>#</th><th>Student ID</th><th>Student Name (Last, First Middle)</th><th>Class</th><th>Final Grade</th><th>Remarks (Auto)</th><th>Instructor</th></tr></thead>
+        <tbody id="rows"></tbody>
+      </table>
+    </div>
+    <div class="bar" style="margin-top:12px">
+      <span class="msg" id="saveMsg"></span>
+      <button class="btn" id="saveBtn" type="button">Save Grades</button>
+    </div>
+  </div>
+</main>
+
+<script>
+(function () {
+  var $ = function (id) { return document.getElementById(id); };
+  var COLLEGES = ['COACS', 'CAS', 'CONM', 'COED', 'COBM', 'LAW', 'GS', 'TESDA-TVI'];
+  var GRADES = ['', '1.00', '1.25', '1.50', '1.75', '2.00', '2.25', '2.50', '2.75', '3.00', '4.00', '5.00', 'X', 'INC', 'W', 'NG'];
+  var YEARS = { 1: 'BSN1', 2: 'BSN2', 3: 'BSN3', 4: 'BSN4' };
+  var state = { edits: {}, college: '', list: [], roster: [], page: 1, size: 10, term: '', ay: '', course: '', year: 0, section: '' };
+  window.cupGradeHasEdits = function () { return Object.keys(state.edits || {}).length > 0; };
+  /* Keep the selected class, page and unsaved grades when the page is refreshed (this tab only). */
+  var DRAFT_KEY = 'cupGradeSheet';
+  function readDraft() { try { return JSON.parse(sessionStorage.getItem(DRAFT_KEY) || 'null'); } catch (e) { return null; } }
+  function writeDraft() {
+    try {
+      if (!state.college) { sessionStorage.removeItem(DRAFT_KEY); return; }
+      sessionStorage.setItem(DRAFT_KEY, JSON.stringify({ college: state.college, course: state.course, year: state.year, section: state.section, page: state.page, size: $('pageSize').value, edits: state.edits }));
+    } catch (e) {}
+  }
+  var restore = readDraft();
+  function esc(v) { return String(v == null ? '' : v).replace(/[&<>"']/g, function (c) { return { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]; }); }
+  function remark(g) {
+    if (['1.00','1.25','1.50','1.75','2.00','2.25','2.50','2.75','3.00'].indexOf(g) !== -1) return 'PASSED';
+    return { '4.00': 'CONDITIONAL', '5.00': 'FAILED', 'X': 'ABSENT FROM EXAMINATION', 'INC': 'INCOMPLETE', 'W': 'DROPPED', 'NG': 'NO GRADE' }[g] || '';
+  }
+  function api(path, opts) {
+    return fetch(path, Object.assign({ credentials: 'same-origin' }, opts || {})).then(function (r) { return r.json().then(function (j) { return { ok: r.ok, j: j }; }); });
+  }
+
+  /* Colleges */
+  $('colleges').innerHTML = COLLEGES.map(function (c) { return '<button type="button" data-c="' + c + '">' + c + '</button>'; }).join('') +
+    '<button type="button" class="dl-nav" id="downloads-btn">Downloads</button>';
+  $('colleges').addEventListener('click', function (e) {
+    var b = e.target.closest('[data-c]');
+    if (b) chooseCollege(b.getAttribute('data-c'));
+  });
+  function markCollege(c) {
+    document.querySelectorAll('#colleges [data-c]').forEach(function (b) { b.classList.toggle('on', b.getAttribute('data-c') === c); });
+  }
+  function chooseCollege(c, fromRestore) {
+    state.college = c;
+    if (!fromRestore) { state.course = ''; state.year = 0; state.section = ''; state.edits = {}; restore = null; writeDraft(); }
+    markCollege(c);
+    $('sheetCard').hidden = true;
+    $('filterCard').hidden = true;
+    api('/api/faculty/college-assignments?college=' + encodeURIComponent(c)).then(function (res) {
+      if (!res.ok) { $('period').textContent = res.j.error || 'Could not load your subjects.'; return; }
+      state.term = res.j.term; state.ay = res.j.academic_year;
+      state.list = res.j.assignments || [];
+      $('period').textContent = state.term ? 'Active Grading Period: ' + state.term + ' | A.Y. ' + state.ay : 'The grading period is not set yet.';
+      var subj = $('fSubject');
+      subj.innerHTML = state.list.length ? '<option value="">-- Select Assigned Subject --</option>' + state.list.map(function (a) {
+        return '<option value="' + esc(a.course_code) + '">[' + esc(a.course_code) + '] ' + esc(a.descriptive_title || '') + '</option>';
+      }).join('') : '<option value="">No subjects assigned to you in ' + esc(c) + '</option>';
+      if (fromRestore && restore && restore.course) subj.value = restore.course;
+      $('filterCard').hidden = false;
+      $('dlAction').hidden = true; // the Download Report row opens only from the Downloads button
+      fillYearSection();
+    });
+  }
+  function assignmentFor(code) { return state.list.filter(function (a) { return a.course_code === code; })[0]; }
+  function fillYearSection() {
+    var a = assignmentFor($('fSubject').value);
+    var years = a ? (a.years || []) : [];
+    var secs = a ? (a.sections || []) : [];
+    $('fYear').innerHTML = '<option value="">-- Year Level --</option>' + years.slice().sort().map(function (y) { return '<option value="' + y + '">' + YEARS[y] + '</option>'; }).join('');
+    $('fSection').innerHTML = '<option value="">-- Section --</option>' + secs.slice().sort().map(function (s) { return '<option>' + esc(s) + '</option>'; }).join('');
+    if (years.length === 1) $('fYear').value = String(years[0]);
+    if (secs.length === 1) $('fSection').value = secs[0];
+    if (restore && restore.course && restore.course === $('fSubject').value) {
+      if (restore.year) $('fYear').value = String(restore.year);
+      if (restore.section) $('fSection').value = restore.section;
+    }
+    loadRoster();
+    syncDl();
+  }
+  /* Downloads card: mirrors the class selectors and shows whether the report can be made. */
+  function syncDl() { updateDl(); }
+  function updateDl() {
+    var st = $('ror-status');
+    var complete = $('fSubject').value && $('fYear').value && $('fSection').value;
+    var ready = !!complete && state.status === 'ready';
+    st.className = 'dl-status';
+    st.textContent = '';
+    if (!complete) { st.classList.add('muted'); st.textContent = 'Choose subject, year level and section first.'; }
+    else if (state.status === 'ready') { st.classList.add('ok'); st.textContent = 'Ready to Download'; }
+    else if (state.status === 'none') { st.classList.add('err'); st.textContent = 'Download Not Available'; }
+    ['ror-xlsx', 'ror-pdf'].forEach(function (id) {
+      var b = $(id);
+      b.disabled = !ready;
+      b.classList.toggle('ready', ready);
+    });
+  }
+  $('fSubject').addEventListener('change', fillYearSection);
+  $('fYear').addEventListener('change', loadRoster);
+  $('fSection').addEventListener('change', loadRoster);
+
+  /* Class roster */
+  function loadRoster() {
+    var code = $('fSubject').value, year = $('fYear').value, sec = $('fSection').value;
+    if (!code || !year || !sec) { $('sheetCard').hidden = true; return; }
+    var keep = restore && restore.course === code && restore.year === Number(year) && restore.section === sec ? restore : null;
+    restore = null;
+    state.course = code; state.year = Number(year); state.section = sec;
+    state.page = keep && keep.page ? keep.page : 1;
+    state.edits = keep && keep.edits ? keep.edits : {};
+    if (keep && keep.size) $('pageSize').value = String(keep.size);
+    state.status = 'loading'; updateDl();
+    api('/api/faculty/sheet?college=' + encodeURIComponent(state.college) + '&course_code=' + encodeURIComponent(code) + '&year=' + year + '&section=' + encodeURIComponent(sec))
+      .then(function (res) {
+        if (!res.ok) { $('saveMsg').className = 'msg err'; $('saveMsg').textContent = res.j.error || 'Could not load the class roster.'; $('sheetCard').hidden = true; state.status = 'none'; updateDl(); return; }
+        state.roster = res.j.students || [];
+        state.status = state.roster.length ? 'ready' : 'none';
+        updateDl();
+        $('sheetCard').hidden = false;
+        var a = assignmentFor(code);
+        $('sheetTitle').textContent = '[' + code + '] ' + (a && a.descriptive_title ? a.descriptive_title : '');
+        $('sheetSub').textContent = 'BSN-' + year + sec + ' · ' + state.term + ' · A.Y. ' + state.ay;
+        $('sheetCount').textContent = 'Total Students Enrolled: ' + state.roster.length;
+        $('saveMsg').textContent = '';
+        render();
+      });
+  }
+  function render() {
+    var size = Number($('pageSize').value) || 10;
+    var pages = Math.max(1, Math.ceil(state.roster.length / size));
+    if (state.page > pages) state.page = pages;
+    var from = (state.page - 1) * size;
+    var rows = state.roster.slice(from, from + size);
+    $('rows').innerHTML = rows.length ? rows.map(function (s, i) {
+      var current = Object.prototype.hasOwnProperty.call(state.edits, s.student_no) ? state.edits[s.student_no] : (s.final_grade || '');
+      var opts = GRADES.map(function (g) { return '<option value="' + g + '"' + (g === current ? ' selected' : '') + '>' + (g || '-- Select --') + '</option>'; }).join('');
+      return '<tr data-no="' + esc(s.student_no) + '">' +
+        '<td>' + (from + i + 1) + '</td>' +
+        '<td style="font-family:monospace;font-weight:700">' + esc(s.student_no) + '</td>' +
+        '<td style="text-transform:uppercase;font-weight:700">' + esc(s.last_name) + ', ' + esc(s.first_name) + ' ' + esc(s.middle_name || '') + '</td>' +
+        '<td>BSN-' + esc(s.year_level) + esc(s.section) + '</td>' +
+        '<td><select class="g">' + opts + '</select></td>' +
+        '<td class="rem">' + esc(remark(current)) + '</td>' +
+        '<td>' + esc(s.instructor || '') + '</td></tr>';
+      }).join('') : '<tr><td colspan="7" class="muted" style="text-align:center;padding:16px">No students are enrolled in this class for the active grading period.</td></tr>';
+    $('pageInfo').textContent = 'Page ' + state.page + ' of ' + pages;
+    $('prev').disabled = state.page <= 1;
+    $('next').disabled = state.page >= pages;
+    writeDraft();
+  }
+  $('pageSize').addEventListener('change', function () { state.page = 1; render(); });
+  $('prev').addEventListener('click', function () { state.page--; render(); });
+  $('next').addEventListener('click', function () { state.page++; render(); });
+  $('rows').addEventListener('change', function (e) {
+    if (!e.target.classList.contains('g')) return;
+    var tr = e.target.closest('tr');
+    state.edits[tr.getAttribute('data-no')] = e.target.value;
+    tr.querySelector('.rem').textContent = remark(e.target.value);
+    writeDraft();
+  });
+  $('closeSheet').addEventListener('click', function () {
+    $('sheetCard').hidden = true;
+    state.course = ''; state.year = 0; state.section = ''; state.edits = {}; restore = null; writeDraft();
+    $('fSubject').value = ''; $('fYear').innerHTML = ''; $('fSection').innerHTML = '';
+    fillYearSection();
+  });
+  $('saveBtn').addEventListener('click', function () {
+    // Every grade entered on any page is saved, not only the page on screen.
+    var grades = [];
+    Object.keys(state.edits).forEach(function (no) {
+      var v = state.edits[no];
+      if (v) grades.push({ student_no: no, final_grade: v });
+    });
+    var msg = $('saveMsg');
+    if (!grades.length) { msg.className = 'msg err'; msg.textContent = 'Choose at least one grade.'; return; }
+    msg.className = 'msg'; msg.textContent = 'Saving…';
+    fetch('/api/faculty/grades/batch', { method: 'POST', credentials: 'same-origin', headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ college: state.college, course_code: state.course, year: state.year, section: state.section, grades: grades }) })
+      .then(function (r) { return r.json().then(function (j) { return { ok: r.ok, j: j }; }); })
+      .then(function (res) {
+        if (!res.ok) { msg.className = 'msg err'; msg.textContent = res.j.error || 'Could not save.'; return; }
+        state.roster.forEach(function (s) {
+          if (Object.prototype.hasOwnProperty.call(state.edits, s.student_no)) s.final_grade = state.edits[s.student_no];
+        });
+        state.edits = {};
+        render();
+        msg.className = 'msg ok'; msg.textContent = 'Saved ' + res.j.saved + ' grade(s).';
+      })
+      .catch(function () { msg.className = 'msg err'; msg.textContent = 'Could not save.'; });
+  });
+
+  /* Session */
+  $('downloads-btn').addEventListener('click', function () {
+    var f = $('filterCard'), d = $('dlAction');
+    f.hidden = false;
+    d.hidden = false;
+    d.scrollIntoView({ behavior: 'smooth', block: 'start' });
+  });
+  var dlTimer = null;
+  // Opens the PDF in a hidden frame and sends it to the print dialog.
+  function printBlob(blob) {
+    var u = URL.createObjectURL(blob);
+    var f = document.createElement('iframe');
+    f.style.cssText = 'position:fixed;right:0;bottom:0;width:0;height:0;border:0;';
+    f.onload = function () {
+      try { f.contentWindow.focus(); f.contentWindow.print(); } catch (e) { /* the browser blocked printing; the file is still downloaded */ }
+      setTimeout(function () { f.remove(); URL.revokeObjectURL(u); }, 60000);
+    };
+    f.src = u;
+    document.body.appendChild(f);
+  }
+  function downloadReport(kind) {
+    clearTimeout(dlTimer);
+    if (state.status !== 'ready' || !state.college || !state.course || !state.year || !state.section) return;
+    var st = $('ror-status'), box = $('ror-progress'), bar = $('ror-bar'), pct = $('ror-pct');
+    var btns = ['ror-xlsx', 'ror-pdf'].map(function (id) { return $(id); });
+    var url = '/api/faculty/report-of-grades.' + kind + '?college=' + encodeURIComponent(state.college) + '&course_code=' + encodeURIComponent(state.course) + '&year=' + state.year + '&section=' + encodeURIComponent(state.section);
+    function setBusy(on) { btns.forEach(function (b) { b.disabled = on; }); }
+    function fail(text) {
+      setBusy(false); box.hidden = true;
+      st.className = 'dl-status err'; st.textContent = text;
+    }
+    st.className = 'dl-status'; st.textContent = 'Preparing the ' + kind.toUpperCase() + ' file…';
+    box.hidden = false; bar.style.width = '0%'; pct.textContent = '';
+    setBusy(true);
+    var xhr = new XMLHttpRequest();
+    xhr.open('GET', url);
+    xhr.responseType = 'blob';
+    xhr.withCredentials = true;
+    xhr.onprogress = function (e) {
+      if (e.lengthComputable && e.total > 0) {
+        var p = Math.min(100, Math.round(e.loaded / e.total * 100));
+        bar.style.width = p + '%'; pct.textContent = p + '%';
+        st.textContent = 'Downloading… ' + p + '%';
+      } else {
+        // The server did not send a size, so the percentage is unknown: show the amount received.
+        pct.textContent = Math.round(e.loaded / 1024) + ' KB';
+        st.textContent = 'Downloading…';
+      }
+    };
+    xhr.onerror = function () { fail('Connection lost. Please try again.'); };
+    xhr.onload = function () {
+      if (xhr.status !== 200) {
+        return xhr.response.text().then(function (t) {
+          var msg = 'Could not build the report.';
+          try { msg = JSON.parse(t).error || msg; } catch (e) {}
+          fail(msg);
+        }, function () { fail('Could not build the report.'); });
+      }
+      var m = /filename="([^"]+)"/.exec(xhr.getResponseHeader('Content-Disposition') || '');
+      var name = m ? m[1] : 'Report_of_Grades.' + kind;
+      var u = URL.createObjectURL(xhr.response);
+      var a = document.createElement('a');
+      a.href = u; a.download = name;
+      document.body.appendChild(a); a.click(); a.remove();
+      setTimeout(function () { URL.revokeObjectURL(u); }, 1000);
+      if (kind === 'pdf') printBlob(xhr.response);
+      bar.style.width = '100%'; pct.textContent = '100%';
+      st.className = 'dl-status'; st.textContent = 'Download complete: ' + name;
+      setBusy(false);
+      // The confirmation, bar and percentage clear themselves after 2 seconds.
+      clearTimeout(dlTimer);
+      dlTimer = setTimeout(function () {
+        st.textContent = ''; box.hidden = true; bar.style.width = '0%'; pct.textContent = '';
+      }, 2000);
+    };
+    xhr.send();
+  }
+  $('ror-xlsx').addEventListener('click', function () { downloadReport('xlsx'); });
+  $('ror-pdf').addEventListener('click', function () { downloadReport('pdf'); });
+  $('logout').addEventListener('click', function () {
+    try { sessionStorage.removeItem(DRAFT_KEY); } catch (e) {}
+    fetch('/api/portal/logout', { method: 'POST', credentials: 'same-origin' }).finally(function () { location.href = '/CUP-PORTAL/faculty/'; });
+  });
+  fetch('/api/portal/me', { credentials: 'same-origin' }).then(function (r) {
+    if (!r.ok) { location.href = '/CUP-PORTAL/faculty/'; return null; }
+    return r.json();
+  }).then(function (me) {
+    if (!me) return;
+    if (me.must_change) { location.href = '/CUP-PORTAL/change-password'; return; }
+    if (me.role !== 'faculty') { location.href = '/CUP-PORTAL/faculty/'; return; }
+    $('who').textContent = me.name || '';
+  });
+  if (restore && restore.college) chooseCollege(restore.college, true);
+  else $('period').textContent = 'Choose a college above.';
+})();
+</script>
+<script>
+  // ESC closes the open grade sheet (Close Sheet). Unsaved grades ask to Confirm or Close first.
+  // With no sheet open, ESC clears the current subject / year / section selection.
+  (function () {
+    var modal = null, pending = null;
+    function closeWarn() { if (modal) modal.hidden = true; pending = null; }
+    function ensureWarn() {
+      if (modal) return modal;
+      modal = document.createElement('div');
+      modal.hidden = true;
+      modal.setAttribute('role', 'dialog');
+      modal.style.cssText = 'position:fixed;inset:0;background:rgba(0,0,0,.45);display:flex;align-items:center;justify-content:center;z-index:9999;padding:16px;';
+      modal.innerHTML = '<div style="background:#fff;border-radius:10px;max-width:420px;width:100%;padding:22px 24px;box-shadow:0 12px 32px rgba(0,0,0,.3);">' +
+        '<h3 style="margin:0 0 8px;font-size:15px;font-weight:700;color:#0a3a0a;">Unsaved grades</h3>' +
+        '<p style="margin:0 0 18px;font-size:13px;color:#334155;line-height:1.5;">Closing this sheet will clear the grades you have not saved. Do you want to continue?</p>' +
+        '<div style="display:flex;justify-content:flex-end;gap:10px;">' +
+        '<button type="button" id="escWarnClose" style="padding:9px 16px;border:0;border-radius:6px;background:#e2e8f0;color:#334155;font-weight:700;cursor:pointer;">Close</button>' +
+        '<button type="button" id="escWarnConfirm" style="padding:9px 16px;border:0;border-radius:6px;background:#b91c1c;color:#fff;font-weight:700;cursor:pointer;">Confirm</button>' +
+        '</div></div>';
+      document.body.appendChild(modal);
+      modal.querySelector('#escWarnClose').addEventListener('click', closeWarn);
+      modal.querySelector('#escWarnConfirm').addEventListener('click', function () {
+        var fn = pending; closeWarn(); if (fn) fn();
+      });
+      return modal;
+    }
+    document.addEventListener('keydown', function (e) {
+      if (e.key !== 'Escape') return;
+      if (modal && !modal.hidden) { closeWarn(); return; }
+      var sheet = document.getElementById('sheetCard');
+      var close = document.getElementById('closeSheet');
+      if (sheet && !sheet.hidden && close) {
+        var hasEdits = !!(window.cupGradeHasEdits && window.cupGradeHasEdits());
+        if (hasEdits) {
+          pending = function () { close.click(); };
+          ensureWarn().hidden = false;
+          modal.querySelector('#escWarnConfirm').focus();
+        } else {
+          close.click();
+        }
+        return;
+      }
+      // Close the most recently opened item first: sheet (3), then Downloads (2), then filters (1).
+      var dl = document.getElementById('dlAction'), fc = document.getElementById('filterCard');
+      if (dl && !dl.hidden) { dl.hidden = true; return; }
+      if (fc && !fc.hidden) { fc.hidden = true; return; }
+    });
+  })();
+</script>
+</body>
+</html>

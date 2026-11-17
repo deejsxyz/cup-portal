@@ -1,0 +1,2218 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>CUP College Registrar Portal</title>
+<link rel="icon" href="/images/favicon-cup.png">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Libre+Franklin:wght@400;600;700;800&display=swap">
+<style>
+  :root { --dg:#0a3a0a; --g:#0f5a12; --g2:#1d7a20; --gold:#f2c200; --ink:#1f2a1f; --line:#7fa37f; --bg:#eef3ee; }
+  * { box-sizing: border-box; }
+  html, body { margin: 0; background: var(--bg); color: var(--ink); }
+  body { font-family: 'Libre Franklin', Arial, Helvetica, sans-serif; min-height: 100vh; }
+  .top { background: #fff; position: relative; height: 75px; display: flex; align-items: flex-end; padding: 0 24px 0 190px; }
+  .seal { position: absolute; left: 36px; top: 0; width: 130px; height: 130px; display: flex; align-items: center; justify-content: center; z-index: 10; }
+  .seal img { width: 130px; height: 130px; object-fit: contain; }
+  .name { line-height: 1; }
+  .name .small { font-size: 0.85rem; margin-bottom: -4px; font-weight: 700; color: var(--g); letter-spacing: .08em; text-transform: uppercase; margin-left: 2px; }
+  .name .big { font-size: 2.3rem; font-weight: 800; color: var(--dg); line-height: .8; }
+  .name .big .w1 { font-size: 2.3rem; }
+  .name .big .w2 { font-size: 3rem; }
+  .nav { background: linear-gradient(90deg, var(--dg), var(--g2)); min-height: 52px; display: flex; align-items: center; padding: 0 24px 0 190px; gap: 4px; justify-content: space-between; position: relative; z-index: 5; }
+  .tabs { display: flex; gap: 2px; flex-wrap: wrap; }
+  .menu { position: relative; }
+  .tab { background: transparent; border: 0; color: #fff; font: inherit; font-weight: 700; font-size: .85rem; letter-spacing: .02em; text-transform: uppercase; padding: 8px 10px; cursor: pointer; border-bottom: 3px solid transparent; white-space: nowrap; }
+  .tab:hover, .tab[aria-expanded="true"] { color: var(--gold); }
+  .tab.active { color: var(--gold); border-bottom-color: var(--gold); }
+  .dd { display: none; position: absolute; top: 100%; left: 0; min-width: 200px; background: #fff; border: 2px solid var(--gold); box-shadow: 0 6px 16px rgba(0,0,0,.18); padding: 6px 0; }
+  .dd.open { display: block; }
+  .college-bar { display: flex; flex-wrap: wrap; gap: 6px; padding: 10px 14px; background: #fff; border-bottom: 1px solid var(--line); }
+  .dd button { display: block; width: 100%; text-align: left; background: none; border: 0; padding: 10px 16px; font: inherit; color: var(--dg); cursor: pointer; }
+  .dd button:hover { background: #fff6cc; }
+  .logout { background: var(--gold); color: var(--dg); border: 0; font: inherit; font-weight: 700; padding: 8px 16px; border-radius: 4px; cursor: pointer; }
+  main { max-width: 1100px; margin: 28px auto 60px; padding: 0 16px; }
+  .panel { display: none; }
+  .panel.on { display: block; }
+  .box { background: #fff; border: 2px solid var(--line); border-top: 6px solid var(--gold); border-radius: 4px; margin-bottom: 18px; }
+  .box h2 { margin: 0; background: linear-gradient(90deg, var(--dg), var(--g2)); color: #fff; font-size: 1rem; letter-spacing: .05em; text-transform: uppercase; padding: 12px 18px; }
+  .box .body { padding: 18px; color: #3a4a3a; line-height: 1.5; }
+  .soon { display: inline-block; background: #fff6cc; color: var(--dg); border: 1px solid var(--gold); border-radius: 4px; padding: 3px 8px; font-size: .8rem; font-weight: 700; }
+  .hint { margin: 0 0 12px; color: #4a5a4a; }
+  .acct-tabs { display: flex; gap: 6px; margin: 4px 0 16px; border-bottom: 2px solid #c9d6c9; }
+  .acct-tab { background: transparent; border: 0; padding: 10px 14px; font: inherit; font-weight: 700; color: #3a4a3a; cursor: pointer; border-bottom: 3px solid transparent; margin-bottom: -2px; }
+  .acct-tab.on { color: var(--dg); border-bottom-color: var(--gold); }
+  .acct-form { display: grid; gap: 8px; max-width: 420px; margin-bottom: 8px; }
+  .acct-table-wrap { overflow-x: auto; max-width: 100%; margin-bottom: 16px; }
+  .acct-table { width: 100%; border-collapse: collapse; font-size: .9rem; }
+  .acct-table th, .acct-table td { text-align: left; padding: 6px 8px; border-bottom: 1px solid #d7e0d7; }
+  .acct-table th { background: #eef4ee; }
+  .pill { display: inline-block; padding: 2px 8px; border-radius: 999px; font-size: .75rem; font-weight: 700; background: #fff4cc; color: #7a5a00; }
+  .pill.ok { background: #d9f2df; color: #1b5e20; }
+  .acct-search { max-width: 420px; width: 100%; margin-bottom: 8px; }
+  .search-row { display: flex; gap: 8px; flex-wrap: wrap; align-items: center; margin-bottom: 6px; }
+  .search-row .acct-search { flex: 1 1 240px; margin: 0; }
+  .btn { font: inherit; font-weight: 700; font-size: .85rem; border: 0; border-radius: 8px; padding: 9px 14px; cursor: pointer; color: #fff; }
+  .btn.sm { padding: 5px 10px; font-size: .78rem; }
+  .btn.green { background: var(--g2); }
+  .btn.gold { background: var(--gold); color: var(--dg); }
+  .btn.red { background: #b3261e; }
+  .btn.light { background: #fff; color: var(--dg); border: 1px solid var(--line); }
+  .btn:hover { filter: brightness(1.08); }
+  .sub-tabs { display: flex; flex-wrap: wrap; gap: 6px; margin-bottom: 16px; }
+  .sub-tab { font: inherit; font-size: .82rem; font-weight: 700; padding: 8px 12px; border-radius: 8px; border: 1px solid var(--line); background: #fff; color: var(--dg); cursor: pointer; }
+  .sub-tab.on { background: var(--dg); color: var(--gold); border-color: var(--dg); }
+  .bulk-banner { border-radius: 10px; padding: 12px 14px; margin-bottom: 12px; display: grid; gap: 4px; }
+  .bulk-banner.gold { background: #fff8d6; border: 1px solid var(--gold); color: #5a4500; }
+  .bulk-banner.green { background: #e7f5e9; border: 1px solid var(--g2); color: var(--dg); }
+  .bulk-banner.red { background: #fdecea; border: 1px solid #b3261e; color: #7a1a14; }
+  .bulk-filter { display: flex; gap: 10px; align-items: center; flex-wrap: wrap; margin-top: 6px; }
+  .bulk-bar { display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 8px; margin-bottom: 8px; }
+  .bulk-go-wrap { display: flex; gap: 8px; align-items: center; flex-wrap: wrap; }
+  .confirm-text { width: 200px; }
+  .pick-list { border: 1px solid #d7e0d7; border-radius: 10px; max-height: 420px; overflow-y: auto; background: #fff; }
+  .pick { display: grid; grid-template-columns: auto 1fr 1fr auto; gap: 10px; align-items: center; padding: 8px 12px; border-bottom: 1px solid #eef2ee; font-size: .9rem; }
+  .pick-id { font-family: monospace; font-weight: 700; color: var(--dg); }
+  .pick-col { color: #4a5a4a; font-size: .8rem; font-weight: 700; }
+  .pill.archived { background: #e5e5e5; color: #444; }
+  .manage-msg { min-height: 1em; }
+  .xl-wrap { overflow-x: auto; max-width: 100%; border: 1px solid #7fa37f; border-radius: 6px; background: #fff; }
+  table.xl { border-collapse: collapse; width: 100%; font-size: .88rem; }
+  table.xl th { position: sticky; top: 0; background: var(--dg); color: var(--gold); text-align: left; padding: 7px 10px; border: 1px solid #2f5e2f; white-space: nowrap; font-weight: 700; }
+  table.xl td { border: 1px solid #d4dfd4; padding: 6px 10px; white-space: nowrap; }
+  table.xl tbody tr:nth-child(even) td { background: #f3f8f3; }
+  table.xl tbody tr:hover td { background: #fff8d6; }
+  .xl-foot { display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 8px; padding: 10px 2px; font-size: .85rem; }
+  .xl-foot select { margin-left: 4px; }
+  .pg { display: flex; gap: 4px; flex-wrap: wrap; }
+  .pg button { min-width: 32px; padding: 5px 9px; border: 1px solid var(--line); background: #fff; color: var(--dg); font: inherit; font-weight: 700; border-radius: 6px; cursor: pointer; }
+  .pg button.on { background: var(--gold); border-color: var(--gold); color: var(--dg); }
+  .pg button:disabled { opacity: .4; cursor: default; }
+  .gss { background: #f4f9f4; border: 1px solid #9bbf9b; border-left: 6px solid var(--gold); border-radius: 10px; padding: 16px 18px; margin-bottom: 16px; }
+  .gss-head { display: flex; flex-wrap: wrap; gap: 6px 12px; align-items: baseline; margin-bottom: 12px; }
+  .gss-head strong { color: var(--dg); letter-spacing: .06em; }
+  .gss-note { color: #4a5a4a; font-size: .9rem; }
+  .gss-row { display: flex; flex-wrap: wrap; gap: 12px; align-items: flex-end; }
+  .gss-row label { display: grid; gap: 4px; font-weight: 700; font-size: .85rem; color: var(--dg); }
+  .gss-row select { min-width: 180px; height: 40px; box-sizing: border-box; padding: 0 10px; border: 1px solid var(--line); border-radius: 8px; font: inherit; background: #fff; }
+  .gss-row .btn { height: 40px; box-sizing: border-box; padding: 0 16px; margin: 0 0 4px; display: inline-flex; align-items: center; }
+  .gss-row .hint { flex-basis: 100%; margin: 0; }
+  table.grid input { width: 100%; min-width: 120px; border: 0; background: transparent; font: inherit; font-size: .88rem; line-height: 1.2; height: auto; padding: 2px 6px; color: var(--ink); }
+  table.grid td { padding: 0; height: 1px; }
+  table.grid th { padding: 4px 6px; line-height: 1.2; }
+  table.grid .g-prog { padding: 2px 6px; line-height: 1.2; font-weight: 700; color: var(--dg); white-space: nowrap; }
+  table.grid input:focus { outline: 2px solid var(--gold); background: #fffbea; }
+  table.grid input[readonly] { color: #4a5a4a; font-family: monospace; }
+  table.grid tr.bad td { background: #fdecea !important; }
+  .grid-wrap { max-height: 520px; overflow: auto; border: 1px solid #7fa37f; border-radius: 6px; background: #fff; max-width: 100%; }
+  .grid-wrap table.xl th { position: sticky; top: 0; z-index: 1; }
+  table { width: 100%; border-collapse: collapse; font-size: .92rem; }
+  th, td { text-align: left; padding: 8px 10px; border-bottom: 1px solid #dfe7df; }
+  th { background: #f1f7f1; color: var(--dg); }
+  .overflow { overflow-x: auto; }
+  form label { display: block; font-size: .92rem; margin: 10px 0 4px; color: var(--dg); font-weight: 700; }
+  form input, form select { width: 100%; max-width: 420px; height: 40px; border: 1px solid var(--line); border-radius: 4px; padding: 0 10px; font: inherit; }
+  .btn { margin-top: 14px; background: var(--g); color: var(--gold); border: 0; border-radius: 4px; padding: 10px 18px; font: inherit; font-weight: 700; cursor: pointer; }
+  .btn:disabled { opacity: .6; }
+  .msg { min-height: 1.3em; margin: 10px 0 0; color: #b42318; }
+  .msg.ok { color: var(--g); }
+  @media (max-width: 760px) {
+    .top { height: auto; padding: 96px 18px 14px; }
+    .seal { left: 50%; transform: translateX(-50%); top: 0; width: 92px; height: 92px; }
+    .seal img { width: 92px; height: 92px; }
+    .name .big { font-size: 1.4rem; text-align: center; }
+    .name .small { text-align: center; display: block; }
+    .nav { padding: 10px 14px; flex-direction: column; align-items: stretch; }
+    .tabs { justify-content: center; }
+  }
+  [hidden] { display: none !important; }
+
+  /* Batch Uploads Module & Progress / Modal Styles */
+  .bu-college-tabs { display: flex; flex-wrap: wrap; gap: 6px; margin-bottom: 18px; border-bottom: 2px solid #c9d6c9; padding-bottom: 10px; }
+  .bu-col-tab { background: #fff; border: 1px solid var(--line); color: var(--dg); font: inherit; font-size: .8rem; font-weight: 800; padding: 8px 14px; border-radius: 6px; cursor: pointer; text-transform: uppercase; transition: all .15s; }
+  .bu-col-tab:hover { background: #fff8d6; border-color: var(--gold); }
+  .bu-col-tab.on { background: var(--dg); color: var(--gold); border-color: var(--dg); box-shadow: 0 2px 6px rgba(10,58,10,.2); }
+  .bu-grid { display: grid; grid-template-columns: 1fr; gap: 18px; }
+  .bu-card { border: 1px solid #b8cfb8; border-top: 4px solid var(--g2); border-radius: 8px; padding: 16px 18px; background: #fafcfa; }
+  .bu-card h3 { margin: 0 0 6px; color: var(--dg); font-size: 1rem; text-transform: uppercase; letter-spacing: .03em; display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: 8px; }
+  .bu-card .tpl-link { font-size: .8rem; font-weight: 700; color: var(--g2); text-decoration: underline; cursor: pointer; text-transform: none; }
+  .bu-controls { display: flex; flex-wrap: wrap; gap: 10px; align-items: center; margin-top: 10px; }
+  .bu-controls input[type="file"] { flex: 1 1 260px; max-width: 460px; background: #fff; padding: 6px; border: 1px solid var(--line); border-radius: 6px; }
+  .bu-progress-wrap { margin-top: 12px; background: #e2ece2; border-radius: 999px; height: 18px; overflow: hidden; position: relative; border: 1px solid #9bbf9b; }
+  .bu-progress-bar { height: 100%; width: 0%; background: linear-gradient(90deg, var(--g), var(--g2)); transition: width .25s ease; }
+  .bu-progress-label { font-size: .8rem; font-weight: 700; color: var(--dg); margin-top: 6px; display: flex; justify-content: space-between; align-items: center; gap: 8px; }
+  .bu-cred-list { margin-top: 12px; display: flex; flex-wrap: wrap; gap: 8px; padding: 12px; background: #eef6ee; border: 1px solid #9bbf9b; border-radius: 8px; }
+  .bu-cred-list strong { flex-basis: 100%; font-size: .82rem; color: var(--dg); }
+  .bu-modal-backdrop { position: fixed; inset: 0; background: rgba(0,0,0,.55); display: flex; align-items: center; justify-content: center; z-index: 9999; padding: 16px; }
+  .bu-modal { background: #fff; border-top: 6px solid #b3261e; border-radius: 8px; max-width: 440px; width: 100%; padding: 22px 24px; box-shadow: 0 12px 32px rgba(0,0,0,.28); }
+  .bu-modal h3 { margin: 0 0 8px; color: #b3261e; font-size: 1.1rem; text-transform: uppercase; }
+  .bu-modal p { margin: 0 0 18px; font-size: .9rem; color: #3a4a3a; line-height: 1.5; }
+  .bu-modal-actions { display: flex; justify-content: flex-end; gap: 10px; }
+  input.invalid-fmt { border-color: #b3261e !important; background: #fdecea !important; }
+
+  .acct-menu { position: relative; display: inline-block; }
+  .acct-btn { background: rgba(255,255,255,.14); color: #fff; border: 1px solid rgba(255,255,255,.55); border-radius: 999px; padding: 6px 14px; font: inherit; font-weight: 700; white-space: nowrap; cursor: pointer; }
+  .acct-btn:hover { background: rgba(255,255,255,.24); }
+  .acct-drop { position: absolute; right: 0; top: calc(100% + 6px); min-width: 180px; background: #fff; border: 1px solid #c9ccd1; border-radius: 8px; box-shadow: 0 8px 24px rgba(0,0,0,.18); overflow: hidden; z-index: 50; }
+  .acct-drop button { display: block; width: 100%; text-align: left; background: #fff; border: 0; padding: 11px 14px; font: inherit; font-weight: 700; color: #0f5a1c; cursor: pointer; }
+  .acct-drop button:hover { background: #f1f7f1; }
+</style>
+<link rel="stylesheet" href="/CUP-PORTAL/portal-controls.css">
+<script src="/CUP-PORTAL/portal-session.js" data-logout="/api/registrar/logout" data-login="/CUP-PORTAL/college-registrar/"></script>
+</head>
+<body>
+  <header>
+    <div class="top">
+      <a class="seal" href="/CUP-PORTAL/" title="Back to the CUP Portal" style="text-decoration:none;"><img src="/images/cup-logo-seal.png" alt="City University of Pasay seal"></a>
+      <div class="name">
+        <div class="small" id="collegeName">City University of Pasay</div>
+        <div class="big" id="title"><span class="w1">COLLEGE REGISTRAR</span> <span class="w2">PORTAL</span></div>
+      </div>
+    </div>
+    <nav class="nav">
+      <div class="tabs">
+        <button class="tab" type="button" data-panel="coacs-student">COACS</button>
+        <button class="tab" type="button" data-panel="cas-student">CAS</button>
+        <button class="tab" type="button" data-panel="conm-student">CONM</button>
+        <button class="tab" type="button" data-panel="coed-student">COEd</button>
+        <button class="tab" type="button" data-panel="cobm-student">CoBM</button>
+        <button class="tab" type="button" data-panel="law-student">LAW</button>
+        <button class="tab" type="button" data-panel="gs-student">Graduate School</button>
+        <button class="tab" type="button" data-panel="tesda-student">TESDA</button>
+        <button class="tab" type="button" data-panel="portal-accounts" id="accounts-tab" hidden>Accounts</button>
+        <button class="tab" type="button" data-panel="settings" id="settings-tab">Settings</button>
+        <button class="tab" type="button" data-panel="batch-uploads" id="batch-uploads-tab">BATCH UPLOADS</button>
+        <div class="menu" data-menu="logs">
+          <button class="tab" type="button" aria-expanded="false">Logs</button>
+          <div class="dd">
+            <button type="button" data-panel="security-logs">Security Logs</button>
+            <button type="button" data-panel="grade-logs">Grade Logs</button>
+          </div>
+        </div>
+      </div>
+      <div style="display:flex;align-items:center;gap:12px;margin-left:auto">
+        <span id="acctMenu" class="acct-menu" hidden><button id="acctName" type="button" class="acct-btn" aria-haspopup="true" aria-expanded="false"></button><div id="acctDrop" class="acct-drop" hidden><button type="button" id="acctChangePw">Change Password</button></div></span>
+        <button class="logout" id="logout" type="button">Log out</button>
+      </div>
+    </nav>
+    <div id="collegeBar" class="college-bar" hidden></div>
+  </header>
+
+  <main>
+    <section class="panel" id="settings"><div class="box"><h2>Settings</h2><div class="body">
+        <div class="gss">
+          <div class="gss-head">
+            <strong>GLOBAL SYSTEM SETTINGS</strong>
+            <span class="gss-note">Set the active Academic Year and Semester for the whole portal.</span>
+          </div>
+          <form id="gp-form" novalidate class="gss-row">
+            <label>A.Y.<select id="gp-ay" aria-label="Academic year"></select></label>
+            <label>Semester<select id="gp-sem" aria-label="Semester"><option>1st Semester</option><option>2nd Semester</option><option>Summer</option></select></label>
+            <button type="button" id="gp-save" class="btn green">Apply System-Wide</button>
+            <p class="hint" id="gp-msg"></p>
+          </form>
+        </div>
+
+        <div class="gss" id="enr-sec">
+          <div class="gss-head">
+            <strong>ENROLLMENT SECTION</strong>
+            <span class="gss-note">The switch opens or closes the CSC Portal, College Registrar Portal, Automated ID Creation Portal, NSTP Portal and the Record-in-charge account. The Student Portal also needs the college's enrollment date below.</span>
+          </div>
+          <div class="gss-row" style="align-items:center">
+            <span>Enrollment status: <strong id="enr-status">—</strong></span>
+            <button type="button" id="enr-toggle" class="btn green">Open enrollment</button>
+          </div>
+          <div style="overflow-x:auto;margin-top:12px">
+            <table style="width:100%;border-collapse:collapse;font-size:13px">
+              <thead><tr style="text-align:left;border-bottom:2px solid #cbd5e1">
+                <th style="padding:8px;width:120px">College</th>
+                <th style="padding:8px">Enrollment dates</th>
+                <th style="padding:8px;width:260px">Add a date</th>
+              </tr></thead>
+              <tbody id="enr-body"></tbody>
+            </table>
+          </div>
+          <div class="gss-row" style="margin-top:12px">
+            <button type="button" id="enr-save" class="btn green">Save enrollment dates</button>
+            <p class="hint" id="enr-msg"></p>
+          </div>
+        </div>
+
+
+      <span class="soon" id="settings-na">Not connected yet</span>
+    </div></div></section>
+    <section class="panel" id="batch-uploads"><div class="box"><h2>Batch Uploads <span id="bu-active-college-label">| COACS</span></h2><div class="body">
+      <p class="hint">Select a college tab below to batch upload multiple CSV files for Students, Faculty, or Grades. If an upload is interrupted, you can Retry or Cancel (canceling ensures no partial data is saved).</p>
+      <div class="bu-college-tabs" id="bu-college-tabs" role="tablist">
+        <button type="button" class="bu-col-tab on" data-bu-college="COACS" data-bu-label="COACS">COACS</button>
+        <button type="button" class="bu-col-tab" data-bu-college="CAS" data-bu-label="CAS">CAS</button>
+        <button type="button" class="bu-col-tab" data-bu-college="CONM" data-bu-label="CONM">CONM</button>
+        <button type="button" class="bu-col-tab" data-bu-college="COED" data-bu-label="COED">COED</button>
+        <button type="button" class="bu-col-tab" data-bu-college="COBM" data-bu-label="COBM">COBM</button>
+        <button type="button" class="bu-col-tab" data-bu-college="LAW" data-bu-label="SCHOOL OF LAW">SCHOOL OF LAW</button>
+        <button type="button" class="bu-col-tab" data-bu-college="GS" data-bu-label="GRADUATE SCHOOL">GRADUATE SCHOOL</button>
+        <button type="button" class="bu-col-tab" data-bu-college="TESDA-TVI" data-bu-label="TESDA-TVI">TESDA-TVI</button>
+      </div>
+
+      <div class="bu-grid">
+        <!-- 1. STUDENT BATCH UPLOAD -->
+        <div class="bu-card" data-bu-type="student">
+          <h3>
+            <span>1. Student Batch Upload (<span class="bu-col-code">COACS</span>)</span>
+            <a href="#" class="tpl-link" data-bu-tpl="student">⬇ Download Student_Batch_Upload.csv Template</a>
+          </h3>
+          <p class="hint">Columns: <code>student_number, last_name, first_name, middle_name, extension, gender, status, birthday, contact_number, email, program, year_level, section, subjects</code>. Select one or multiple CSV files. Each processed file generates its own temporary credentials CSV file.</p>
+          <div class="bu-enroll-mode" style="display:flex;gap:18px;flex-wrap:wrap;margin:8px 0;font-size:13px">
+            <label><input type="radio" name="bu-enroll-student" value="pre-registered" checked> Pre-registration <span class="hint">(accounts and emails are created; students are not yet Officially Enrolled)</span></label>
+            <label><input type="radio" name="bu-enroll-student" value="enrolled"> Officially Enrolled <span class="hint">(students are tagged Officially Enrolled for the active term)</span></label>
+          </div>
+          <div class="bu-controls">
+            <input type="file" class="bu-files" multiple accept=".csv,text/csv" aria-label="Select Student CSV files">
+            <button type="button" class="btn green bu-start-btn" style="margin-top:0">Upload &amp; Process Student CSV(s)</button>
+            <button type="button" class="btn red sm bu-interrupt-btn" hidden style="margin-top:0">Pause / Interrupt</button>
+          </div>
+          <div class="bu-progress-area" hidden>
+            <div class="bu-progress-wrap"><div class="bu-progress-bar"></div></div>
+            <div class="bu-progress-label"><span class="bu-status-text">Preparing…</span><span class="bu-pct-text">0%</span></div>
+          </div>
+          <p class="msg bu-msg" role="status"></p>
+          <div class="bu-cred-list" hidden></div>
+        </div>
+
+        <!-- 2. FACULTY BATCH UPLOAD -->
+        <div class="bu-card" data-bu-type="faculty">
+          <h3>
+            <span>2. Faculty Batch Upload (<span class="bu-col-code">COACS</span>)</span>
+            <a href="#" class="tpl-link" data-bu-tpl="faculty">⬇ Download Faculty_Batch_Upload.csv Template</a>
+          </h3>
+          <p class="hint">Columns: <code>username, first_name, middle_name, last_name, gender, birthdate, email, subjects</code>. Select one or multiple CSV files. Each processed file generates its own temporary credentials CSV file.</p>
+          <div class="bu-controls">
+            <input type="file" class="bu-files" multiple accept=".csv,text/csv" aria-label="Select Faculty CSV files">
+            <button type="button" class="btn green bu-start-btn" style="margin-top:0">Upload &amp; Process Faculty CSV(s)</button>
+            <button type="button" class="btn red sm bu-interrupt-btn" hidden style="margin-top:0">Pause / Interrupt</button>
+          </div>
+          <div class="bu-progress-area" hidden>
+            <div class="bu-progress-wrap"><div class="bu-progress-bar"></div></div>
+            <div class="bu-progress-label"><span class="bu-status-text">Preparing…</span><span class="bu-pct-text">0%</span></div>
+          </div>
+          <p class="msg bu-msg" role="status"></p>
+          <div class="bu-cred-list" hidden></div>
+        </div>
+
+        <!-- 3. BATCH GRADE UPLOAD -->
+        <div class="bu-card" data-bu-type="grades">
+          <h3>
+            <span>3. Batch Grade Upload (<span class="bu-col-code">COACS</span>)</span>
+            <a href="#" class="tpl-link" data-bu-tpl="grades">⬇ Download Grades_Batch_Upload.csv Template</a>
+          </h3>
+          <p class="hint">Columns: <code>student_number, course_code, year_level, semester, final_grade</code>. Select one or multiple CSV files. Grades automatically align to each student by <code>student_number</code> for the active Academic Year and Semester. Duplicate subjects for the same student in the same Academic Year and Semester are strictly prevented.</p>
+          <div class="bu-controls">
+            <input type="file" class="bu-files" multiple accept=".csv,text/csv" aria-label="Select Grade CSV files">
+            <button type="button" class="btn green bu-start-btn" style="margin-top:0">Upload &amp; Process Grade CSV(s)</button>
+            <button type="button" class="btn red sm bu-interrupt-btn" hidden style="margin-top:0">Pause / Interrupt</button>
+          </div>
+          <div class="bu-progress-area" hidden>
+            <div class="bu-progress-wrap"><div class="bu-progress-bar"></div></div>
+            <div class="bu-progress-label"><span class="bu-status-text">Preparing…</span><span class="bu-pct-text">0%</span></div>
+          </div>
+          <p class="msg bu-msg" role="status"></p>
+        </div>
+      </div>
+    </div></div></section>
+
+    <!-- Interruption Retry / Cancel Modal Popup -->
+    <div class="bu-modal-backdrop" id="bu-interrupt-modal" hidden>
+      <div class="bu-modal" role="dialog" aria-modal="true" aria-labelledby="bu-modal-title">
+        <h3 id="bu-modal-title">⚠️ Upload &amp; Processing Interrupted</h3>
+        <p id="bu-modal-desc">The batch file upload and processing was interrupted before completion. Would you like to <strong>Retry</strong> and continue processing, or <strong>Cancel</strong> (no data will be uploaded)?</p>
+        <div class="bu-modal-actions">
+          <button type="button" class="btn light" id="bu-modal-cancel" style="margin-top:0">Cancel Upload</button>
+          <button type="button" class="btn green" id="bu-modal-retry" style="margin-top:0">Retry / Continue</button>
+        </div>
+      </div>
+    </div>
+
+    <section class="panel" id="security-logs"><div class="box"><h2>Security Logs</h2><div class="body"><span class="soon">Not connected yet</span></div></div></section>
+    <section class="panel" id="activity-log"><div class="box"><h2>Activity Log</h2><div class="body">
+        <p class="hint">Sign-ins, password changes, account creation, grade saves and approvals. Latest 500.</p>
+        <button type="button" id="al-load" style="padding:8px 14px">Refresh</button>
+        <div id="al-list" style="margin-top:10px;overflow-x:auto"></div>
+    </div></div></section>
+    <section class="panel" id="student-records"><div class="box"><h2>Student Records</h2><div class="body">
+        <p class="hint">Search any student across all colleges and see their grades.</p>
+        <div style="display:flex;gap:8px;flex-wrap:wrap;align-items:center"><input id="sr-q" placeholder="Search by name or student number" style="padding:7px;width:100%;max-width:420px"><select id="sr-college" aria-label="College"><option value="">All colleges</option><option>COACS</option><option>CAS</option><option>CONM</option><option>COED</option><option>COBM</option><option>LAW</option><option>GS</option><option>TESDA-TVI</option></select></div>
+        <div id="sr-list" style="margin-top:10px"></div>
+        <div id="sr-grades" style="margin-top:12px"></div>
+    </div></div></section>
+    <section class="panel" id="subjects-section"><div class="box"><h2>Subjects and Units</h2><div class="body">
+        <p class="hint">Upload this college's subject list. The certificate of grades uses these units to compute the weighted average.</p>
+        <p><span id="sj-college-wrap" hidden>College: <select id="sj-college"><option>COACS</option><option>CAS</option><option>CONM</option><option>COED</option><option>COBM</option><option>LAW</option><option>GS</option><option>TESDA-TVI</option></select> </span>
+          <a href="#" id="sj-tpl">Download template</a></p>
+        <input type="file" id="sj-file" accept=".csv,text/csv">
+        <button type="button" id="sj-upload">Upload subjects CSV</button>
+        <p class="hint" id="sj-msg"></p>
+        <div id="sj-list" style="margin-top:10px;overflow-x:auto"></div>
+    </div></div></section>
+    <section class="panel" id="portal-accounts"><div class="box"><h2>Accounts</h2><div class="body">
+        <p class="hint">Register, manage, archive, and restore the student and faculty portal accounts. New accounts get a temporary password, and the holder must change it at the first login.</p>
+        <div class="acct-tabs">
+          <button type="button" class="acct-tab on" data-acct-tab="student">Student Accounts</button>
+          <button type="button" class="acct-tab" data-acct-tab="faculty">Faculty Accounts</button>
+          <button type="button" class="acct-tab" data-acct-tab="registrar">College Registrar Accounts</button>
+          <button type="button" class="acct-tab" data-acct-tab="csc">CSC Accounts</button>
+        </div>
+        <div class="acct-pane" id="acct-pane-student">
+          <div class="sub-tabs"><button type="button" class="sub-tab on" data-role="student" data-sub="register">Register</button><button type="button" class="sub-tab" data-role="student" data-sub="manage">Manage Account</button><button type="button" class="sub-tab" data-role="student" data-sub="archive">Bulk Archive</button><button type="button" class="sub-tab" data-role="student" data-sub="restore">Bulk Restore</button><button type="button" class="sub-tab" data-role="student" data-sub="delete">Bulk Delete</button></div>
+          <div class="sub-body" data-role="student" data-sub="register">
+            <h3>Register one student account</h3>
+            <form id="pu-form-student" novalidate class="acct-form">
+              <input id="pu-ln-student" placeholder="Last name" aria-label="Last name"><input id="pu-fn-student" placeholder="First name" aria-label="First name"><input id="pu-mn-student" placeholder="Middle name" aria-label="Middle name"><input id="pu-ext-student" placeholder="Extension (Jr., III)" aria-label="Extension"><input id="pu-sno-student" placeholder="Student number"><input id="pu-mail-student" type="email" placeholder="Email address" pattern="[A-Za-z0-9._%+\-]+@[A-Za-z0-9\-]+(\.[A-Za-z0-9\-]+)*\.[A-Za-z]{2,}" maxlength="254" title="Enter a valid email address, for example name@example.com">
+              <select id="pu-college-student"><option>COACS</option><option>CAS</option><option>CONM</option><option>COED</option><option>COBM</option><option>LAW</option><option>GS</option><option>TESDA-TVI</option></select>
+              <select id="pu-program-student" aria-label="Program"></select>
+              <button type="button" id="pu-save-student">Create student account</button>
+              <p class="hint" id="pu-msg-student"></p>
+            </form>
+            <h3>Create multiple student accounts</h3>
+            <p class="hint">Type the student number. The other details fill in from the enrollment of the active academic year and semester (Accounts, Grading period). A temporary password is generated for each row.</p>
+            <div id="stu-table"></div>
+
+          </div>
+          <div class="sub-body" data-role="student" data-sub="manage" hidden><div class="manage" data-role="student"></div></div>
+          <div class="sub-body" data-role="student" data-sub="archive" hidden><div class="bulk" data-role="student" data-mode="archive"></div></div>
+          <div class="sub-body" data-role="student" data-sub="restore" hidden><div class="bulk" data-role="student" data-mode="restore"></div></div>
+          <div class="sub-body" data-role="student" data-sub="delete" hidden><div class="bulk" data-role="student" data-mode="delete"></div></div>
+        </div>
+
+        <div class="acct-pane" id="acct-pane-faculty" hidden>
+          <div class="sub-tabs"><button type="button" class="sub-tab on" data-role="faculty" data-sub="register">Register</button><button type="button" class="sub-tab" data-role="faculty" data-sub="manage">Manage Account</button><button type="button" class="sub-tab" data-role="faculty" data-sub="archive">Bulk Archive</button><button type="button" class="sub-tab" data-role="faculty" data-sub="restore">Bulk Restore</button><button type="button" class="sub-tab" data-role="faculty" data-sub="delete">Bulk Delete</button></div>
+          <div class="sub-body" data-role="faculty" data-sub="register">
+            <h3>Register one faculty account</h3>
+            <form id="pu-form-faculty" novalidate class="acct-form">
+              <input id="pu-ln-faculty" placeholder="Last name" aria-label="Last name"><input id="pu-fn-faculty" placeholder="First name" aria-label="First name"><input id="pu-mn-faculty" placeholder="Middle name" aria-label="Middle name"><input id="pu-ext-faculty" placeholder="Extension (Jr., III)" aria-label="Extension"><input id="pu-user-faculty" placeholder="Faculty username"><input id="pu-mail-faculty" type="email" placeholder="Email address" pattern="[A-Za-z0-9._%+\-]+@[A-Za-z0-9\-]+(\.[A-Za-z0-9\-]+)*\.[A-Za-z]{2,}" maxlength="254" title="Enter a valid email address, for example name@example.com">
+              <select id="pu-college-faculty"><option>COACS</option><option>CAS</option><option>CONM</option><option>COED</option><option>COBM</option><option>LAW</option><option>GS</option><option>TESDA-TVI</option></select>
+              <button type="button" id="pu-save-faculty">Create faculty account</button>
+              <p class="hint" id="pu-msg-faculty"></p>
+            </form>
+            <h3>Create multiple faculty accounts</h3>
+            <p class="hint">Type the username, college, name and email of each faculty member. A temporary password is generated for each row.</p>
+            <div id="fac-table"></div>
+          </div>
+          <div class="sub-body" data-role="faculty" data-sub="manage" hidden><div class="manage" data-role="faculty"></div></div>
+          <div class="sub-body" data-role="faculty" data-sub="archive" hidden><div class="bulk" data-role="faculty" data-mode="archive"></div></div>
+          <div class="sub-body" data-role="faculty" data-sub="restore" hidden><div class="bulk" data-role="faculty" data-mode="restore"></div></div>
+          <div class="sub-body" data-role="faculty" data-sub="delete" hidden><div class="bulk" data-role="faculty" data-mode="delete"></div></div>
+        </div>
+
+
+        <div class="acct-pane" id="acct-pane-registrar" hidden>
+          <div class="sub-tabs"><button type="button" class="sub-tab on" data-role="registrar" data-sub="register">Register</button><button type="button" class="sub-tab" data-role="registrar" data-sub="manage">Manage Account</button><button type="button" class="sub-tab" data-role="registrar" data-sub="archive">Bulk Archive</button><button type="button" class="sub-tab" data-role="registrar" data-sub="restore">Bulk Restore</button><button type="button" class="sub-tab" data-role="registrar" data-sub="delete">Bulk Delete</button></div>
+          <div class="sub-body" data-role="registrar" data-sub="register">
+            <h3>Register one College Registrar account</h3>
+            <form novalidate class="acct-form" onsubmit="return false">
+              <input id="reg-ln" placeholder="Last name" aria-label="Last name"><input id="reg-fn" placeholder="First name" aria-label="First name"><input id="reg-mn" placeholder="Middle name" aria-label="Middle name"><input id="reg-ext" placeholder="Extension (Jr., III)" aria-label="Extension">
+              <input id="reg-mail" type="email" placeholder="Email address (username)" autocomplete="off" pattern="[A-Za-z0-9._%+\-]+@[A-Za-z0-9\-]+(\.[A-Za-z0-9\-]+)*\.[A-Za-z]{2,}" maxlength="254" title="Enter a valid email address, for example name@example.com">
+              <select id="reg-college" aria-label="College"><option value="">Choose a college</option><option>COACS</option><option>CAS</option><option>CONM</option><option>COED</option><option>COBM</option><option>LAW</option><option>GS</option><option>TESDA-TVI</option></select>
+              <button type="button" id="reg-create">Create College Registrar account</button>
+              <p class="hint staff-msg" data-role="registrar"></p>
+            </form>
+          </div>
+          <div class="sub-body" data-role="registrar" data-sub="manage" hidden><div class="staff-list" data-role="registrar" data-mode="manage"></div></div>
+          <div class="sub-body" data-role="registrar" data-sub="archive" hidden><div class="staff-list" data-role="registrar" data-mode="archive"></div></div>
+          <div class="sub-body" data-role="registrar" data-sub="restore" hidden><div class="staff-list" data-role="registrar" data-mode="restore"></div></div>
+          <div class="sub-body" data-role="registrar" data-sub="delete" hidden><div class="staff-list" data-role="registrar" data-mode="delete"></div></div>
+        </div>
+        <div class="acct-pane" id="acct-pane-csc" hidden>
+          <div class="sub-tabs"><button type="button" class="sub-tab on" data-role="csc" data-sub="register">Register</button><button type="button" class="sub-tab" data-role="csc" data-sub="manage">Manage Account</button><button type="button" class="sub-tab" data-role="csc" data-sub="archive">Bulk Archive</button><button type="button" class="sub-tab" data-role="csc" data-sub="restore">Bulk Restore</button><button type="button" class="sub-tab" data-role="csc" data-sub="delete">Bulk Delete</button></div>
+          <div class="sub-body" data-role="csc" data-sub="register">
+            <h3>Register one CSC account</h3>
+            <form novalidate class="acct-form" onsubmit="return false">
+              <input id="csc-ln" placeholder="Last name" aria-label="Last name"><input id="csc-fn" placeholder="First name" aria-label="First name"><input id="csc-mn" placeholder="Middle name" aria-label="Middle name"><input id="csc-ext" placeholder="Extension (Jr., III)" aria-label="Extension">
+              <input id="csc-user" placeholder="CSC username" aria-label="CSC username" autocomplete="off">
+              <input id="csc-mail" type="email" placeholder="Email address" autocomplete="off" pattern="[A-Za-z0-9._%+\-]+@[A-Za-z0-9\-]+(\.[A-Za-z0-9\-]+)*\.[A-Za-z]{2,}" maxlength="254" title="Enter a valid email address, for example name@example.com">
+              <select id="csc-position" aria-label="Position"><option value="">Choose a position</option></select>
+              <button type="button" id="csc-create">Create CSC account</button>
+              <p class="hint staff-msg" data-role="csc"></p>
+            </form>
+          </div>
+          <div class="sub-body" data-role="csc" data-sub="manage" hidden><div class="staff-list" data-role="csc" data-mode="manage"></div></div>
+          <div class="sub-body" data-role="csc" data-sub="archive" hidden><div class="staff-list" data-role="csc" data-mode="archive"></div></div>
+          <div class="sub-body" data-role="csc" data-sub="restore" hidden><div class="staff-list" data-role="csc" data-mode="restore"></div></div>
+          <div class="sub-body" data-role="csc" data-sub="delete" hidden><div class="staff-list" data-role="csc" data-mode="delete"></div></div>
+        </div>
+
+    </div></div></section>
+    <section class="panel" id="grade-logs"><div class="box"><h2>Grade Logs</h2><div class="body">
+        <div style="display:flex;gap:8px;flex-wrap:wrap;align-items:center;margin-bottom:10px">
+          <select id="gl-college" aria-label="College"><option value="">All colleges</option><option>COACS</option><option>CAS</option><option>CONM</option><option>COED</option><option>COBM</option><option>LAW</option><option>GS</option><option>TESDA-TVI</option></select>
+          <select id="gl-status" aria-label="Status"><option value="">All statuses</option><option value="submitted">Submitted (waiting for approval)</option><option value="approved">Approved</option></select>
+          <button type="button" id="gl-approve" hidden>Approve submitted grades</button>
+        </div>
+        <p class="hint" id="gl-msg"></p>
+        <div id="gl-list"><p class="hint">Loading grades…</p></div>
+      </div></div></section>
+    <section class="panel" id="coacs-student"><div class="box"><h2 style="display:flex;align-items:center;justify-content:flex-start;flex-wrap:wrap;gap:10px"><span style="display:inline-flex;gap:6px;flex-wrap:wrap"><button type="button" class="pn-head-btn" data-ptab="view" aria-selected="true" style="padding:7px 12px;border-radius:6px;border:1px solid #818cf8;background:#fff;color:#312e81;font:inherit;font-size:11px;font-weight:700;text-transform:uppercase;cursor:pointer">View Student</button><button type="button" class="pn-head-btn" data-ptab="new" aria-selected="false" style="padding:7px 12px;border-radius:6px;border:1px solid transparent;background:rgba(255,255,255,.14);color:#fff;font:inherit;font-size:11px;font-weight:700;text-transform:uppercase;cursor:pointer">New Student</button><button type="button" class="pn-head-btn" data-ptab="existing" aria-selected="false" style="padding:7px 12px;border-radius:6px;border:1px solid transparent;background:rgba(255,255,255,.14);color:#fff;font:inherit;font-size:11px;font-weight:700;text-transform:uppercase;cursor:pointer">Existing Student</button><button type="button" class="pn-head-btn" data-ptab="grades" aria-selected="false" style="padding:7px 12px;border-radius:6px;border:1px solid transparent;background:rgba(255,255,255,.14);color:#fff;font:inherit;font-size:11px;font-weight:700;text-transform:uppercase;cursor:pointer">Manage Grade</button></span></h2><div class="body" style="padding:0">
+      <iframe src="/CUP-PORTAL/registrar/college-student.html?college=COACS" title="COACS Student" style="width:100%;min-height:900px;border:0;display:block"></iframe>
+    </div></div></section>
+    <section class="panel" id="coacs-faculty"><div class="box"><h2 style="display:flex;align-items:center;justify-content:flex-start;flex-wrap:wrap;gap:10px"><span style="display:inline-flex;gap:6px;flex-wrap:wrap"><button type="button" class="pn-head-btn" data-ptab="register" aria-selected="true" style="padding:7px 12px;border-radius:6px;border:1px solid #818cf8;background:#fff;color:#312e81;font:inherit;font-size:11px;font-weight:700;text-transform:uppercase;cursor:pointer">Register Faculty</button><button type="button" class="pn-head-btn" data-ptab="manage" aria-selected="false" style="padding:7px 12px;border-radius:6px;border:1px solid transparent;background:rgba(255,255,255,.14);color:#fff;font:inherit;font-size:11px;font-weight:700;text-transform:uppercase;cursor:pointer">Manage Faculty</button><button type="button" class="pn-head-btn" data-ptab="assign" aria-selected="false" style="padding:7px 12px;border-radius:6px;border:1px solid transparent;background:rgba(255,255,255,.14);color:#fff;font:inherit;font-size:11px;font-weight:700;text-transform:uppercase;cursor:pointer">Subject Assignment</button></span></h2><div class="body" style="padding:0">
+      <iframe src="/CUP-PORTAL/registrar/college-faculty.html?college=COACS" title="COACS Faculty" style="width:100%;min-height:900px;border:0;display:block"></iframe>
+    </div></div></section>
+    <section class="panel" id="coacs-account"><div class="box"><h2>COACS | Manage Account</h2><div class="body">
+      <form class="acct" data-college="COACS" novalidate hidden>
+        <p class="hint">Create the registrar login for COACS.</p>
+        <label>Name<input name="name" type="text"></label>
+        <label>Email<input name="email" type="email" autocomplete="off" pattern="[A-Za-z0-9._%+\-]+@[A-Za-z0-9\-]+(\.[A-Za-z0-9\-]+)*\.[A-Za-z]{2,}" maxlength="254" title="Enter a valid email address, for example name@example.com"></label>
+        <label>Password (at least 8 characters)<input name="password" type="password" autocomplete="new-password"></label>
+        <button class="btn" type="submit">Create account</button>
+        <p class="msg" role="status"></p>
+      </form>
+      <span class="soon acct-na">Only the University Registrar can manage accounts.</span>
+    </div></div></section>
+    <section class="panel" id="coacs-step2"><div class="box"><h2 style="display:flex;align-items:center;justify-content:flex-start;flex-wrap:wrap;gap:10px"><span style="display:inline-flex;gap:6px;flex-wrap:wrap"><button type="button" class="s2-head-btn" data-s2="evaluation" aria-selected="true" style="padding:7px 12px;border-radius:6px;border:1px solid #818cf8;background:#fff;color:#312e81;font:inherit;font-size:11px;font-weight:700;text-transform:uppercase;cursor:pointer">Student Evaluation</button><button type="button" class="s2-head-btn" data-s2="advising" aria-selected="false" style="padding:7px 12px;border-radius:6px;border:1px solid #818cf8;background:#fff;color:#312e81;font:inherit;font-size:11px;font-weight:700;text-transform:uppercase;cursor:pointer">Advising</button><button type="button" class="s2-head-btn" data-s2="section" aria-selected="false" style="padding:7px 12px;border-radius:6px;border:1px solid #818cf8;background:#fff;color:#312e81;font:inherit;font-size:11px;font-weight:700;text-transform:uppercase;cursor:pointer">Section Assignment</button><span class="s2-head-count" style="font-size:11px;font-weight:700;opacity:.92;align-self:center;margin-left:10px;color:#fff"></span></span></h2><div class="body" style="padding:0">
+      <iframe src="/CUP-PORTAL/registrar/college-step2.html?college=COACS" title="COACS Pre-enrollment" style="width:100%;min-height:900px;border:0;display:block"></iframe>
+    </div></div></section>
+    <section class="panel" id="coacs-locked"><div class="box"><h2>COACS | Locked Account</h2><div class="body"><span class="soon">Not connected yet</span></div></div></section>
+    <section class="panel" id="cas-student"><div class="box"><h2 style="display:flex;align-items:center;justify-content:flex-start;flex-wrap:wrap;gap:10px"><span style="display:inline-flex;gap:6px;flex-wrap:wrap"><button type="button" class="pn-head-btn" data-ptab="view" aria-selected="true" style="padding:7px 12px;border-radius:6px;border:1px solid #818cf8;background:#fff;color:#312e81;font:inherit;font-size:11px;font-weight:700;text-transform:uppercase;cursor:pointer">View Student</button><button type="button" class="pn-head-btn" data-ptab="new" aria-selected="false" style="padding:7px 12px;border-radius:6px;border:1px solid transparent;background:rgba(255,255,255,.14);color:#fff;font:inherit;font-size:11px;font-weight:700;text-transform:uppercase;cursor:pointer">New Student</button><button type="button" class="pn-head-btn" data-ptab="existing" aria-selected="false" style="padding:7px 12px;border-radius:6px;border:1px solid transparent;background:rgba(255,255,255,.14);color:#fff;font:inherit;font-size:11px;font-weight:700;text-transform:uppercase;cursor:pointer">Existing Student</button><button type="button" class="pn-head-btn" data-ptab="grades" aria-selected="false" style="padding:7px 12px;border-radius:6px;border:1px solid transparent;background:rgba(255,255,255,.14);color:#fff;font:inherit;font-size:11px;font-weight:700;text-transform:uppercase;cursor:pointer">Manage Grade</button></span></h2><div class="body" style="padding:0">
+      <iframe src="/CUP-PORTAL/registrar/college-student.html?college=CAS" title="CAS Student" style="width:100%;min-height:900px;border:0;display:block"></iframe>
+    </div></div></section>
+    <section class="panel" id="cas-faculty"><div class="box"><h2 style="display:flex;align-items:center;justify-content:flex-start;flex-wrap:wrap;gap:10px"><span style="display:inline-flex;gap:6px;flex-wrap:wrap"><button type="button" class="pn-head-btn" data-ptab="register" aria-selected="true" style="padding:7px 12px;border-radius:6px;border:1px solid #818cf8;background:#fff;color:#312e81;font:inherit;font-size:11px;font-weight:700;text-transform:uppercase;cursor:pointer">Register Faculty</button><button type="button" class="pn-head-btn" data-ptab="manage" aria-selected="false" style="padding:7px 12px;border-radius:6px;border:1px solid transparent;background:rgba(255,255,255,.14);color:#fff;font:inherit;font-size:11px;font-weight:700;text-transform:uppercase;cursor:pointer">Manage Faculty</button><button type="button" class="pn-head-btn" data-ptab="assign" aria-selected="false" style="padding:7px 12px;border-radius:6px;border:1px solid transparent;background:rgba(255,255,255,.14);color:#fff;font:inherit;font-size:11px;font-weight:700;text-transform:uppercase;cursor:pointer">Subject Assignment</button></span></h2><div class="body" style="padding:0">
+      <iframe src="/CUP-PORTAL/registrar/college-faculty.html?college=CAS" title="CAS Faculty" style="width:100%;min-height:900px;border:0;display:block"></iframe>
+    </div></div></section>
+    <section class="panel" id="cas-account"><div class="box"><h2>CAS | Manage Account</h2><div class="body">
+      <form class="acct" data-college="CAS" novalidate hidden>
+        <p class="hint">Create the registrar login for CAS.</p>
+        <label>Name<input name="name" type="text"></label>
+        <label>Email<input name="email" type="email" autocomplete="off" pattern="[A-Za-z0-9._%+\-]+@[A-Za-z0-9\-]+(\.[A-Za-z0-9\-]+)*\.[A-Za-z]{2,}" maxlength="254" title="Enter a valid email address, for example name@example.com"></label>
+        <label>Password (at least 8 characters)<input name="password" type="password" autocomplete="new-password"></label>
+        <button class="btn" type="submit">Create account</button>
+        <p class="msg" role="status"></p>
+      </form>
+      <span class="soon acct-na">Only the University Registrar can manage accounts.</span>
+    </div></div></section>
+    <section class="panel" id="cas-step2"><div class="box"><h2 style="display:flex;align-items:center;justify-content:flex-start;flex-wrap:wrap;gap:10px"><span style="display:inline-flex;gap:6px;flex-wrap:wrap"><button type="button" class="s2-head-btn" data-s2="evaluation" aria-selected="true" style="padding:7px 12px;border-radius:6px;border:1px solid #818cf8;background:#fff;color:#312e81;font:inherit;font-size:11px;font-weight:700;text-transform:uppercase;cursor:pointer">Student Evaluation</button><button type="button" class="s2-head-btn" data-s2="advising" aria-selected="false" style="padding:7px 12px;border-radius:6px;border:1px solid #818cf8;background:#fff;color:#312e81;font:inherit;font-size:11px;font-weight:700;text-transform:uppercase;cursor:pointer">Advising</button><button type="button" class="s2-head-btn" data-s2="section" aria-selected="false" style="padding:7px 12px;border-radius:6px;border:1px solid #818cf8;background:#fff;color:#312e81;font:inherit;font-size:11px;font-weight:700;text-transform:uppercase;cursor:pointer">Section Assignment</button><span class="s2-head-count" style="font-size:11px;font-weight:700;opacity:.92;align-self:center;margin-left:10px;color:#fff"></span></span></h2><div class="body" style="padding:0">
+      <iframe src="/CUP-PORTAL/registrar/college-step2.html?college=CAS" title="CAS Pre-enrollment" style="width:100%;min-height:900px;border:0;display:block"></iframe>
+    </div></div></section>
+    <section class="panel" id="cas-locked"><div class="box"><h2>CAS | Locked Account</h2><div class="body"><span class="soon">Not connected yet</span></div></div></section>
+    <section class="panel" id="conm-student"><div class="box"><h2 style="display:flex;align-items:center;justify-content:flex-start;flex-wrap:wrap;gap:10px"><span style="display:inline-flex;gap:6px;flex-wrap:wrap"><button type="button" class="pn-head-btn" data-ptab="view" aria-selected="true" style="padding:7px 12px;border-radius:6px;border:1px solid #818cf8;background:#fff;color:#312e81;font:inherit;font-size:11px;font-weight:700;text-transform:uppercase;cursor:pointer">View Student</button><button type="button" class="pn-head-btn" data-ptab="new" aria-selected="false" style="padding:7px 12px;border-radius:6px;border:1px solid transparent;background:rgba(255,255,255,.14);color:#fff;font:inherit;font-size:11px;font-weight:700;text-transform:uppercase;cursor:pointer">New Student</button><button type="button" class="pn-head-btn" data-ptab="existing" aria-selected="false" style="padding:7px 12px;border-radius:6px;border:1px solid transparent;background:rgba(255,255,255,.14);color:#fff;font:inherit;font-size:11px;font-weight:700;text-transform:uppercase;cursor:pointer">Existing Student</button><button type="button" class="pn-head-btn" data-ptab="grades" aria-selected="false" style="padding:7px 12px;border-radius:6px;border:1px solid transparent;background:rgba(255,255,255,.14);color:#fff;font:inherit;font-size:11px;font-weight:700;text-transform:uppercase;cursor:pointer">Manage Grade</button></span></h2><div class="body" style="padding:0">
+      <iframe src="/CUP-PORTAL/registrar/college-student.html?college=CONM" title="CONM Student" style="width:100%;min-height:900px;border:0;display:block"></iframe>
+    </div></div></section>
+    <section class="panel" id="conm-faculty"><div class="box"><h2 style="display:flex;align-items:center;justify-content:flex-start;flex-wrap:wrap;gap:10px"><span style="display:inline-flex;gap:6px;flex-wrap:wrap"><button type="button" class="pn-head-btn" data-ptab="register" aria-selected="true" style="padding:7px 12px;border-radius:6px;border:1px solid #818cf8;background:#fff;color:#312e81;font:inherit;font-size:11px;font-weight:700;text-transform:uppercase;cursor:pointer">Register Faculty</button><button type="button" class="pn-head-btn" data-ptab="manage" aria-selected="false" style="padding:7px 12px;border-radius:6px;border:1px solid transparent;background:rgba(255,255,255,.14);color:#fff;font:inherit;font-size:11px;font-weight:700;text-transform:uppercase;cursor:pointer">Manage Faculty</button><button type="button" class="pn-head-btn" data-ptab="assign" aria-selected="false" style="padding:7px 12px;border-radius:6px;border:1px solid transparent;background:rgba(255,255,255,.14);color:#fff;font:inherit;font-size:11px;font-weight:700;text-transform:uppercase;cursor:pointer">Subject Assignment</button></span></h2><div class="body" style="padding:0">
+      <iframe src="/CUP-PORTAL/registrar/college-faculty.html?college=CONM" title="CONM Faculty" style="width:100%;min-height:900px;border:0;display:block"></iframe>
+    </div></div></section>
+    <section class="panel" id="conm-account"><div class="box"><h2>CONM | Manage Account</h2><div class="body">
+      <form class="acct" data-college="CONM" novalidate hidden>
+        <p class="hint">Create the registrar login for CONM.</p>
+        <label>Name<input name="name" type="text"></label>
+        <label>Email<input name="email" type="email" autocomplete="off" pattern="[A-Za-z0-9._%+\-]+@[A-Za-z0-9\-]+(\.[A-Za-z0-9\-]+)*\.[A-Za-z]{2,}" maxlength="254" title="Enter a valid email address, for example name@example.com"></label>
+        <label>Password (at least 8 characters)<input name="password" type="password" autocomplete="new-password"></label>
+        <button class="btn" type="submit">Create account</button>
+        <p class="msg" role="status"></p>
+      </form>
+      <span class="soon acct-na">Only the University Registrar can manage accounts.</span>
+    </div></div></section>
+    <section class="panel" id="conm-step2"><div class="box"><h2 style="display:flex;align-items:center;justify-content:flex-start;flex-wrap:wrap;gap:10px"><span style="display:inline-flex;gap:6px;flex-wrap:wrap"><button type="button" class="s2-head-btn" data-s2="evaluation" aria-selected="true" style="padding:7px 12px;border-radius:6px;border:1px solid #818cf8;background:#fff;color:#312e81;font:inherit;font-size:11px;font-weight:700;text-transform:uppercase;cursor:pointer">Student Evaluation</button><button type="button" class="s2-head-btn" data-s2="advising" aria-selected="false" style="padding:7px 12px;border-radius:6px;border:1px solid #818cf8;background:#fff;color:#312e81;font:inherit;font-size:11px;font-weight:700;text-transform:uppercase;cursor:pointer">Advising</button><button type="button" class="s2-head-btn" data-s2="section" aria-selected="false" style="padding:7px 12px;border-radius:6px;border:1px solid #818cf8;background:#fff;color:#312e81;font:inherit;font-size:11px;font-weight:700;text-transform:uppercase;cursor:pointer">Section Assignment</button><span class="s2-head-count" style="font-size:11px;font-weight:700;opacity:.92;align-self:center;margin-left:10px;color:#fff"></span></span></h2><div class="body" style="padding:0">
+      <iframe src="/CUP-PORTAL/registrar/college-step2.html?college=CONM" title="CONM Pre-enrollment" style="width:100%;min-height:900px;border:0;display:block"></iframe>
+    </div></div></section>
+    <section class="panel" id="conm-locked"><div class="box"><h2>CONM | Locked Account</h2><div class="body"><span class="soon">Not connected yet</span></div></div></section>
+    <section class="panel" id="coed-student"><div class="box"><h2 style="display:flex;align-items:center;justify-content:flex-start;flex-wrap:wrap;gap:10px"><span style="display:inline-flex;gap:6px;flex-wrap:wrap"><button type="button" class="pn-head-btn" data-ptab="view" aria-selected="true" style="padding:7px 12px;border-radius:6px;border:1px solid #818cf8;background:#fff;color:#312e81;font:inherit;font-size:11px;font-weight:700;text-transform:uppercase;cursor:pointer">View Student</button><button type="button" class="pn-head-btn" data-ptab="new" aria-selected="false" style="padding:7px 12px;border-radius:6px;border:1px solid transparent;background:rgba(255,255,255,.14);color:#fff;font:inherit;font-size:11px;font-weight:700;text-transform:uppercase;cursor:pointer">New Student</button><button type="button" class="pn-head-btn" data-ptab="existing" aria-selected="false" style="padding:7px 12px;border-radius:6px;border:1px solid transparent;background:rgba(255,255,255,.14);color:#fff;font:inherit;font-size:11px;font-weight:700;text-transform:uppercase;cursor:pointer">Existing Student</button><button type="button" class="pn-head-btn" data-ptab="grades" aria-selected="false" style="padding:7px 12px;border-radius:6px;border:1px solid transparent;background:rgba(255,255,255,.14);color:#fff;font:inherit;font-size:11px;font-weight:700;text-transform:uppercase;cursor:pointer">Manage Grade</button></span></h2><div class="body" style="padding:0">
+      <iframe src="/CUP-PORTAL/registrar/college-student.html?college=COED" title="COEd Student" style="width:100%;min-height:900px;border:0;display:block"></iframe>
+    </div></div></section>
+    <section class="panel" id="coed-faculty"><div class="box"><h2 style="display:flex;align-items:center;justify-content:flex-start;flex-wrap:wrap;gap:10px"><span style="display:inline-flex;gap:6px;flex-wrap:wrap"><button type="button" class="pn-head-btn" data-ptab="register" aria-selected="true" style="padding:7px 12px;border-radius:6px;border:1px solid #818cf8;background:#fff;color:#312e81;font:inherit;font-size:11px;font-weight:700;text-transform:uppercase;cursor:pointer">Register Faculty</button><button type="button" class="pn-head-btn" data-ptab="manage" aria-selected="false" style="padding:7px 12px;border-radius:6px;border:1px solid transparent;background:rgba(255,255,255,.14);color:#fff;font:inherit;font-size:11px;font-weight:700;text-transform:uppercase;cursor:pointer">Manage Faculty</button><button type="button" class="pn-head-btn" data-ptab="assign" aria-selected="false" style="padding:7px 12px;border-radius:6px;border:1px solid transparent;background:rgba(255,255,255,.14);color:#fff;font:inherit;font-size:11px;font-weight:700;text-transform:uppercase;cursor:pointer">Subject Assignment</button></span></h2><div class="body" style="padding:0">
+      <iframe src="/CUP-PORTAL/registrar/college-faculty.html?college=COED" title="COEd Faculty" style="width:100%;min-height:900px;border:0;display:block"></iframe>
+    </div></div></section>
+    <section class="panel" id="coed-account"><div class="box"><h2>COEd | Manage Account</h2><div class="body">
+      <form class="acct" data-college="COED" novalidate hidden>
+        <p class="hint">Create the registrar login for COEd.</p>
+        <label>Name<input name="name" type="text"></label>
+        <label>Email<input name="email" type="email" autocomplete="off" pattern="[A-Za-z0-9._%+\-]+@[A-Za-z0-9\-]+(\.[A-Za-z0-9\-]+)*\.[A-Za-z]{2,}" maxlength="254" title="Enter a valid email address, for example name@example.com"></label>
+        <label>Password (at least 8 characters)<input name="password" type="password" autocomplete="new-password"></label>
+        <button class="btn" type="submit">Create account</button>
+        <p class="msg" role="status"></p>
+      </form>
+      <span class="soon acct-na">Only the University Registrar can manage accounts.</span>
+    </div></div></section>
+    <section class="panel" id="coed-step2"><div class="box"><h2 style="display:flex;align-items:center;justify-content:flex-start;flex-wrap:wrap;gap:10px"><span style="display:inline-flex;gap:6px;flex-wrap:wrap"><button type="button" class="s2-head-btn" data-s2="evaluation" aria-selected="true" style="padding:7px 12px;border-radius:6px;border:1px solid #818cf8;background:#fff;color:#312e81;font:inherit;font-size:11px;font-weight:700;text-transform:uppercase;cursor:pointer">Student Evaluation</button><button type="button" class="s2-head-btn" data-s2="advising" aria-selected="false" style="padding:7px 12px;border-radius:6px;border:1px solid #818cf8;background:#fff;color:#312e81;font:inherit;font-size:11px;font-weight:700;text-transform:uppercase;cursor:pointer">Advising</button><button type="button" class="s2-head-btn" data-s2="section" aria-selected="false" style="padding:7px 12px;border-radius:6px;border:1px solid #818cf8;background:#fff;color:#312e81;font:inherit;font-size:11px;font-weight:700;text-transform:uppercase;cursor:pointer">Section Assignment</button><span class="s2-head-count" style="font-size:11px;font-weight:700;opacity:.92;align-self:center;margin-left:10px;color:#fff"></span></span></h2><div class="body" style="padding:0">
+      <iframe src="/CUP-PORTAL/registrar/college-step2.html?college=COED" title="COED Pre-enrollment" style="width:100%;min-height:900px;border:0;display:block"></iframe>
+    </div></div></section>
+    <section class="panel" id="coed-locked"><div class="box"><h2>COEd | Locked Account</h2><div class="body"><span class="soon">Not connected yet</span></div></div></section>
+    <section class="panel" id="cobm-student"><div class="box"><h2 style="display:flex;align-items:center;justify-content:flex-start;flex-wrap:wrap;gap:10px"><span style="display:inline-flex;gap:6px;flex-wrap:wrap"><button type="button" class="pn-head-btn" data-ptab="view" aria-selected="true" style="padding:7px 12px;border-radius:6px;border:1px solid #818cf8;background:#fff;color:#312e81;font:inherit;font-size:11px;font-weight:700;text-transform:uppercase;cursor:pointer">View Student</button><button type="button" class="pn-head-btn" data-ptab="new" aria-selected="false" style="padding:7px 12px;border-radius:6px;border:1px solid transparent;background:rgba(255,255,255,.14);color:#fff;font:inherit;font-size:11px;font-weight:700;text-transform:uppercase;cursor:pointer">New Student</button><button type="button" class="pn-head-btn" data-ptab="existing" aria-selected="false" style="padding:7px 12px;border-radius:6px;border:1px solid transparent;background:rgba(255,255,255,.14);color:#fff;font:inherit;font-size:11px;font-weight:700;text-transform:uppercase;cursor:pointer">Existing Student</button><button type="button" class="pn-head-btn" data-ptab="grades" aria-selected="false" style="padding:7px 12px;border-radius:6px;border:1px solid transparent;background:rgba(255,255,255,.14);color:#fff;font:inherit;font-size:11px;font-weight:700;text-transform:uppercase;cursor:pointer">Manage Grade</button></span></h2><div class="body" style="padding:0">
+      <iframe src="/CUP-PORTAL/registrar/college-student.html?college=COBM" title="CoBM Student" style="width:100%;min-height:900px;border:0;display:block"></iframe>
+    </div></div></section>
+    <section class="panel" id="cobm-faculty"><div class="box"><h2 style="display:flex;align-items:center;justify-content:flex-start;flex-wrap:wrap;gap:10px"><span style="display:inline-flex;gap:6px;flex-wrap:wrap"><button type="button" class="pn-head-btn" data-ptab="register" aria-selected="true" style="padding:7px 12px;border-radius:6px;border:1px solid #818cf8;background:#fff;color:#312e81;font:inherit;font-size:11px;font-weight:700;text-transform:uppercase;cursor:pointer">Register Faculty</button><button type="button" class="pn-head-btn" data-ptab="manage" aria-selected="false" style="padding:7px 12px;border-radius:6px;border:1px solid transparent;background:rgba(255,255,255,.14);color:#fff;font:inherit;font-size:11px;font-weight:700;text-transform:uppercase;cursor:pointer">Manage Faculty</button><button type="button" class="pn-head-btn" data-ptab="assign" aria-selected="false" style="padding:7px 12px;border-radius:6px;border:1px solid transparent;background:rgba(255,255,255,.14);color:#fff;font:inherit;font-size:11px;font-weight:700;text-transform:uppercase;cursor:pointer">Subject Assignment</button></span></h2><div class="body" style="padding:0">
+      <iframe src="/CUP-PORTAL/registrar/college-faculty.html?college=COBM" title="CoBM Faculty" style="width:100%;min-height:900px;border:0;display:block"></iframe>
+    </div></div></section>
+    <section class="panel" id="cobm-account"><div class="box"><h2>CoBM | Manage Account</h2><div class="body">
+      <form class="acct" data-college="COBM" novalidate hidden>
+        <p class="hint">Create the registrar login for CoBM.</p>
+        <label>Name<input name="name" type="text"></label>
+        <label>Email<input name="email" type="email" autocomplete="off" pattern="[A-Za-z0-9._%+\-]+@[A-Za-z0-9\-]+(\.[A-Za-z0-9\-]+)*\.[A-Za-z]{2,}" maxlength="254" title="Enter a valid email address, for example name@example.com"></label>
+        <label>Password (at least 8 characters)<input name="password" type="password" autocomplete="new-password"></label>
+        <button class="btn" type="submit">Create account</button>
+        <p class="msg" role="status"></p>
+      </form>
+      <span class="soon acct-na">Only the University Registrar can manage accounts.</span>
+    </div></div></section>
+    <section class="panel" id="cobm-step2"><div class="box"><h2 style="display:flex;align-items:center;justify-content:flex-start;flex-wrap:wrap;gap:10px"><span style="display:inline-flex;gap:6px;flex-wrap:wrap"><button type="button" class="s2-head-btn" data-s2="evaluation" aria-selected="true" style="padding:7px 12px;border-radius:6px;border:1px solid #818cf8;background:#fff;color:#312e81;font:inherit;font-size:11px;font-weight:700;text-transform:uppercase;cursor:pointer">Student Evaluation</button><button type="button" class="s2-head-btn" data-s2="advising" aria-selected="false" style="padding:7px 12px;border-radius:6px;border:1px solid #818cf8;background:#fff;color:#312e81;font:inherit;font-size:11px;font-weight:700;text-transform:uppercase;cursor:pointer">Advising</button><button type="button" class="s2-head-btn" data-s2="section" aria-selected="false" style="padding:7px 12px;border-radius:6px;border:1px solid #818cf8;background:#fff;color:#312e81;font:inherit;font-size:11px;font-weight:700;text-transform:uppercase;cursor:pointer">Section Assignment</button><span class="s2-head-count" style="font-size:11px;font-weight:700;opacity:.92;align-self:center;margin-left:10px;color:#fff"></span></span></h2><div class="body" style="padding:0">
+      <iframe src="/CUP-PORTAL/registrar/college-step2.html?college=COBM" title="COBM Pre-enrollment" style="width:100%;min-height:900px;border:0;display:block"></iframe>
+    </div></div></section>
+    <section class="panel" id="cobm-locked"><div class="box"><h2>CoBM | Locked Account</h2><div class="body"><span class="soon">Not connected yet</span></div></div></section>
+    <section class="panel" id="law-student"><div class="box"><h2 style="display:flex;align-items:center;justify-content:flex-start;flex-wrap:wrap;gap:10px"><span style="display:inline-flex;gap:6px;flex-wrap:wrap"><button type="button" class="pn-head-btn" data-ptab="view" aria-selected="true" style="padding:7px 12px;border-radius:6px;border:1px solid #818cf8;background:#fff;color:#312e81;font:inherit;font-size:11px;font-weight:700;text-transform:uppercase;cursor:pointer">View Student</button><button type="button" class="pn-head-btn" data-ptab="new" aria-selected="false" style="padding:7px 12px;border-radius:6px;border:1px solid transparent;background:rgba(255,255,255,.14);color:#fff;font:inherit;font-size:11px;font-weight:700;text-transform:uppercase;cursor:pointer">New Student</button><button type="button" class="pn-head-btn" data-ptab="existing" aria-selected="false" style="padding:7px 12px;border-radius:6px;border:1px solid transparent;background:rgba(255,255,255,.14);color:#fff;font:inherit;font-size:11px;font-weight:700;text-transform:uppercase;cursor:pointer">Existing Student</button><button type="button" class="pn-head-btn" data-ptab="grades" aria-selected="false" style="padding:7px 12px;border-radius:6px;border:1px solid transparent;background:rgba(255,255,255,.14);color:#fff;font:inherit;font-size:11px;font-weight:700;text-transform:uppercase;cursor:pointer">Manage Grade</button></span></h2><div class="body" style="padding:0">
+      <iframe src="/CUP-PORTAL/registrar/college-student.html?college=LAW" title="School of Law Student" style="width:100%;min-height:900px;border:0;display:block"></iframe>
+    </div></div></section>
+    <section class="panel" id="law-faculty"><div class="box"><h2 style="display:flex;align-items:center;justify-content:flex-start;flex-wrap:wrap;gap:10px"><span style="display:inline-flex;gap:6px;flex-wrap:wrap"><button type="button" class="pn-head-btn" data-ptab="register" aria-selected="true" style="padding:7px 12px;border-radius:6px;border:1px solid #818cf8;background:#fff;color:#312e81;font:inherit;font-size:11px;font-weight:700;text-transform:uppercase;cursor:pointer">Register Faculty</button><button type="button" class="pn-head-btn" data-ptab="manage" aria-selected="false" style="padding:7px 12px;border-radius:6px;border:1px solid transparent;background:rgba(255,255,255,.14);color:#fff;font:inherit;font-size:11px;font-weight:700;text-transform:uppercase;cursor:pointer">Manage Faculty</button><button type="button" class="pn-head-btn" data-ptab="assign" aria-selected="false" style="padding:7px 12px;border-radius:6px;border:1px solid transparent;background:rgba(255,255,255,.14);color:#fff;font:inherit;font-size:11px;font-weight:700;text-transform:uppercase;cursor:pointer">Subject Assignment</button></span></h2><div class="body" style="padding:0">
+      <iframe src="/CUP-PORTAL/registrar/college-faculty.html?college=LAW" title="School of Law Faculty" style="width:100%;min-height:900px;border:0;display:block"></iframe>
+    </div></div></section>
+    <section class="panel" id="law-account"><div class="box"><h2>School of Law | Manage Account</h2><div class="body">
+      <form class="acct" data-college="LAW" novalidate hidden>
+        <p class="hint">Create the registrar login for School of Law.</p>
+        <label>Name<input name="name" type="text"></label>
+        <label>Email<input name="email" type="email" autocomplete="off" pattern="[A-Za-z0-9._%+\-]+@[A-Za-z0-9\-]+(\.[A-Za-z0-9\-]+)*\.[A-Za-z]{2,}" maxlength="254" title="Enter a valid email address, for example name@example.com"></label>
+        <label>Password (at least 8 characters)<input name="password" type="password" autocomplete="new-password"></label>
+        <button class="btn" type="submit">Create account</button>
+        <p class="msg" role="status"></p>
+      </form>
+      <span class="soon acct-na">Only the University Registrar can manage accounts.</span>
+    </div></div></section>
+    <section class="panel" id="law-step2"><div class="box"><h2 style="display:flex;align-items:center;justify-content:flex-start;flex-wrap:wrap;gap:10px"><span style="display:inline-flex;gap:6px;flex-wrap:wrap"><button type="button" class="s2-head-btn" data-s2="evaluation" aria-selected="true" style="padding:7px 12px;border-radius:6px;border:1px solid #818cf8;background:#fff;color:#312e81;font:inherit;font-size:11px;font-weight:700;text-transform:uppercase;cursor:pointer">Student Evaluation</button><button type="button" class="s2-head-btn" data-s2="advising" aria-selected="false" style="padding:7px 12px;border-radius:6px;border:1px solid #818cf8;background:#fff;color:#312e81;font:inherit;font-size:11px;font-weight:700;text-transform:uppercase;cursor:pointer">Advising</button><button type="button" class="s2-head-btn" data-s2="section" aria-selected="false" style="padding:7px 12px;border-radius:6px;border:1px solid #818cf8;background:#fff;color:#312e81;font:inherit;font-size:11px;font-weight:700;text-transform:uppercase;cursor:pointer">Section Assignment</button><span class="s2-head-count" style="font-size:11px;font-weight:700;opacity:.92;align-self:center;margin-left:10px;color:#fff"></span></span></h2><div class="body" style="padding:0">
+      <iframe src="/CUP-PORTAL/registrar/college-step2.html?college=LAW" title="LAW Pre-enrollment" style="width:100%;min-height:900px;border:0;display:block"></iframe>
+    </div></div></section>
+    <section class="panel" id="law-locked"><div class="box"><h2>School of Law | Locked Account</h2><div class="body"><span class="soon">Not connected yet</span></div></div></section>
+    <section class="panel" id="gs-student"><div class="box"><h2 style="display:flex;align-items:center;justify-content:flex-start;flex-wrap:wrap;gap:10px"><span style="display:inline-flex;gap:6px;flex-wrap:wrap"><button type="button" class="pn-head-btn" data-ptab="view" aria-selected="true" style="padding:7px 12px;border-radius:6px;border:1px solid #818cf8;background:#fff;color:#312e81;font:inherit;font-size:11px;font-weight:700;text-transform:uppercase;cursor:pointer">View Student</button><button type="button" class="pn-head-btn" data-ptab="new" aria-selected="false" style="padding:7px 12px;border-radius:6px;border:1px solid transparent;background:rgba(255,255,255,.14);color:#fff;font:inherit;font-size:11px;font-weight:700;text-transform:uppercase;cursor:pointer">New Student</button><button type="button" class="pn-head-btn" data-ptab="existing" aria-selected="false" style="padding:7px 12px;border-radius:6px;border:1px solid transparent;background:rgba(255,255,255,.14);color:#fff;font:inherit;font-size:11px;font-weight:700;text-transform:uppercase;cursor:pointer">Existing Student</button><button type="button" class="pn-head-btn" data-ptab="grades" aria-selected="false" style="padding:7px 12px;border-radius:6px;border:1px solid transparent;background:rgba(255,255,255,.14);color:#fff;font:inherit;font-size:11px;font-weight:700;text-transform:uppercase;cursor:pointer">Manage Grade</button></span></h2><div class="body" style="padding:0">
+      <iframe src="/CUP-PORTAL/registrar/college-student.html?college=GS" title="Graduate School Student" style="width:100%;min-height:900px;border:0;display:block"></iframe>
+    </div></div></section>
+    <section class="panel" id="gs-faculty"><div class="box"><h2 style="display:flex;align-items:center;justify-content:flex-start;flex-wrap:wrap;gap:10px"><span style="display:inline-flex;gap:6px;flex-wrap:wrap"><button type="button" class="pn-head-btn" data-ptab="register" aria-selected="true" style="padding:7px 12px;border-radius:6px;border:1px solid #818cf8;background:#fff;color:#312e81;font:inherit;font-size:11px;font-weight:700;text-transform:uppercase;cursor:pointer">Register Faculty</button><button type="button" class="pn-head-btn" data-ptab="manage" aria-selected="false" style="padding:7px 12px;border-radius:6px;border:1px solid transparent;background:rgba(255,255,255,.14);color:#fff;font:inherit;font-size:11px;font-weight:700;text-transform:uppercase;cursor:pointer">Manage Faculty</button><button type="button" class="pn-head-btn" data-ptab="assign" aria-selected="false" style="padding:7px 12px;border-radius:6px;border:1px solid transparent;background:rgba(255,255,255,.14);color:#fff;font:inherit;font-size:11px;font-weight:700;text-transform:uppercase;cursor:pointer">Subject Assignment</button></span></h2><div class="body" style="padding:0">
+      <iframe src="/CUP-PORTAL/registrar/college-faculty.html?college=GS" title="Graduate School Faculty" style="width:100%;min-height:900px;border:0;display:block"></iframe>
+    </div></div></section>
+    <section class="panel" id="gs-account"><div class="box"><h2>Graduate School | Manage Account</h2><div class="body">
+      <form class="acct" data-college="GS" novalidate hidden>
+        <p class="hint">Create the registrar login for Graduate School.</p>
+        <label>Name<input name="name" type="text"></label>
+        <label>Email<input name="email" type="email" autocomplete="off" pattern="[A-Za-z0-9._%+\-]+@[A-Za-z0-9\-]+(\.[A-Za-z0-9\-]+)*\.[A-Za-z]{2,}" maxlength="254" title="Enter a valid email address, for example name@example.com"></label>
+        <label>Password (at least 8 characters)<input name="password" type="password" autocomplete="new-password"></label>
+        <button class="btn" type="submit">Create account</button>
+        <p class="msg" role="status"></p>
+      </form>
+      <span class="soon acct-na">Only the University Registrar can manage accounts.</span>
+    </div></div></section>
+    <section class="panel" id="gs-step2"><div class="box"><h2 style="display:flex;align-items:center;justify-content:flex-start;flex-wrap:wrap;gap:10px"><span style="display:inline-flex;gap:6px;flex-wrap:wrap"><button type="button" class="s2-head-btn" data-s2="evaluation" aria-selected="true" style="padding:7px 12px;border-radius:6px;border:1px solid #818cf8;background:#fff;color:#312e81;font:inherit;font-size:11px;font-weight:700;text-transform:uppercase;cursor:pointer">Student Evaluation</button><button type="button" class="s2-head-btn" data-s2="advising" aria-selected="false" style="padding:7px 12px;border-radius:6px;border:1px solid #818cf8;background:#fff;color:#312e81;font:inherit;font-size:11px;font-weight:700;text-transform:uppercase;cursor:pointer">Advising</button><button type="button" class="s2-head-btn" data-s2="section" aria-selected="false" style="padding:7px 12px;border-radius:6px;border:1px solid #818cf8;background:#fff;color:#312e81;font:inherit;font-size:11px;font-weight:700;text-transform:uppercase;cursor:pointer">Section Assignment</button><span class="s2-head-count" style="font-size:11px;font-weight:700;opacity:.92;align-self:center;margin-left:10px;color:#fff"></span></span></h2><div class="body" style="padding:0">
+      <iframe src="/CUP-PORTAL/registrar/college-step2.html?college=GS" title="GS Pre-enrollment" style="width:100%;min-height:900px;border:0;display:block"></iframe>
+    </div></div></section>
+    <section class="panel" id="gs-locked"><div class="box"><h2>Graduate School | Locked Account</h2><div class="body"><span class="soon">Not connected yet</span></div></div></section>
+    <section class="panel" id="tesda-student"><div class="box"><h2 style="display:flex;align-items:center;justify-content:flex-start;flex-wrap:wrap;gap:10px"><span style="display:inline-flex;gap:6px;flex-wrap:wrap"><button type="button" class="pn-head-btn" data-ptab="view" aria-selected="true" style="padding:7px 12px;border-radius:6px;border:1px solid #818cf8;background:#fff;color:#312e81;font:inherit;font-size:11px;font-weight:700;text-transform:uppercase;cursor:pointer">View Student</button><button type="button" class="pn-head-btn" data-ptab="new" aria-selected="false" style="padding:7px 12px;border-radius:6px;border:1px solid transparent;background:rgba(255,255,255,.14);color:#fff;font:inherit;font-size:11px;font-weight:700;text-transform:uppercase;cursor:pointer">New Student</button><button type="button" class="pn-head-btn" data-ptab="existing" aria-selected="false" style="padding:7px 12px;border-radius:6px;border:1px solid transparent;background:rgba(255,255,255,.14);color:#fff;font:inherit;font-size:11px;font-weight:700;text-transform:uppercase;cursor:pointer">Existing Student</button><button type="button" class="pn-head-btn" data-ptab="grades" aria-selected="false" style="padding:7px 12px;border-radius:6px;border:1px solid transparent;background:rgba(255,255,255,.14);color:#fff;font:inherit;font-size:11px;font-weight:700;text-transform:uppercase;cursor:pointer">Manage Grade</button></span></h2><div class="body" style="padding:0">
+      <iframe src="/CUP-PORTAL/registrar/college-student.html?college=TESDA-TVI" title="TESDA-TVI Student" style="width:100%;min-height:900px;border:0;display:block"></iframe>
+    </div></div></section>
+    <section class="panel" id="tesda-faculty"><div class="box"><h2 style="display:flex;align-items:center;justify-content:flex-start;flex-wrap:wrap;gap:10px"><span style="display:inline-flex;gap:6px;flex-wrap:wrap"><button type="button" class="pn-head-btn" data-ptab="register" aria-selected="true" style="padding:7px 12px;border-radius:6px;border:1px solid #818cf8;background:#fff;color:#312e81;font:inherit;font-size:11px;font-weight:700;text-transform:uppercase;cursor:pointer">Register Faculty</button><button type="button" class="pn-head-btn" data-ptab="manage" aria-selected="false" style="padding:7px 12px;border-radius:6px;border:1px solid transparent;background:rgba(255,255,255,.14);color:#fff;font:inherit;font-size:11px;font-weight:700;text-transform:uppercase;cursor:pointer">Manage Faculty</button><button type="button" class="pn-head-btn" data-ptab="assign" aria-selected="false" style="padding:7px 12px;border-radius:6px;border:1px solid transparent;background:rgba(255,255,255,.14);color:#fff;font:inherit;font-size:11px;font-weight:700;text-transform:uppercase;cursor:pointer">Subject Assignment</button></span></h2><div class="body" style="padding:0">
+      <iframe src="/CUP-PORTAL/registrar/college-faculty.html?college=TESDA-TVI" title="TESDA-TVI Faculty" style="width:100%;min-height:900px;border:0;display:block"></iframe>
+    </div></div></section>
+    <section class="panel" id="tesda-account"><div class="box"><h2>TESDA-TVI | Manage Account</h2><div class="body">
+      <form class="acct" data-college="TESDA-TVI" novalidate hidden>
+        <p class="hint">Create the registrar login for TESDA-TVI.</p>
+        <label>Name<input name="name" type="text"></label>
+        <label>Email<input name="email" type="email" autocomplete="off" pattern="[A-Za-z0-9._%+\-]+@[A-Za-z0-9\-]+(\.[A-Za-z0-9\-]+)*\.[A-Za-z]{2,}" maxlength="254" title="Enter a valid email address, for example name@example.com"></label>
+        <label>Password (at least 8 characters)<input name="password" type="password" autocomplete="new-password"></label>
+        <button class="btn" type="submit">Create account</button>
+        <p class="msg" role="status"></p>
+      </form>
+      <span class="soon acct-na">Only the University Registrar can manage accounts.</span>
+    </div></div></section>
+    <section class="panel" id="tesda-step2"><div class="box"><h2 style="display:flex;align-items:center;justify-content:flex-start;flex-wrap:wrap;gap:10px"><span style="display:inline-flex;gap:6px;flex-wrap:wrap"><button type="button" class="s2-head-btn" data-s2="evaluation" aria-selected="true" style="padding:7px 12px;border-radius:6px;border:1px solid #818cf8;background:#fff;color:#312e81;font:inherit;font-size:11px;font-weight:700;text-transform:uppercase;cursor:pointer">Student Evaluation</button><button type="button" class="s2-head-btn" data-s2="advising" aria-selected="false" style="padding:7px 12px;border-radius:6px;border:1px solid #818cf8;background:#fff;color:#312e81;font:inherit;font-size:11px;font-weight:700;text-transform:uppercase;cursor:pointer">Advising</button><button type="button" class="s2-head-btn" data-s2="section" aria-selected="false" style="padding:7px 12px;border-radius:6px;border:1px solid #818cf8;background:#fff;color:#312e81;font:inherit;font-size:11px;font-weight:700;text-transform:uppercase;cursor:pointer">Section Assignment</button><span class="s2-head-count" style="font-size:11px;font-weight:700;opacity:.92;align-self:center;margin-left:10px;color:#fff"></span></span></h2><div class="body" style="padding:0">
+      <iframe src="/CUP-PORTAL/registrar/college-step2.html?college=TESDA-TVI" title="TESDA-TVI Pre-enrollment" style="width:100%;min-height:900px;border:0;display:block"></iframe>
+    </div></div></section>
+    <section class="panel" id="tesda-locked"><div class="box"><h2>TESDA-TVI | Locked Account</h2><div class="body"><span class="soon">Not connected yet</span></div></div></section>
+  </main>
+
+<script>
+  (function () {
+    var me = null;
+    var $ = function (sel, root) { return (root || document).querySelector(sel); };
+    var safeOn = function (sel, ev, fn) { var el = $(sel); if (el) el.addEventListener(ev, fn); };
+    var $$ = function (sel, root) { return Array.prototype.slice.call((root || document).querySelectorAll(sel)); };
+    function esc(v) { return String(v == null ? '' : v).replace(/[&<>"']/g, function (c) { return { '&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;' }[c]; }); }
+
+    // Only signed-in registrars can open this page.
+    fetch('/api/registrar/me', { credentials: 'same-origin' }).then(function (r) {
+      if (!r.ok) { window.location.href = '/CUP-PORTAL/college-registrar/'; return null; }
+      return r.json();
+    }).then(function (j) {
+      if (!j) return;
+      me = j;
+      if (j.collegeName) document.getElementById("collegeName").textContent = j.collegeName;
+      if (j.fullName) document.getElementById("acctName").textContent = j.fullName;
+      if (j.role !== 'superadmin') document.getElementById('acctMenu').hidden = false;
+      applyRole();
+    }).catch(function () { window.location.href = '/CUP-PORTAL/college-registrar/'; });
+
+    // Change password popup, opened by clicking the account name. A code is emailed first.
+    (function () {
+      var btn = document.getElementById('acctName'), drop = document.getElementById('acctDrop'), menu = document.getElementById('acctMenu');
+      function setOpen(open) { drop.hidden = !open; btn.setAttribute('aria-expanded', open ? 'true' : 'false'); }
+      btn.addEventListener('click', function (e) { e.stopPropagation(); setOpen(drop.hidden); });
+      document.addEventListener('click', function (e) { if (!menu.contains(e.target)) setOpen(false); });
+      document.getElementById('acctChangePw').addEventListener('click', function () { setOpen(false); openPasswordPopup(); });
+    })();
+    function openPasswordPopup() {
+      if (document.getElementById('pwPopup')) return;
+      var wrap = document.createElement('div');
+      wrap.id = 'pwPopup';
+      wrap.style.cssText = 'position:fixed;inset:0;background:rgba(0,0,0,.45);display:flex;align-items:center;justify-content:center;z-index:1000;padding:16px';
+      var field = 'width:100%;padding:8px;box-sizing:border-box';
+      wrap.innerHTML = '<div style="background:#fff;border-radius:12px;padding:24px;width:100%;max-width:380px;box-shadow:0 10px 30px rgba(0,0,0,.25)">' +
+        '<h3 style="margin:0 0 14px;color:#0f5a1c">Change Password</h3>' +
+        '<div id="pwStep1">' +
+          '<label style="display:block;font-weight:600;margin-top:10px">Current password</label><input id="pwCur" type="password" autocomplete="current-password" style="' + field + '">' +
+          '<label style="display:block;font-weight:600;margin-top:10px">New password</label><input id="pwNew" type="password" autocomplete="new-password" style="' + field + '">' +
+          '<label style="display:block;font-weight:600;margin-top:10px">Confirm new password</label><input id="pwConf" type="password" autocomplete="new-password" style="' + field + '">' +
+        '</div>' +
+        '<div id="pwStep2" hidden>' +
+          '<p id="pwHint" style="margin:0 0 6px;color:#333"></p>' +
+          '<label style="display:block;font-weight:600;margin-top:10px">6-digit code</label><input id="pwCode" type="text" inputmode="numeric" maxlength="6" autocomplete="one-time-code" placeholder="6-digit code" style="' + field + '">' +
+        '</div>' +
+        '<p id="pwMsg" style="color:#b00020;min-height:20px;margin:10px 0 0"></p>' +
+        '<div style="display:flex;gap:8px;justify-content:flex-end;margin-top:8px"><button id="pwCancel" type="button" style="padding:8px 14px">Cancel</button><button id="pwGo" type="button" style="padding:8px 14px;background:#0f5a1c;color:#fff;border:0;border-radius:6px;font-weight:700">Send verification code</button></div>' +
+        '<p style="font-size:.85rem;color:#555;margin:10px 0 0">At least 8 characters. Must be different from the current password.</p></div>';
+      document.body.appendChild(wrap);
+      var msg = document.getElementById('pwMsg');
+      var go = document.getElementById('pwGo');
+      var step = 1;
+      function close() { wrap.remove(); }
+      function setMsg(t) { msg.textContent = t; }
+      document.getElementById('pwCancel').addEventListener('click', close);
+      wrap.addEventListener('click', function (e) { if (e.target === wrap) close(); });
+      function sendCode() {
+        var cur = document.getElementById('pwCur').value;
+        var nw = document.getElementById('pwNew').value;
+        var conf = document.getElementById('pwConf').value;
+        if (!cur || !nw) { setMsg('Fill in all fields.'); return; }
+        if (nw.length < 8) { setMsg('The new password must be at least 8 characters.'); return; }
+        if (nw !== conf) { setMsg('New password and confirmation do not match.'); return; }
+        go.disabled = true; setMsg('');
+        fetch('/api/registrar/password/otp', { method: 'POST', credentials: 'same-origin' })
+          .then(function (r) { return r.json().catch(function () { return {}; }).then(function (j) { return { ok: r.ok, j: j }; }); })
+          .then(function (res) {
+            go.disabled = false;
+            if (!res.ok) { setMsg(res.j.error || 'Could not send the code. Please try again.'); return; }
+            step = 2;
+            document.getElementById('pwStep1').hidden = true;
+            document.getElementById('pwStep2').hidden = false;
+            document.getElementById('pwHint').textContent = 'We sent a 6-digit code to ' + (res.j.email_hint || 'your email') + '.';
+            go.textContent = 'Verify and change password';
+            document.getElementById('pwCode').focus();
+          }).catch(function () { go.disabled = false; setMsg('Could not send the code. Please try again.'); });
+      }
+      function changePassword() {
+        var code = document.getElementById('pwCode').value.trim();
+        if (!code) { setMsg('Enter the 6-digit code.'); return; }
+        go.disabled = true; setMsg('');
+        fetch('/api/registrar/change-password', {
+          method: 'POST', credentials: 'same-origin', headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            current: document.getElementById('pwCur').value,
+            new: document.getElementById('pwNew').value,
+            otp: code
+          })
+        }).then(function (r) { return r.json().catch(function () { return {}; }).then(function (j) { return { ok: r.ok, j: j }; }); })
+          .then(function (res) {
+            if (!res.ok) { go.disabled = false; setMsg(res.j.error || 'Could not change the password.'); return; }
+            close();
+            alert('Your password has been changed.');
+          }).catch(function () { go.disabled = false; setMsg('Could not change the password. Try again.'); });
+      }
+      go.addEventListener('click', function () { if (step === 1) sendCode(); else changePassword(); });
+    }
+
+    var GL = { rows: [], page: 1, size: 20 };
+    function drawGrades() {
+      var list = document.getElementById('gl-list');
+      if (!GL.rows.length) { list.innerHTML = '<p class="hint">No grades found.</p>'; return; }
+      var pages = Math.max(1, Math.ceil(GL.rows.length / GL.size));
+      GL.page = Math.min(Math.max(1, GL.page), pages);
+      var start = (GL.page - 1) * GL.size, slice = GL.rows.slice(start, start + GL.size);
+      var head = ['College', 'Student No.', 'Student', 'AY', 'Term', 'Course', 'Grade', 'Status'];
+      var body = slice.map(function (g) {
+        return '<tr>' + [g.college, g.student_no, g.last_name + ', ' + g.first_name, g.academic_year, g.term, g.course_code, g.final_grade,
+          g.status === 'approved' ? 'Approved' : 'Submitted']
+          .map(function (v) { return '<td style="padding:6px;border-bottom:1px solid #d5e2d5">' + esc(v) + '</td>'; }).join('') + '</tr>';
+      }).join('');
+      var go = function (label, p, dis, on) { return '<button type="button" data-gp="' + p + '"' + (dis ? ' disabled' : '') + (on ? ' class="on"' : '') + '>' + label + '</button>'; };
+      var btns = go('«', 1, GL.page === 1) + go('‹', GL.page - 1, GL.page === 1);
+      var s0 = Math.max(1, Math.min(GL.page - 2, pages - 4)), e0 = Math.min(pages, s0 + 4);
+      for (var i = s0; i <= e0; i++) btns += go(String(i), i, false, i === GL.page);
+      btns += go('›', GL.page + 1, GL.page === pages) + go('»', pages, GL.page === pages);
+      list.innerHTML = '<div style="overflow-x:auto"><table style="width:100%;border-collapse:collapse;font-size:.9rem"><thead><tr>' +
+        head.map(function (t) { return '<th style="text-align:left;border-bottom:1px solid #7fa37f;padding:6px">' + t + '</th>'; }).join('') +
+        '</tr></thead><tbody>' + body + '</tbody></table></div>' +
+        '<div style="display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:8px;padding:10px 2px;font-size:.85rem">' +
+        '<span>Showing ' + (start + 1) + '–' + Math.min(start + GL.size, GL.rows.length) + ' of ' + GL.rows.length + '</span>' +
+        '<label>Rows per page <select class="gl-size">' + [10, 20, 50, 100].map(function (n) { return '<option' + (n === GL.size ? ' selected' : '') + '>' + n + '</option>'; }).join('') + '</select></label>' +
+        '<span>' + btns + '</span></div>';
+    }
+    (function () {
+      var list = document.getElementById('gl-list');
+      if (!list) return;
+      list.addEventListener('click', function (e) {
+        var b = e.target && e.target.closest ? e.target.closest('[data-gp]') : null;
+        if (!b || b.disabled) return;
+        GL.page = Number(b.getAttribute('data-gp')); drawGrades();
+      });
+      list.addEventListener('change', function (e) {
+        if (e.target && e.target.classList && e.target.classList.contains('gl-size')) { GL.size = Number(e.target.value); GL.page = 1; drawGrades(); }
+      });
+    })();
+
+    // Grade Logs: colleges see their own grades; the University Registrar sees all and approves.
+    function loadGrades() {
+      var q = [];
+      var c = $('#gl-college').value, s = $('#gl-status').value;
+      if (c) q.push('college=' + encodeURIComponent(c));
+      if (s) q.push('status=' + encodeURIComponent(s));
+      fetch('/api/registrar/grades' + (q.length ? '?' + q.join('&') : ''), { credentials: 'same-origin' })
+        .then(function (r) { return r.json().then(function (j) { return { ok: r.ok, j: j }; }); })
+        .then(function (res) {
+          if (!res.ok) { $('#gl-list').innerHTML = '<p class="hint">' + esc(res.j.error || 'Could not load grades.') + '</p>'; return; }
+          var rows = res.j.grades || [];
+          GL.rows = rows; GL.page = 1; drawGrades();
+        }).catch(function () { $('#gl-list').innerHTML = '<p class="hint">Could not load grades.</p>'; });
+    }
+
+    safeOn('#gl-college', 'change', loadGrades);
+    safeOn('#gl-status', 'change', loadGrades);
+    safeOn('#gl-approve', 'click', function () {
+      var c = $('#gl-college').value;
+      $('#gl-msg').textContent = '';
+      if (!c) { $('#gl-msg').textContent = 'Choose one college first, then approve its submitted grades.'; return; }
+      fetch('/api/registrar/grades/approve', { method: 'POST', credentials: 'same-origin', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ college: c }) })
+        .then(function (r) { return r.json().then(function (j) { return { ok: r.ok, j: j }; }); })
+        .then(function (res) {
+          $('#gl-msg').textContent = res.ok ? res.j.approved + ' grade(s) approved for ' + c + '.' : (res.j.error || 'Could not approve.');
+          loadGrades();
+        });
+    });
+
+
+    // Accounts (University Registrar only)
+    var PROGRAM_MAJORS = {"Bachelor in Secondary Education (BSEd)": ["English", "Mathematics", "General Science", "Filipino", "Social Studies"], "Bachelor of Science in Business Administration (BSBA)": ["Financial Management", "Human Resource Management", "Operations Management", "Marketing Management"]};
+    var PROGRAM_COLLEGE = {"COACS": ["Bachelor of Science in Office Administration (BSOA)", "Associate in Computer Technology (ACT)"], "CAS": ["Bachelor of Arts in Political Science (ABPS)"], "CONM": ["Bachelor of Science in Nursing (BSN)"], "COED": ["Bachelor in Elementary Education (BEEd)", "Bachelor in Secondary Education (BSEd)"], "COBM": ["Bachelor of Science in Business Administration (BSBA)"], "GS": ["Juris Doctor (J.D.)", "Teaching Certificate Program (TCP)", "Master's in Public Administration (MPA)", "Master of Arts in Education (MAEd)"], "TESDA-TVI": ["Bookkeeping", "Event Management"]};
+    var PROGRAMS = ["Bachelor of Science in Office Administration (BSOA)", "Associate in Computer Technology (ACT)", "Bachelor of Arts in Political Science (ABPS)", "Bachelor of Science in Nursing (BSN)", "Bachelor in Elementary Education (BEEd)", "Bachelor in Secondary Education (BSEd)", "Bachelor of Science in Business Administration (BSBA)", "Juris Doctor (J.D.)", "Master's in Legal Studies (MLS)", "Teaching Certificate Program (TCP)", "Master's in Public Administration (MPA)", "Master of Arts in Education (MAEd)", "Bookkeeping", "Event Management"];
+    var allUsers = [];
+    var COLLEGE_LIST = ['COACS', 'CAS', 'CONM', 'COED', 'COBM', 'LAW', 'GS', 'TESDA-TVI'];
+    var YEAR_LIST = [[1, 'First Year'], [2, 'Second Year'], [3, 'Third Year'], [4, 'Fourth Year']];
+    var FOOT = '<div class="xl-foot"><span class="xl-info"></span><label>Rows per page <select class="xl-size"><option>10</option><option>25</option><option>50</option><option>100</option></select></label><span class="pg"></span></div>';
+    function keyOf(u) { return u.role === 'faculty' ? u.username : u.student_no; }
+    function yearText(n) { for (var i = 0; i < YEAR_LIST.length; i++) { if (String(YEAR_LIST[i][0]) === String(n)) return YEAR_LIST[i][1]; } return ''; }
+    function statusPill(u) {
+      if (u.archived_at) return '<span class="pill archived">Archived</span>';
+      return u.must_change_password ? '<span class="pill">Pending Password</span>' : '<span class="pill ok">Active</span>';
+    }
+    function usersOf(role) { return allUsers.filter(function (u) { return u.role === role; }); }
+    function colOpts() { return '<option value="">-- College --</option>' + COLLEGE_LIST.map(function (c) { return '<option>' + c + '</option>'; }).join(''); }
+    function yearOpts() { return '<option value="">-- Year Level --</option>' + YEAR_LIST.map(function (y) { return '<option value="' + y[0] + '">' + y[1] + '</option>'; }).join(''); }
+    function syncPrograms(sel, college) {
+      var list = college ? (PROGRAM_COLLEGE[college] || []) : PROGRAMS;
+      var html = '<option value="">-- Program --</option>' + list.map(function (x) { return '<option>' + esc(x) + '</option>'; }).join('');
+      if (sel.getAttribute('data-built') !== html) {
+        var keep = sel.value;
+        sel.innerHTML = html; sel.setAttribute('data-built', html);
+        sel.value = list.indexOf(keep) !== -1 ? keep : '';
+      }
+    }
+    function syncMajors(sel, program) {
+      var list = program ? PROGRAM_MAJORS[program] : null;
+      sel.hidden = !list;
+      if (!list) { sel.innerHTML = ''; sel.value = ''; sel.removeAttribute('data-built'); return; }
+      var html = '<option value="">-- Major --</option>' + list.map(function (m) { return '<option>' + esc(m) + '</option>'; }).join('');
+      if (sel.getAttribute('data-built') !== html) {
+        var keep = sel.value;
+        sel.innerHTML = html; sel.setAttribute('data-built', html);
+        sel.value = list.indexOf(keep) !== -1 ? keep : '';
+      }
+    }
+    function filterUsers(role, f) {
+      var q = (f.q || '').toLowerCase();
+      return usersOf(role).filter(function (u) {
+        if (f.archived === false && u.archived_at) return false;
+        if (f.archived === true && !u.archived_at) return false;
+        if (f.showAll) return true;
+        if (f.college && u.college !== f.college) return false;
+        if (f.program && u.program !== f.program) return false;
+        if (f.year && String(u.year_level) !== String(f.year)) return false;
+        if (f.major && u.major !== f.major) return false;
+        if (q && keyOf(u).toLowerCase().indexOf(q) === -1 && String(u.name || '').toLowerCase().indexOf(q) === -1) return false;
+        return true;
+      });
+    }
+    function setItems(box, items, keep) {
+      box._items = items;
+      if (!keep) box._page = 1;
+      draw(box);
+    }
+    function draw(box) {
+      var items = box._items || [], size = box._size || 10;
+      var pages = Math.max(1, Math.ceil(items.length / size));
+      box._page = Math.min(Math.max(1, box._page || 1), pages);
+      var p = box._page;
+      var rows = items.slice((p - 1) * size, p * size).map(box._rowFn).join('');
+      var body = box.querySelector('.xl-body');
+      body.innerHTML = '<div class="xl-wrap"><table class="xl"><thead><tr>' + box._head.map(function (h) { return '<th>' + h + '</th>'; }).join('') +
+        '</tr></thead><tbody>' + (rows || '<tr><td colspan="' + box._head.length + '">' + box._empty + '</td></tr>') + '</tbody></table></div>';
+      var from = items.length ? (p - 1) * size + 1 : 0, to = Math.min(p * size, items.length);
+      box.querySelector('.xl-info').textContent = 'Showing ' + from + '–' + to + ' of ' + items.length;
+      box.querySelector('.xl-size').value = String(size);
+      var btns = [];
+      var add = function (label, target, disabled, on) {
+        btns.push('<button type="button" data-p="' + target + '"' + (disabled ? ' disabled' : '') + (on ? ' class="on"' : '') + '>' + label + '</button>');
+      };
+      add('«', 1, p === 1); add('‹', p - 1, p === 1);
+      var start = Math.max(1, Math.min(p - 2, pages - 4)), end = Math.min(pages, start + 4);
+      for (var i = start; i <= end; i++) add(String(i), i, false, i === p);
+      add('›', p + 1, p === pages); add('»', pages, p === pages);
+      box.querySelector('.pg').innerHTML = btns.join('');
+    }
+    function buildManage(role) {
+      var box = document.querySelector('.manage[data-role="' + role + '"]');
+      var student = role === 'student';
+      box._head = student ? ['Student number', 'Name', 'College', 'Program', 'Year Level', 'Status', ''] : ['Username', 'Name', 'College', 'Status', ''];
+      box._empty = 'No accounts found.';
+      box._size = 10; box._page = 1; box._items = []; box._showAll = false;
+      box._rowFn = function (u) {
+        var cells = student ? [keyOf(u), u.name, u.college, u.program || '', yearText(u.year_level)] : [keyOf(u), u.name, u.college];
+        return '<tr>' + cells.map(function (c) { return '<td>' + esc(c) + '</td>'; }).join('') + '<td>' + statusPill(u) +
+          '</td><td><button type="button" class="btn green sm" data-reset="' + u.id + '" data-label="' + esc(keyOf(u)) + '">Reset password</button></td></tr>';
+      };
+      box.innerHTML = '<div class="search-row"><input class="acct-search q" placeholder="' + (student ? 'Student number or name' : 'Username or name') + '">' +
+        '<select class="mf-college" aria-label="College">' + colOpts() + '</select>' +
+        (student ? '<select class="mf-program" aria-label="Program"></select><select class="mf-year" aria-label="Year level">' + yearOpts() + '</select>' : '') +
+        '<button type="button" class="btn green btn-all">All ' + (student ? 'student' : 'faculty') + ' accounts</button></div>' +
+        '<p class="hint count"></p><p class="hint manage-msg" data-role="' + role + '"></p><div class="xl-body"></div>' + FOOT;
+      if (student) syncPrograms(box.querySelector('.mf-program'), '');
+    }
+    function refreshManage(box, keep) {
+      var role = box.getAttribute('data-role'), student = role === 'student';
+      var q = box.querySelector('.q').value.trim();
+      var college = box.querySelector('.mf-college').value;
+      var f = { q: q, college: college, showAll: box._showAll, archived: null };
+      if (student) {
+        var prog = box.querySelector('.mf-program');
+        syncPrograms(prog, college);
+        f.program = prog.value;
+        f.year = box.querySelector('.mf-year').value;
+      }
+      var any = box._showAll || q || college || f.program || f.year;
+      var items = any ? filterUsers(role, f) : [];
+      box.querySelector('.count').textContent = any
+        ? 'Showing ' + items.length + ' of ' + usersOf(role).length + ' account(s).'
+        : 'Choose a college' + (student ? ', program or year level' : '') + ', type to search, or press All to list every account.';
+      setItems(box, items, keep);
+    }
+    function buildBulk(box) {
+      var role = box.getAttribute('data-role'), mode = box.getAttribute('data-mode'), student = role === 'student';
+      var banners = {
+        archive: ['gold', 'BULK ARCHIVE ACTIVE ' + role.toUpperCase() + ' ACCOUNTS', 'Archiving blocks sign-in and keeps grades, records, and logs safely.'],
+        restore: ['green', 'BULK RESTORE ARCHIVED ' + role.toUpperCase() + ' ACCOUNTS', 'Restoring returns accounts to active use. Their existing passwords still apply.'],
+        delete: ['red', 'BULK PERMANENTLY DELETE ' + role.toUpperCase() + ' ACCOUNTS', 'DANGER ZONE: login accounts are wiped permanently. Student records, grades, and logs are kept. Only archived accounts can be deleted.']
+      }[mode];
+      var goLabel = { archive: 'Archive Selected Accounts', restore: 'Restore Selected Accounts', delete: 'Permanently Delete Selected' }[mode];
+      var goClass = { archive: 'gold', restore: 'green', delete: 'red' }[mode];
+      box._sel = new Set(); box._size = 10; box._page = 1; box._items = [];
+      box._empty = mode === 'archive' ? 'No active accounts found.' : 'No archived accounts found.';
+      box._head = student ? ['', 'Student number', 'Name', 'College', 'Program', 'Year Level', 'Major'] : ['', 'Username', 'Name', 'College'];
+      box._rowFn = function (u) {
+        var cells = student ? [keyOf(u), u.name, u.college, u.program || '', yearText(u.year_level), u.major || ''] : [keyOf(u), u.name, u.college];
+        return '<tr><td><input type="checkbox" data-id="' + u.id + '"' + (box._sel.has(u.id) ? ' checked' : '') + '></td>' +
+          cells.map(function (c) { return '<td>' + esc(c) + '</td>'; }).join('') + '</tr>';
+      };
+      box.innerHTML = '<div class="bulk-banner ' + banners[0] + '"><strong>' + banners[1] + '</strong><span>' + banners[2] + '</span>' +
+        '<div class="bulk-filter"><label><input type="checkbox" class="bf-showall" checked> Show All</label>' +
+        '<select class="bf-college" aria-label="College">' + colOpts() + '</select>' +
+        (student ? '<select class="bf-program" aria-label="Program"></select><select class="bf-major" aria-label="Major" hidden></select><select class="bf-year" aria-label="Year level">' + yearOpts() + '</select>' : '') +
+        '</div></div>' +
+        '<div class="bulk-bar"><button type="button" class="btn light select-all">Select All / None</button>' +
+        '<div class="bulk-go-wrap">' + (mode === 'delete' ? '<input class="confirm-text" placeholder="Type DELETE to confirm">' : '') +
+        '<button type="button" class="btn ' + goClass + ' bulk-go">' + goLabel + '</button></div></div>' +
+        '<p class="hint bulk-msg"></p><div class="xl-body"></div>' + FOOT;
+      refreshBulk(box, true);
+    }
+    function refreshBulk(box, keep) {
+      var role = box.getAttribute('data-role'), mode = box.getAttribute('data-mode'), student = role === 'student';
+      var showAll = box.querySelector('.bf-showall').checked;
+      var college = box.querySelector('.bf-college');
+      college.disabled = showAll;
+      var f = { showAll: showAll, archived: mode === 'archive' ? false : true, college: college.value };
+      if (student) {
+        var prog = box.querySelector('.bf-program'), maj = box.querySelector('.bf-major'), yr = box.querySelector('.bf-year');
+        prog.disabled = showAll; yr.disabled = showAll;
+        syncPrograms(prog, college.value);
+        syncMajors(maj, prog.value);
+        maj.disabled = showAll;
+        f.program = prog.value;
+        f.year = yr.value;
+        f.major = maj.hidden ? '' : maj.value;
+      }
+      setItems(box, filterUsers(role, f), keep);
+    }
+    function renderAllPanes() {
+      document.querySelectorAll('.manage').forEach(function (b) { refreshManage(b, true); });
+      document.querySelectorAll('.bulk').forEach(function (b) { refreshBulk(b, true); });
+      if ($('#as-user')) $('#as-user').innerHTML = usersOf('faculty').filter(function (u) { return !u.archived_at; }).map(function (u) {
+        return '<option value="' + u.id + '">' + esc(u.name + ' (' + u.college + ')') + '</option>';
+      }).join('') || '<option value="">No faculty accounts yet</option>';
+    }
+    function loadPortalUsers() {
+      fetch('/api/registrar/portal-users', { credentials: 'same-origin' }).then(function (r) { return r.json(); }).then(function (j) {
+        allUsers = j.users || [];
+        renderAllPanes();
+      });
+    }
+    buildManage('student'); buildManage('faculty');
+    document.querySelectorAll('.bulk').forEach(buildBulk);
+
+    document.addEventListener('click', function (e) {
+      var t = e.target;
+      if (!t || !t.closest) return;
+      var at = t.closest('.acct-tab');
+      if (at) {
+        var k = at.getAttribute('data-acct-tab');
+        document.querySelectorAll('.acct-tab').forEach(function (x) { x.classList.toggle('on', x === at); });
+        document.querySelectorAll('.acct-pane').forEach(function (pn) { pn.hidden = pn.id !== 'acct-pane-' + k; });
+        document.dispatchEvent(new CustomEvent('acct-tab-open', { detail: k }));
+        return;
+      }
+      var sub = t.closest('.sub-tab');
+      if (sub) {
+        var role = sub.getAttribute('data-role'), sk = sub.getAttribute('data-sub');
+        document.querySelectorAll('.sub-tab[data-role="' + role + '"]').forEach(function (x) { x.classList.toggle('on', x === sub); });
+        document.querySelectorAll('.sub-body[data-role="' + role + '"]').forEach(function (b) { b.hidden = b.getAttribute('data-sub') !== sk; });
+        return;
+      }
+      var pg = t.closest('.pg button[data-p]');
+      if (pg) {
+        var pbox = pg.closest('.manage, .bulk');
+        pbox._page = Number(pg.getAttribute('data-p'));
+        draw(pbox);
+        return;
+      }
+      var all = t.closest('.btn-all');
+      if (all) {
+        var mbox = all.closest('.manage');
+        mbox._showAll = true;
+        mbox.querySelector('.q').value = '';
+        mbox.querySelector('.mf-college').value = '';
+        if (mbox.querySelector('.mf-program')) { mbox.querySelector('.mf-program').value = ''; mbox.querySelector('.mf-year').value = ''; }
+        refreshManage(mbox, false);
+        return;
+      }
+      var sel = t.closest('.select-all');
+      if (sel) {
+        var sbox = sel.closest('.bulk');
+        var ids = sbox._items.map(function (u) { return u.id; });
+        var allIn = ids.length && ids.every(function (id) { return sbox._sel.has(id); });
+        ids.forEach(function (id) { if (allIn) sbox._sel.delete(id); else sbox._sel.add(id); });
+        draw(sbox);
+        return;
+      }
+      var go = t.closest('.bulk-go');
+      if (go) {
+        var bx = go.closest('.bulk'), mode = bx.getAttribute('data-mode');
+        var ids2 = Array.from(bx._sel);
+        var msg = bx.querySelector('.bulk-msg');
+        msg.textContent = '';
+        if (!ids2.length) { msg.textContent = 'Select at least one account.'; return; }
+        var body = { ids: ids2 };
+        if (mode === 'delete') {
+          body.confirm = (bx.querySelector('.confirm-text') || { value: '' }).value.trim();
+          if (body.confirm !== 'DELETE') { msg.textContent = 'Type DELETE to confirm.'; return; }
+          if (!window.confirm('Permanently delete ' + ids2.length + ' archived account(s)? This cannot be undone.')) return;
+        }
+        fetch('/api/registrar/portal-users/' + mode, { method: 'POST', credentials: 'same-origin', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(body) })
+          .then(function (r) { return r.json().then(function (j) { return { ok: r.ok, j: j }; }); })
+          .then(function (res) {
+            msg.textContent = res.ok ? res.j.count + ' account(s) ' + ({ archive: 'archived', restore: 'restored', delete: 'deleted' }[mode]) + '.' : (res.j.error || 'Could not complete the action.');
+            if (res.ok) { bx._sel.clear(); var c = bx.querySelector('.confirm-text'); if (c) c.value = ''; }
+            loadPortalUsers();
+          });
+        return;
+      }
+      var rb = t.closest('button[data-reset]');
+      if (rb) {
+        if (!window.confirm('Reset the password for ' + rb.getAttribute('data-label') + '? A reset link and temporary password will be emailed to the registered address, and the holder must change it at the next login.')) return;
+        fetch('/api/registrar/portal-users/' + rb.getAttribute('data-reset') + '/reset-password', { method: 'POST', credentials: 'same-origin' })
+          .then(function (r) { return r.json().then(function (j) { return { ok: r.ok, j: j }; }); })
+          .then(function (res) {
+            var role = rb.closest('.manage').getAttribute('data-role');
+            var mm = document.querySelector('.manage-msg[data-role="' + role + '"]');
+            if (!res.ok) { mm.textContent = res.j.error || 'Could not reset the password.'; }
+            else if (res.j.email_sent) { mm.textContent = 'Password reset. A reset link was emailed to ' + res.j.email_hint + '.'; }
+            else {
+              mm.textContent = '';
+              var why = res.j.no_email
+                ? 'No email was found for ' + (role === 'student' ? 'student number ' : 'username ') + res.j.username + '. Ask them to register a valid email address.'
+                : 'The reset email could not be sent to ' + (role === 'student' ? 'student number ' : 'username ') + res.j.username + '. Check the address on record and try again.';
+              alert(why + '\n\nNew temporary password (shown once): ' + res.j.temp_password);
+            }
+            loadPortalUsers();
+          });
+      }
+    });
+    document.addEventListener('input', function (e) {
+      var t = e.target;
+      if (t.classList && t.classList.contains('q')) {
+        var box = t.closest('.manage');
+        box._showAll = false;
+        refreshManage(box, false);
+      }
+    });
+    document.addEventListener('change', function (e) {
+      var t = e.target;
+      if (!t.closest) return;
+      if (t.classList.contains('xl-size')) {
+        var sb = t.closest('.manage, .bulk');
+        sb._size = Number(t.value); sb._page = 1; draw(sb);
+        return;
+      }
+      if (t.matches('.xl-body input[type=checkbox][data-id]')) {
+        var cb = t.closest('.bulk');
+        var id = Number(t.getAttribute('data-id'));
+        if (t.checked) cb._sel.add(id); else cb._sel.delete(id);
+        return;
+      }
+      if (t.matches('.mf-college, .mf-program, .mf-year')) {
+        var mb = t.closest('.manage');
+        mb._showAll = false;
+        refreshManage(mb, false);
+        return;
+      }
+      if (t.matches('.bf-showall, .bf-college, .bf-program, .bf-year, .bf-major')) {
+        refreshBulk(t.closest('.bulk'), false);
+      }
+    });
+
+    // Multiple student accounts: Excel-style grid, auto-filled from the active enrollment
+    var STU_ROWS = 20;
+    function tempPassword() {
+      // 5 digits and 2 letters, in random order.
+      var digits = '0123456789', letters = 'ABCDEFGHJKLMNPQRSTUVWXYZabcdefghjkmnpqrstuvwxyz';
+      var buf = new Uint32Array(7); crypto.getRandomValues(buf);
+      var chars = [];
+      for (var i = 0; i < 5; i++) chars.push(digits[buf[i] % 10]);
+      for (var k = 5; k < 7; k++) chars.push(letters[buf[k] % letters.length]);
+      for (var m = chars.length - 1; m > 0; m--) { var n = buf[m] % (m + 1); var tmp = chars[m]; chars[m] = chars[n]; chars[n] = tmp; }
+      return chars.join('');
+    }
+    function stuRow(i) {
+      return '<tr data-i="' + i + '"><td><input class="g-sn" aria-label="Student number" inputmode="numeric" maxlength="17" placeholder="xxxx-x-xxxxxxx-xx"></td><td class="g-prog"></td><td><input class="g-ln" aria-label="Last name"></td>' +
+        '<td><input class="g-fn" aria-label="First name"></td><td><input class="g-mn" aria-label="Middle name"></td>' +
+        '<td><input class="g-em" aria-label="Email address" type="email" pattern="[A-Za-z0-9._%+\-]+@[A-Za-z0-9\-]+(\.[A-Za-z0-9\-]+)*\.[A-Za-z]{2,}" maxlength="254" title="Enter a valid email address, for example name@example.com"></td><td><input class="g-tp" aria-label="Temporary password" readonly value="' + tempPassword() + '"></td></tr>';
+    }
+    function buildStuTable() {
+      var box = $('#stu-table');
+      var rows = ''; for (var i = 0; i < STU_ROWS; i++) rows += stuRow(i);
+      box.innerHTML = '<div class="grid-wrap"><table class="xl grid"><thead><tr><th>Student Number</th><th>Program</th><th>Last Name</th><th>First Name</th><th>Middle Name</th><th>Email Address</th><th>Temporary Password</th></tr></thead><tbody id="g-body">' + rows + '</tbody></table></div>' +
+        '<div class="bulk-bar" style="margin-top:10px"><div><button type="button" class="btn light" id="g-add">Add 10 rows</button> <button type="button" class="btn light" id="g-clear">Clear all</button></div>' +
+        '<button type="button" class="btn green" id="g-create">Create student accounts</button></div><p class="hint" id="g-msg"></p>';
+    }
+    function abbrevProgram(name) {
+      var m = String(name || '').match(/\(([^)]+)\)\s*$/);
+      return m ? m[1] : String(name || '');
+    }
+    // Student numbers: digits only, always shaped xxxx-x-xxxxxxx-xx.
+    var STU_RE = /^\d{4}-\d-\d{7}-\d{2}$/;
+    function maskStuNo(v) {
+      var d = String(v || '').replace(/\D/g, '').slice(0, 14);
+      var out = d.slice(0, 4);
+      if (d.length > 4) out += '-' + d.slice(4, 5);
+      if (d.length > 5) out += '-' + d.slice(5, 12);
+      if (d.length > 12) out += '-' + d.slice(12, 14);
+      return out;
+    }
+    document.addEventListener('input', function (e) {
+      var t = e.target;
+      if (t && t.matches && t.matches('.g-sn, #pu-sno-student')) t.value = maskStuNo(t.value);
+    });
+    document.addEventListener('keydown', function (e) {
+      var t = e.target;
+      if (!t || !t.matches || !t.matches('.g-sn, #pu-sno-student')) return;
+      var ok = /^\d$/.test(e.key) || e.key.length > 1 || e.ctrlKey || e.metaKey || e.key === '-';
+      if (!ok) e.preventDefault();
+    });
+    function gRows() { return Array.prototype.slice.call(document.querySelectorAll('#g-body tr')); }
+    document.addEventListener('input', function (e) {
+      var t = e.target;
+      if (!t.classList || !t.classList.contains('g-sn')) return;
+      var tr = t.closest('tr'), v = t.value.trim();
+      clearTimeout(tr._t);
+      tr._t = setTimeout(function () {
+        tr.dataset.q = v;
+        if (!v) { tr.classList.remove('bad'); tr.title = ''; return; }
+        fetch('/api/registrar/enrolled-student?no=' + encodeURIComponent(v), { credentials: 'same-origin' })
+          .then(function (r) { return r.json().then(function (j) { return { ok: r.ok, j: j }; }); })
+          .then(function (res) {
+            if (tr.dataset.q !== v) return;
+                if (!res.ok) { tr.title = res.j.error || 'Could not look up.'; tr.classList.add('bad'); return; }
+            if (!res.j.found) { tr.title = 'Not in the active enrollment'; tr.classList.add('bad'); tr.querySelector('.g-prog').textContent = ''; tr.querySelector('.g-prog').title = ''; tr.querySelector('.g-ln').value = ''; tr.querySelector('.g-fn').value = ''; tr.querySelector('.g-mn').value = ''; tr.querySelector('.g-em').value = ''; return; }
+            var s = res.j.student;
+            tr.querySelector('.g-ln').value = s.last_name || '';
+            tr.querySelector('.g-fn').value = s.first_name || '';
+            tr.querySelector('.g-mn').value = s.middle_name || '';
+            tr.querySelector('.g-em').value = s.email || '';
+            tr.dataset.college = s.college; tr.dataset.program = s.program;
+            tr.querySelector('.g-prog').textContent = abbrevProgram(s.program);
+            tr.querySelector('.g-prog').title = s.program;
+            if (s.has_account) { tr.title = 'Already has an account'; tr.classList.add('bad'); }
+            else { tr.title = s.college + ' · ' + s.program; tr.classList.remove('bad'); }
+          });
+      }, 400);
+    });
+    document.addEventListener('click', function (e) {
+      var t = e.target;
+      if (!t || !t.closest) return;
+      if (t.closest('#g-add')) { var body = $('#g-body'); var start = body.querySelectorAll('tr').length; for (var i = 0; i < 10; i++) body.insertAdjacentHTML('beforeend', stuRow(start + i)); return; }
+      if (t.closest('#g-clear')) { buildStuTable(); return; }
+      if (t.closest('#g-create')) {
+        var msg = $('#g-msg'); msg.textContent = '';
+        var filled = gRows().filter(function (tr) { return tr.querySelector('.g-sn').value.trim(); });
+        if (!filled.length) { msg.textContent = 'Type at least one student number.'; return; }
+        var EMAIL_FMT = /^[A-Za-z0-9._%+\-]+@[A-Za-z0-9\-]+(\.[A-Za-z0-9\-]+)*\.[A-Za-z]{2,}$/;
+        if (filled.some(function (tr) { return !STU_RE.test(tr.querySelector('.g-sn').value.trim()); })) { msg.textContent = 'Student number must be in the format xxxx-x-xxxxxxx-xx.'; return; }
+        if (filled.some(function (tr) { var em = tr.querySelector('.g-em').value.trim(); return em && !EMAIL_FMT.test(em); })) { msg.textContent = 'Every email address must be in a valid format (e.g. name@example.com).'; return; }
+        var payload = filled.map(function (tr) {
+          return { student_no: tr.querySelector('.g-sn').value.trim(), last_name: tr.querySelector('.g-ln').value.trim(),
+            first_name: tr.querySelector('.g-fn').value.trim(), middle_name: tr.querySelector('.g-mn').value.trim(),
+            email: tr.querySelector('.g-em').value.trim(), temp_password: tr.querySelector('.g-tp').value };
+        });
+        gRows().forEach(function (tr) {  });
+        fetch('/api/registrar/student-accounts/batch', { method: 'POST', credentials: 'same-origin', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ rows: payload }) })
+          .then(function (r) { return r.json().then(function (j) { return { ok: r.ok, j: j }; }); })
+          .then(function (res) {
+            if (!res.ok) {
+              msg.textContent = res.j.error || 'Could not create the accounts.';
+              (res.j.errors || []).forEach(function (er) {
+                var tr = filled[er.line - 1]; if (!tr) return;
+                tr.classList.add('bad'); tr.title = er.error;
+              });
+              return;
+            }
+            var text = 'Student Number,Name,College,Temporary Password\r\n' + res.j.created.map(function (c) {
+              return [c.student_no, c.name, c.college, c.temp_password].map(csvCell).join(',');
+            }).join('\r\n') + '\r\n';
+            downloadCsv('credentials_student_' + new Date().toISOString().slice(0, 10) + '.csv', text);
+            msg.textContent = res.j.created.length + ' student account(s) created. The credentials file has been downloaded: keep it safe, the temporary passwords are shown only once.';
+            buildStuTable();
+            loadPortalUsers();
+          });
+      }
+    });
+    buildStuTable();
+
+    // ---- Create multiple faculty accounts (same layout as the student table; username instead of student number) ----
+    var FAC_COLLEGES = ['COACS', 'CAS', 'CONM', 'COED', 'COBM', 'LAW', 'GS', 'TESDA-TVI'];
+    var FAC_EMAIL = /^[A-Za-z0-9._%+\-]+@[A-Za-z0-9\-]+(\.[A-Za-z0-9\-]+)*\.[A-Za-z]{2,}$/;
+    var FAC_USER = /^[A-Za-z0-9._-]{3,60}$/;
+    function facRow() {
+      return '<tr><td><input class="f-un" aria-label="Username" placeholder="username"></td>' +
+        '<td><select class="f-co" aria-label="College"><option value="">--</option>' + FAC_COLLEGES.map(function (c) { return '<option>' + c + '</option>'; }).join('') + '</select></td>' +
+        '<td><input class="f-ln" aria-label="Last name"></td><td><input class="f-fn" aria-label="First name"></td>' +
+        '<td><input class="f-mn" aria-label="Middle name"></td><td><input class="f-em" aria-label="Email address" type="email" pattern="[A-Za-z0-9._%+\-]+@[A-Za-z0-9\-]+(\.[A-Za-z0-9\-]+)*\.[A-Za-z]{2,}" maxlength="254" title="Enter a valid email address, for example name@example.com"></td>' +
+        '<td><input class="f-tp" aria-label="Temporary password" readonly value="' + tempPassword() + '"></td></tr>';
+    }
+    function buildFacTable() {
+      var rows = ''; for (var i = 0; i < STU_ROWS; i++) rows += facRow();
+      $('#fac-table').innerHTML = '<div class="grid-wrap"><table class="xl grid"><thead><tr><th>Username</th><th>College</th><th>Last Name</th><th>First Name</th><th>Middle Name</th><th>Email Address</th><th>Temporary Password</th></tr></thead><tbody id="f-body">' + rows + '</tbody></table></div>' +
+        '<div class="bulk-bar" style="margin-top:10px"><div><button type="button" class="btn light" id="f-add">Add 10 rows</button> <button type="button" class="btn light" id="f-clear">Clear all</button></div>' +
+        '<button type="button" class="btn green" id="f-create">Create faculty accounts</button></div><p class="hint" id="f-msg"></p>';
+    }
+    buildFacTable();
+    document.addEventListener('click', function (e) {
+      var t = e.target;
+      if (!t || !t.closest) return;
+      if (t.closest('#f-add')) { var body = $('#f-body'); for (var i = 0; i < 10; i++) body.insertAdjacentHTML('beforeend', facRow()); return; }
+      if (t.closest('#f-clear')) { buildFacTable(); return; }
+      if (t.closest('#f-create')) {
+        var msg = $('#f-msg'); msg.textContent = '';
+        var rows = Array.prototype.slice.call(document.querySelectorAll('#f-body tr')).filter(function (tr) { return tr.querySelector('.f-un').value.trim(); });
+        if (!rows.length) { msg.textContent = 'Type at least one username.'; return; }
+        var bad = rows.filter(function (tr) {
+          return !FAC_USER.test(tr.querySelector('.f-un').value.trim()) || !tr.querySelector('.f-co').value || !tr.querySelector('.f-ln').value.trim() ||
+            !tr.querySelector('.f-fn').value.trim() || !FAC_EMAIL.test(tr.querySelector('.f-em').value.trim());
+        });
+        bad.forEach(function (tr) { tr.classList.add('bad'); });
+        if (bad.length) { msg.textContent = 'Every row needs a username (3 to 60 letters, numbers, dots, dashes or underscores), a college, a last name, a first name and a valid email address.'; return; }
+        var text = 'username,first_name,middle_name,last_name,college,email\r\n' + rows.map(function (tr) {
+          return [tr.querySelector('.f-un').value.trim(), tr.querySelector('.f-fn').value.trim(), tr.querySelector('.f-mn').value.trim(),
+            tr.querySelector('.f-ln').value.trim(), tr.querySelector('.f-co').value, tr.querySelector('.f-em').value.trim()].map(csvCell).join(',');
+        }).join('\r\n') + '\r\n';
+        fetch('/api/registrar/portal-users/batch', { method: 'POST', credentials: 'same-origin', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ role: 'faculty', csv: text }) })
+          .then(function (r) { return r.json().then(function (j) { return { ok: r.ok, j: j }; }); })
+          .then(function (res) {
+            if (!res.ok) {
+              msg.innerHTML = esc(res.j.error || 'Could not create the accounts.') + (res.j.errors ? '<br>' + res.j.errors.map(esc).join('<br>') : '');
+              return;
+            }
+            var list = res.j.created || [];
+            var out = 'Username,Name,College,Temporary Password\r\n' + list.map(function (c) {
+              return [c.username, c.name, c.college, c.temp_password].map(csvCell).join(',');
+            }).join('\r\n') + '\r\n';
+            downloadCsv('credentials_faculty_' + new Date().toISOString().slice(0, 10) + '.csv', out);
+            msg.textContent = list.length + ' faculty account(s) created. The credentials file has been downloaded: keep it safe, the temporary passwords are shown only once.';
+            buildFacTable();
+            loadPortalUsers();
+          });
+      }
+    });
+
+    function downloadCsv(name, text) {
+      var a = document.createElement('a');
+      a.href = URL.createObjectURL(new Blob([text], { type: 'text/csv;charset=utf-8' }));
+      a.download = name;
+      document.body.appendChild(a); a.click(); a.remove();
+    }
+    function csvCell(v) { return '"' + String(v == null ? '' : v).replace(/"/g, '""') + '"'; }
+    function createOne(role) {
+      var isF = role === 'faculty';
+      var PU_EMAIL = /^[A-Za-z0-9._%+\-]+@[A-Za-z0-9\-]+(\.[A-Za-z0-9\-]+)*\.[A-Za-z]{2,}$/;
+      var mailVal = $('#pu-mail-' + role).value.trim();
+      if (!isF && !STU_RE.test($('#pu-sno-student').value.trim())) { $('#pu-msg-student').textContent = 'Student number must be in the format xxxx-x-xxxxxxx-xx.'; return; }
+      if (!PU_EMAIL.test(mailVal)) { $('#pu-msg-' + role).textContent = 'Enter a valid email address (e.g. name@example.com).'; return; }
+      var ln = $('#pu-ln-' + role).value.trim(), fn = $('#pu-fn-' + role).value.trim();
+      if (!ln || !fn) { $('#pu-msg-' + role).textContent = 'Last name and first name are required.'; return; }
+      var fullName = (ln + ', ' + fn + ' ' + $('#pu-mn-' + role).value.trim() + ' ' + $('#pu-ext-' + role).value.trim()).replace(/\s+/g, ' ').trim();
+      var body = { role: role, name: fullName,
+        college: $('#pu-college-' + role).value,
+        program: isF ? '' : $('#pu-program-student').value,
+        username: isF ? $('#pu-user-faculty').value.trim() : '',
+        student_no: isF ? '' : $('#pu-sno-student').value.trim(),
+        email: mailVal };
+      var msg = $('#pu-msg-' + role);
+      msg.textContent = '';
+      fetch('/api/registrar/portal-users', { method: 'POST', credentials: 'same-origin', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(body) })
+        .then(function (r) { return r.json().then(function (j) { return { ok: r.ok, j: j }; }); })
+        .then(function (res) {
+          if (!res.ok) { msg.textContent = res.j.error || 'Could not create the account.'; return; }
+          msg.textContent = 'Account created. ' + (isF ? 'Username: ' + res.j.username + ' · ' : 'Student number: ' + res.j.username + ' · ') + 'Temporary password: ' + res.j.temp_password + ' (the holder must change it at first login).';
+          loadPortalUsers();
+        });
+    }
+    /* ----- College Registrar and CSC accounts ----- */
+    var STAFF = { registrar: [], csc: [], positions: [] };
+    function staffName(a) { return (a.last_name + ', ' + a.first_name + ' ' + (a.middle_name || '') + ' ' + (a.extension || '')).replace(/\s+/g, ' ').trim(); }
+    function staffMsg(kind, text, ok) {
+      document.querySelectorAll('.staff-msg[data-role="' + kind + '"]').forEach(function (m) { m.textContent = text || ''; m.style.color = ok ? '#0b4a0b' : '#b42318'; });
+    }
+    function fillPositions() {
+      var sel = document.getElementById('csc-position');
+      if (!sel) return;
+      sel.innerHTML = '<option value="">Choose a position</option>' + STAFF.positions.map(function (p) { return '<option>' + esc(p) + '</option>'; }).join('');
+    }
+    function renderStaffBox(kind, box) {
+      var mode = box.getAttribute('data-mode');
+      var wantArchived = (mode === 'restore' || mode === 'delete');
+      var rows = (STAFF[kind] || []).filter(function (a) { return wantArchived ? !!a.archived_at : !a.archived_at; });
+      var btnText = { manage: 'Reset password for selected', archive: 'Archive selected', restore: 'Restore selected', delete: 'Delete selected permanently' }[mode];
+      var body = rows.length ? rows.map(function (a) {
+        return '<tr><td><input type="checkbox" data-id="' + a.id + '"></td><td>' + esc(a.username) + '</td><td>' + esc(staffName(a)) + '</td><td>' + esc(a.email) + '</td><td>' + esc(kind === 'csc' ? a.position : a.college) + '</td></tr>';
+      }).join('') : '<tr><td colspan="5" class="hint" style="padding:12px;font-style:italic">No accounts here.</td></tr>';
+      box.innerHTML = '<div class="grid-wrap"><table class="xl grid"><thead><tr><th></th><th>' + (kind === 'csc' ? 'CSC username' : 'Username (email)') + '</th><th>Name</th><th>Email</th><th>' + (kind === 'csc' ? 'Position' : 'College') + '</th></tr></thead><tbody>' + body + '</tbody></table></div>' +
+        '<div style="margin-top:10px;display:flex;gap:8px;flex-wrap:wrap"><button type="button" class="btn sm" data-staff-act="' + mode + '" data-role="' + kind + '">' + btnText + '</button></div>';
+    }
+    function renderStaffAll(kind) {
+      document.querySelectorAll('.staff-list[data-role="' + kind + '"]').forEach(function (box) { renderStaffBox(kind, box); });
+    }
+    function loadStaff(kind) {
+      return fetch('/api/registrar/staff/' + kind, { credentials: 'same-origin' })
+        .then(function (r) { return r.json().then(function (j) { return { ok: r.ok, j: j }; }); })
+        .then(function (res) {
+          if (!res.ok) { staffMsg(kind, res.j.error || 'Could not load the accounts.', false); return; }
+          STAFF[kind] = res.j.accounts || [];
+          if (kind === 'csc') { STAFF.positions = res.j.positions || []; fillPositions(); }
+          renderStaffAll(kind);
+        })
+        .catch(function () { staffMsg(kind, 'Could not load the accounts.', false); });
+    }
+    function staffPost(kind, action, body, onOk) {
+      return fetch('/api/registrar/staff/' + kind + '/' + action, { method: 'POST', credentials: 'same-origin', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(body) })
+        .then(function (r) { return r.json().then(function (j) { return { ok: r.ok, j: j }; }); })
+        .then(function (res) { if (!res.ok) { staffMsg(kind, res.j.error || 'Could not complete the action.', false); return; } onOk(res.j); })
+        .catch(function () { staffMsg(kind, 'Connection problem. Nothing was changed.', false); });
+    }
+    document.addEventListener('acct-tab-open', function (e) { if (e.detail === 'registrar' || e.detail === 'csc') loadStaff(e.detail); });
+    document.addEventListener('click', function (e) {
+      var t = e.target && e.target.closest ? e.target.closest('[data-staff-act]') : null;
+      if (!t) return;
+      var kind = t.getAttribute('data-role'), act = t.getAttribute('data-staff-act');
+      var box = t.closest('.staff-list');
+      var ids = [].map.call(box.querySelectorAll('input[type=checkbox][data-id]:checked'), function (c) { return Number(c.getAttribute('data-id')); });
+      if (!ids.length) { staffMsg(kind, 'Select at least one account.', false); return; }
+      if (act === 'manage') {
+        if (ids.length !== 1) { staffMsg(kind, 'Select one account to reset its password.', false); return; }
+        staffPost(kind, 'reset', { ids: ids }, function (j) {
+          staffMsg(kind, 'Password reset. Temporary password: ' + j.temp_password + ' (the holder must use it at sign-in).', true);
+        });
+        return;
+      }
+      var body = { ids: ids };
+      if (act === 'delete') {
+        var typed = window.prompt('Type DELETE to permanently delete ' + ids.length + ' archived account(s).');
+        if (typed !== 'DELETE') { staffMsg(kind, 'Deletion cancelled.', false); return; }
+        body.confirm = 'DELETE';
+      }
+      staffPost(kind, act, body, function (j) { staffMsg(kind, j.count + ' account(s) updated.', true); loadStaff(kind); });
+    });
+    function registerStaff(kind) {
+      var pre = kind === 'csc' ? 'csc' : 'reg';
+      var body = {
+        last_name: $('#' + pre + '-ln').value.trim(), first_name: $('#' + pre + '-fn').value.trim(),
+        middle_name: $('#' + pre + '-mn').value.trim(), extension: $('#' + pre + '-ext').value.trim(),
+        email: $('#' + pre + '-mail').value.trim()
+      };
+      if (kind === 'registrar') body.college = $('#reg-college').value;
+      else { body.username = $('#csc-user').value.trim(); body.position = $('#csc-position').value; }
+      if (!body.last_name || !body.first_name) { staffMsg(kind, 'Last name and first name are required.', false); return; }
+      fetch('/api/registrar/staff/' + kind, { method: 'POST', credentials: 'same-origin', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(body) })
+        .then(function (r) { return r.json().then(function (j) { return { ok: r.ok, j: j }; }); })
+        .then(function (res) {
+          if (!res.ok) { staffMsg(kind, res.j.error || 'Could not create the account.', false); return; }
+          staffMsg(kind, 'Account created. Username: ' + res.j.username + ' · Temporary password: ' + res.j.temp_password + ' (the holder must change it at first sign-in).', true);
+          ['ln', 'fn', 'mn', 'ext', 'mail'].forEach(function (f) { var el = $('#' + pre + '-' + f); if (el) el.value = ''; });
+          if (kind === 'csc') { $('#csc-user').value = ''; $('#csc-position').value = ''; } else { $('#reg-college').value = ''; }
+          loadStaff(kind);
+        })
+        .catch(function () { staffMsg(kind, 'Connection problem. The account was not created.', false); });
+    }
+    safeOn('#reg-create', 'click', function () { registerStaff('registrar'); });
+    safeOn('#csc-create', 'click', function () { registerStaff('csc'); });
+    safeOn('#pu-save-student', 'click', function () { createOne('student'); });
+    syncPrograms($('#pu-program-student'), $('#pu-college-student').value);
+    safeOn('#pu-college-student', 'change', function () { syncPrograms($('#pu-program-student'), this.value); });
+    safeOn('#pu-save-faculty', 'click', function () { createOne('faculty'); });
+
+    function uploadBatch(role) {
+      var input = $('#bt-' + role), msg = $('#bu-msg-' + role);
+      msg.textContent = '';
+      if (!input.files.length) { msg.textContent = 'Choose a CSV file first.'; return; }
+      var reader = new FileReader();
+      reader.onload = function () {
+        fetch('/api/registrar/portal-users/batch', { method: 'POST', credentials: 'same-origin', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ role: role, csv: reader.result }) })
+          .then(function (r) { return r.json().then(function (j) { return { ok: r.ok, j: j }; }); })
+          .then(function (res) {
+            if (!res.ok) {
+              msg.innerHTML = esc(res.j.error || 'Upload failed.') + (res.j.errors ? '<br>' + res.j.errors.map(esc).join('<br>') : '');
+              return;
+            }
+            var list = res.j.created || [];
+            var head = role === 'faculty' ? 'Username,Name,College,Temporary Password' : 'Student Number,Name,College,Temporary Password';
+            var text = head + '\n' + list.map(function (c) {
+              return [c.username, c.name, c.college, c.temp_password].map(csvCell).join(',');
+            }).join('\n') + '\n';
+            downloadCsv('credentials_' + role + '_' + new Date().toISOString().slice(0, 10) + '.csv', text);
+            msg.textContent = list.length + ' ' + role + ' account(s) created. The credentials file has been downloaded: keep it safe, the temporary passwords are shown only once.';
+            loadPortalUsers();
+          });
+      };
+      reader.readAsText(input.files[0]);
+    }
+    safeOn('#bu-student', 'click', function () { uploadBatch('student'); });
+    safeOn('#bu-faculty', 'click', function () { uploadBatch('faculty'); });
+    safeOn('#tpl-student', 'click', function (e) {
+      e.preventDefault(); downloadCsv('batch_student_template.csv', 'student_no\r\n2026-10001\r\n2026-10002\r\n');
+    });
+    safeOn('#tpl-faculty', 'click', function (e) {
+      e.preventDefault(); downloadCsv('batch_faculty_template.csv', 'username,first_name,middle_name,last_name,college,email\r\njuan.delacruz,Juan,Santos,Dela Cruz,CONM,juan.delacruz@example.com\r\nmaria.reyes,Maria,,Reyes,CAS,maria.reyes@example.com\r\n');
+    });
+    var srTimer = null;
+    safeOn('#sr-college', 'change', function () { $('#sr-q').dispatchEvent(new Event('input')); });
+    safeOn('#sr-q', 'input', function () {
+      clearTimeout(srTimer);
+      srTimer = setTimeout(function () {
+        var q = $('#sr-q').value.trim();
+        if (q.length < 2) { $('#sr-list').innerHTML = ''; return; }
+        fetch('/api/registrar/student-search?q=' + encodeURIComponent(q), { credentials: 'same-origin' }).then(function (r) { return r.json(); }).then(function (j) {
+          var rows = (j.students || []).filter(function (s) { var c = $('#sr-college').value; return !c || s.college === c; });
+          $('#sr-list').innerHTML = !rows.length ? '<p class="hint">No students found.</p>' : rows.map(function (s) {
+            return '<div style="padding:6px 0;border-bottom:1px solid #d5e2d5"><a href="#" data-no="' + esc(s.student_no) + '">' + esc(s.last_name + ', ' + s.first_name) + '</a> · ' +
+              esc(s.student_no + ' · ' + s.college + ' · ' + s.program + ' · Year ' + s.year_level + ' ' + s.section + ' · ' + s.status) + '</div>';
+          }).join('');
+        });
+      }, 300);
+    });
+    safeOn('#sr-list', 'click', function (e) {
+      var a = e.target.closest('a[data-no]');
+      if (!a) return;
+      e.preventDefault();
+      var no = a.getAttribute('data-no');
+      fetch('/api/registrar/student-grades?student_no=' + encodeURIComponent(no), { credentials: 'same-origin' }).then(function (r) { return r.json(); }).then(function (j) {
+        var rows = j.grades || [];
+        $('#sr-grades').innerHTML = '<h3>Grades for ' + esc(no) + ' · <a href="/CUP-PORTAL/certificate?student_no=' + encodeURIComponent(no) + '" target="_blank" rel="noopener">Print certificate</a></h3>' + (!rows.length ? '<p class="hint">No grades yet.</p>' :
+          '<div style="overflow-x:auto"><table style="width:100%;border-collapse:collapse;font-size:.9rem"><thead><tr>' +
+          ['A.Y.', 'Term', 'Course', 'Grade', 'Status'].map(function (t) { return '<th style="text-align:left;border-bottom:1px solid #7fa37f;padding:6px">' + t + '</th>'; }).join('') +
+          '</tr></thead><tbody>' + rows.map(function (g) {
+            return '<tr>' + [g.academic_year, g.term, g.course_code, g.final_grade, g.status === 'approved' ? 'Approved' : 'Submitted']
+              .map(function (v) { return '<td style="padding:6px;border-bottom:1px solid #d5e2d5">' + esc(v) + '</td>'; }).join('') + '</tr>';
+          }).join('') + '</tbody></table></div>');
+      });
+    });
+    function loadActivity() {
+      fetch('/api/registrar/logs', { credentials: 'same-origin' }).then(function (r) { return r.json(); }).then(function (j) {
+        var rows = j.logs || [];
+        $('#al-list').innerHTML = !rows.length ? '<p class="hint">No activity yet.</p>' :
+          '<table style="width:100%;border-collapse:collapse;font-size:.85rem"><thead><tr>' +
+          ['When', 'Who', 'Action', 'Details', 'IP'].map(function (t) { return '<th style="text-align:left;border-bottom:1px solid #7fa37f;padding:6px">' + t + '</th>'; }).join('') +
+          '</tr></thead><tbody>' + rows.map(function (l) {
+            return '<tr>' + [new Date(l.at).toLocaleString('en-PH'), l.actor, l.action, l.detail, l.ip || '']
+              .map(function (v) { return '<td style="padding:6px;border-bottom:1px solid #d5e2d5">' + esc(v) + '</td>'; }).join('') + '</tr>';
+          }).join('') + '</tbody></table>';
+      });
+    }
+    safeOn('#al-load', 'click', loadActivity);
+    // Subjects and units (college registrar: own college; University Registrar: any college)
+    function sjCollege() { return me.role === 'superadmin' ? $('#sj-college').value : me.college; }
+    function loadSubjects() {
+      var c = sjCollege();
+      if (!c) return;
+      fetch('/api/registrar/courses?college=' + encodeURIComponent(c), { credentials: 'same-origin' }).then(function (r) { return r.json(); }).then(function (j) {
+        var rows = j.courses || [];
+        $('#sj-list').innerHTML = !rows.length ? '<p class="hint">No subjects uploaded for ' + esc(c) + ' yet.</p>' :
+          '<p class="hint">' + rows.length + ' subject(s) for ' + esc(c) + '.</p><table style="width:100%;border-collapse:collapse;font-size:.9rem"><thead><tr>' +
+          ['Code', 'Descriptive title', 'Units'].map(function (t) { return '<th style="text-align:left;border-bottom:1px solid #7fa37f;padding:6px">' + t + '</th>'; }).join('') +
+          '</tr></thead><tbody>' + rows.map(function (r) {
+            return '<tr>' + [r.course_code, r.descriptive_title, r.units].map(function (v) { return '<td style="padding:6px;border-bottom:1px solid #d5e2d5">' + esc(v) + '</td>'; }).join('') + '</tr>';
+          }).join('') + '</tbody></table>';
+      });
+    }
+    safeOn('#sj-college', 'change', loadSubjects);
+    safeOn('#sj-tpl', 'click', function (e) {
+      e.preventDefault();
+      var a = document.createElement('a');
+      a.href = URL.createObjectURL(new Blob(['course_code,descriptive_title,units\r\nNCM 100,Fundamentals of Nursing,3\r\nNCM 101,Nursing Practicum,2\r\n'], { type: 'text/csv' }));
+      a.download = 'subjects_template.csv'; document.body.appendChild(a); a.click(); a.remove();
+    });
+    safeOn('#sj-upload', 'click', function () {
+      var f = $('#sj-file').files[0];
+      $('#sj-msg').textContent = '';
+      if (!f) { $('#sj-msg').textContent = 'Choose a CSV file first.'; return; }
+      var reader = new FileReader();
+      reader.onload = function () {
+        fetch('/api/registrar/courses/batch', { method: 'POST', credentials: 'same-origin', headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ college: sjCollege(), csv: reader.result }) })
+          .then(function (r) { return r.json().then(function (j) { return { ok: r.ok, j: j }; }); })
+          .then(function (res) {
+            if (!res.ok) { $('#sj-msg').innerHTML = esc(res.j.error || 'Upload failed.') + (res.j.errors ? '<br>' + res.j.errors.map(esc).join('<br>') : ''); return; }
+            $('#sj-msg').textContent = res.j.saved + ' subject(s) saved.';
+            loadSubjects();
+          });
+      };
+      reader.readAsText(f);
+    });
+    (function () {
+      var y = new Date().getFullYear(), sel = $('#gp-ay'), opts = '';
+      for (var k = y - 2; k <= y + 4; k++) opts += '<option value="' + k + '-' + (k + 1) + '">A.Y. ' + k + '-' + (k + 1) + '</option>';
+      sel.innerHTML = opts;
+      fetch('/api/portal/settings', { credentials: 'same-origin' }).then(function (r) { return r.json(); }).then(function (j) {
+        if (j.grading_ay) { if (!sel.querySelector('option[value="' + j.grading_ay + '"]')) sel.insertAdjacentHTML('afterbegin', '<option value="' + j.grading_ay + '">A.Y. ' + j.grading_ay + '</option>'); sel.value = j.grading_ay; }
+        if (j.grading_semester) $('#gp-sem').value = j.grading_semester;
+      }).catch(function () {});
+    })();
+    safeOn('#gp-save', 'click', function () {
+      $('#gp-msg').textContent = '';
+      fetch('/api/registrar/settings', { method: 'POST', credentials: 'same-origin', headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ grading_semester: $('#gp-sem').value, grading_ay: $('#gp-ay').value.trim() }) })
+        .then(function (r) { return r.json().then(function (j) { return { ok: r.ok, j: j }; }); })
+        .then(function (res) { $('#gp-msg').textContent = res.ok ? 'Active academic year and semester applied system-wide.' : (res.j.error || 'Could not save.'); });
+    });
+
+    var ENR = { open: false, schedule: {}, colleges: [] };
+    function enrFmt(d) { return new Date(d + 'T00:00:00').toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' }); }
+    function enrRender() {
+      $('#enr-status').textContent = ENR.open ? 'OPEN (college registrar and other portals)' : 'CLOSED';
+      $('#enr-status').style.color = ENR.open ? '#166534' : '#991b1b';
+      $('#enr-toggle').textContent = ENR.open ? 'Close enrollment' : 'Open enrollment';
+      $('#enr-body').innerHTML = ENR.colleges.map(function (c) {
+        var dates = ENR.schedule[c] || [];
+        var chips = dates.length ? dates.map(function (d) {
+          return '<span style="display:inline-flex;align-items:center;gap:6px;background:#e0f2fe;border:1px solid #7dd3fc;border-radius:999px;padding:3px 10px;margin:2px;font-weight:600">' +
+            esc(enrFmt(d)) + ' <button type="button" data-enr-remove="' + esc(c) + '|' + esc(d) + '" style="border:0;background:none;color:#991b1b;cursor:pointer;font-weight:900">×</button></span>';
+        }).join('') : '<span style="color:#64748b;font-style:italic">No dates set</span>';
+        var todayNow = new Date().toLocaleDateString('en-CA', { timeZone: 'Asia/Manila' });
+        var studentToday = !ENR.open ? 'Closed' : (dates.indexOf(todayNow) !== -1 ? 'Open today' : 'Not open today');
+        return '<tr style="border-bottom:1px solid #e2e8f0"><td style="padding:8px;font-weight:700">' + esc(c) +
+          '<div style="font-size:11px;font-weight:600;color:' + (studentToday === 'Open today' ? '#166534' : '#64748b') + '">Student Portal: ' + studentToday + '</div></td><td style="padding:8px">' + chips + '</td>' +
+          '<td style="padding:8px"><div style="display:flex;gap:6px"><input type="date" data-enr-input="' + esc(c) + '" style="flex:1;padding:4px 6px;border:1px solid #cbd5e1;border-radius:6px">' +
+          '<button type="button" data-enr-add="' + esc(c) + '" class="btn">Add</button></div></td></tr>';
+      }).join('');
+    }
+    function enrSave(msgText) {
+      $('#enr-msg').textContent = '';
+      return fetch('/api/registrar/enrollment-schedule', { method: 'POST', credentials: 'same-origin', headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ open: ENR.open, schedule: ENR.schedule }) })
+        .then(function (r) { return r.json().then(function (j) { return { ok: r.ok, j: j }; }); })
+        .then(function (res) {
+          if (!res.ok) { $('#enr-msg').textContent = res.j.error || 'Could not save.'; return false; }
+          $('#enr-msg').textContent = msgText || 'Enrollment settings saved.';
+          return true;
+        });
+    }
+    fetch('/api/registrar/enrollment-schedule', { credentials: 'same-origin' }).then(function (r) { return r.json(); }).then(function (j) {
+      ENR.open = !!j.enrollment_open; ENR.schedule = j.enrollment_schedule || {}; ENR.colleges = j.colleges || [];
+      enrRender();
+    }).catch(function () { $('#enr-msg').textContent = 'Could not load the enrollment schedule.'; });
+    $('#enr-toggle').addEventListener('click', function () {
+      ENR.open = !ENR.open; enrRender();
+      enrSave(ENR.open ? 'Enrollment is now open. Student Portal access follows each college\'s dates.' : 'Enrollment is now closed on all portals.').then(function (ok) { if (!ok) { ENR.open = !ENR.open; enrRender(); } });
+    });
+    $('#enr-save').addEventListener('click', function () { enrSave(); });
+    $('#enr-body').addEventListener('click', function (e) {
+      var t = e.target;
+      if (t.hasAttribute('data-enr-add')) {
+        var c = t.getAttribute('data-enr-add');
+        var v = document.querySelector('[data-enr-input="' + c + '"]').value;
+        if (!v) { $('#enr-msg').textContent = 'Pick a date first.'; return; }
+        var list = (ENR.schedule[c] || []).slice();
+        if (list.indexOf(v) === -1) list.push(v);
+        list.sort();
+        ENR.schedule[c] = list; enrRender();
+      } else if (t.hasAttribute('data-enr-remove')) {
+        var parts = t.getAttribute('data-enr-remove').split('|');
+        ENR.schedule[parts[0]] = (ENR.schedule[parts[0]] || []).filter(function (d) { return d !== parts[1]; });
+        if (!ENR.schedule[parts[0]].length) delete ENR.schedule[parts[0]];
+        enrRender();
+      }
+    });
+    safeOn('#as-save', 'click', function () {
+      var body = { user_id: $('#as-user').value, course_code: $('#as-course').value.trim(), term: $('#as-term').value.trim(), academic_year: $('#as-ay').value.trim() };
+      $('#as-msg').textContent = '';
+      fetch('/api/registrar/assignments', { method: 'POST', credentials: 'same-origin', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(body) })
+        .then(function (r) { return r.json().then(function (j) { return { ok: r.ok, j: j }; }); })
+        .then(function (res) { $('#as-msg').textContent = res.ok ? 'Course assigned.' : (res.j.error || 'Could not assign the course.'); });
+    });
+
+    function applyRole() {
+      var isSuper = me.role === 'superadmin';
+      if (isSuper || me.role === 'records') { var gla = $('#gl-approve'); if (gla) gla.hidden = false; }
+      if (isSuper) { loadPortalUsers(); loadActivity(); }
+      if (isSuper) { var sjw = $('#sj-college-wrap'); if (sjw) sjw.hidden = false; }
+      loadSubjects();
+      if (!isSuper) { var glc = $('#gl-college'); if (glc) { glc.value = me.college; glc.hidden = true; } }
+      loadGrades();
+      if (!isSuper) {
+        var t = $('#title'); if (t) t.innerHTML = '<span class="w1">COLLEGE REGISTRAR</span> <span class="w2">PORTAL</span>';
+        $$('.menu[data-college]').forEach(function (m) {
+          if (m.getAttribute('data-college') !== me.college) m.hidden = true;
+        });
+        var stab = $('#settings-tab'); if (stab) stab.hidden = true;
+        $$('.bu-col-tab').forEach(function (btn) {
+          if (btn.getAttribute('data-bu-college') !== me.college) btn.hidden = true;
+          else btn.click();
+        });
+        // College registrars have only their own college, so no college tab row is needed.
+        var buTabs = $('#bu-college-tabs');
+        if (buTabs) { buTabs.hidden = true; if (buTabs.previousElementSibling) buTabs.previousElementSibling.hidden = true; }
+        var first = $('.menu[data-college="' + me.college + '"] .dd button');
+        setupCollegeNav();
+        if (me.role === 'records') {
+          var bu = $('#batch-uploads-tab'); if (bu) bu.hidden = true;
+          var sl = $('[data-panel="security-logs"]'); if (sl) sl.hidden = true;
+        }
+        restorePanel(collegePrefix() + '-student');
+      } else {
+        var actab = $('#accounts-tab'); if (actab) actab.hidden = false;
+        restorePanel(null);
+        var pathCode = (window.location.pathname.split('/')[3] || '').toUpperCase();
+        var glc2 = $('#gl-college');
+        var known = glc2 && Array.prototype.some.call(glc2.options, function (o) { return o.value === pathCode; });
+        if (pathCode && known && glc2) { glc2.value = pathCode; loadGrades(); }
+        var sna = $('#settings-na'); if (sna) sna.hidden = true;
+        $$('form.acct').forEach(function (f) { f.hidden = false; });
+        $$('.acct-na').forEach(function (s) { s.hidden = true; });
+      }
+    }
+
+    // Keep the current section on refresh: the section id lives in the URL hash.
+    function restorePanel(fallbackId) {
+      var id = decodeURIComponent(location.hash.slice(1));
+      var el = id && document.getElementById(id);
+      var allowed = !!el && el.classList.contains('panel');
+      if (allowed && me.role !== 'superadmin') {
+        var btn = $('.dd button[data-panel="' + id + '"]');
+        if (id === 'settings') allowed = false;
+        else if (btn) allowed = !btn.closest('.menu').hidden;
+        else allowed = /^(security-logs|grade-logs|batch-uploads)$/.test(id);
+      }
+      if (allowed) showPanel(id);
+      else if (fallbackId) showPanel(fallbackId);
+    }
+
+    // Refresh or close warns while any college page has unsaved form work.
+    window.addEventListener('beforeunload', function (e) {
+      var dirty = Array.prototype.some.call(document.querySelectorAll('iframe'), function (f) {
+        try { return !!(f.contentWindow && f.contentWindow.cupDirty); } catch (err) { return false; }
+      });
+      if (dirty) { e.preventDefault(); e.returnValue = ''; }
+    });
+    // ESC: the open page closes its record or form first. With nothing left, the section closes,
+    // leaving the college buttons; the next ESC hides those buttons too.
+    function closeOpenPanel() {
+      $$('.panel').forEach(function (p) { p.classList.remove('on'); });
+      $$('.tab').forEach(function (t) { t.classList.remove('active'); });
+      try { history.replaceState(null, '', location.pathname + location.search); } catch (e) {}
+    }
+    function hideCollegeBar() {
+      var bar = $('#collegeBar');
+      if (bar) { bar.hidden = true; bar.innerHTML = ''; }
+    }
+    document.addEventListener('keydown', function (e) {
+      if (e.key !== 'Escape') return;
+      var open = document.querySelector('.panel.on');
+      if (!open) { hideCollegeBar(); return; }
+      var f = open.querySelector('iframe');
+      if (f && f.contentWindow) f.contentWindow.postMessage({ type: 'cup-esc' }, '*');
+      else closeOpenPanel();
+    });
+    window.addEventListener('message', function (e) {
+      if (e.data && e.data.type === 'cup-esc-none') closeOpenPanel();
+    });
+    function closeMenus() {
+      $$('.dd').forEach(function (d) { d.classList.remove('open'); });
+      $$('.menu > .tab').forEach(function (t) { t.setAttribute('aria-expanded', 'false'); });
+    }
+    function showPanel(id) {
+      $$('.panel').forEach(function (p) { p.classList.toggle('on', p.id === id); });
+      $$('.tab').forEach(function (t) { t.classList.remove('active'); });
+      var item = $('.dd button[data-panel="' + id + '"]');
+      if (item) item.closest('.menu').querySelector('.tab').classList.add('active');
+      renderCollegeBar(item && item.closest('.menu[data-college]'), id);
+      var direct = $('.tabs > .tab[data-panel="' + id + '"]');
+      if (direct) direct.classList.add('active');
+      closeMenus();
+      try { history.replaceState(null, '', '#' + id); } catch (e) {}
+      if (/-student$/.test(id) && id !== 'conm-student') loadStudents(id);
+    }
+
+    function loadStudents(panelId) {
+      var panel = document.getElementById(panelId);
+      var list = panel && panel.querySelector('.list');
+      if (!list) return;
+      var code = list.getAttribute('data-college');
+      list.innerHTML = '<p class="hint">Loading students…</p>';
+      fetch('/api/registrar/students?college=' + encodeURIComponent(code), { credentials: 'same-origin' })
+        .then(function (r) { return r.json().then(function (j) { return { ok: r.ok, data: j }; }); })
+        .then(function (res) {
+          if (!res.ok) { list.innerHTML = '<p class="msg">' + esc(res.data.error || 'Could not load students.') + '</p>'; return; }
+          var rows = res.data.students || [];
+          if (!rows.length) { list.innerHTML = '<p class="hint">No officially enrolled students yet.</p>'; return; }
+          var html = '<div class="overflow"><table><thead><tr><th>Student No.</th><th>Last Name</th><th>First Name</th><th>Middle Name</th><th>Program</th><th>Year</th><th>Section</th><th>Email</th></tr></thead><tbody>';
+          rows.forEach(function (s) {
+            html += '<tr><td>' + esc(s.student_no) + '</td><td>' + esc(s.last_name) + '</td><td>' + esc(s.first_name) + '</td><td>' + esc(s.middle_name) + '</td><td>' + esc(s.program) + '</td><td>' + esc(s.year_level) + '</td><td>' + esc(s.section) + '</td><td>' + esc(s.email) + '</td></tr>';
+          });
+          list.innerHTML = html + '</tbody></table></div>';
+        })
+        .catch(function () { list.innerHTML = '<p class="msg">Could not load students.</p>'; });
+    }
+
+
+    // Each college's panels start with its own code, e.g. coacs-student.
+    var COLLEGE_PREFIX = { COACS: 'coacs', CAS: 'cas', CONM: 'conm', COED: 'coed', COBM: 'cobm', LAW: 'law', GS: 'gs', 'TESDA-TVI': 'tesda' };
+    function collegePrefix() { return COLLEGE_PREFIX[me.college] || ''; }
+    // College registrars see only their own college: Student, Faculty and Locked Account go in the nav bar.
+    function setupCollegeNav() {
+      $$('.tabs > .tab[data-panel$="-student"]').forEach(function (t) { t.hidden = true; });
+      var prefix = collegePrefix();
+      var anchor = $('#batch-uploads-tab');
+      var labels = [['student', 'Student'], ['faculty', 'Faculty'], ['step2', 'Pre-enrollment'], ['locked', 'Locked Account']];
+      labels.forEach(function (pair) {
+        if (pair[0] === 'locked' && me.role === 'records') return;
+        var panelId = prefix + '-' + pair[0];
+        if (!document.getElementById(panelId)) return;
+        var btn = document.createElement('button');
+        btn.className = 'tab';
+        btn.type = 'button';
+        btn.setAttribute('data-panel', panelId);
+        btn.textContent = pair[1];
+        btn.addEventListener('click', function () { showPanel(panelId); });
+        anchor.parentNode.insertBefore(btn, anchor);
+      });
+    }
+
+    // The college's own buttons (Student, Faculty, Locked Account) appear under the nav bar.
+    function renderCollegeBar(menu, activeId) {
+      var bar = $('#collegeBar');
+      if (me && me.role !== 'superadmin') { bar.hidden = true; bar.innerHTML = ''; return; }
+      var m = /^([a-z]+)-(student|faculty|locked)$/.exec(activeId || '');
+      if (!m) { bar.hidden = true; bar.innerHTML = ''; return; }
+      var prefix = m[1];
+      var labels = { student: 'Student', faculty: 'Faculty', locked: 'Locked Account' };
+      bar.innerHTML = '';
+      ['student', 'faculty', 'locked'].forEach(function (kind) {
+        var panelId = prefix + '-' + kind;
+        if (!document.getElementById(panelId)) return;
+        var btn = document.createElement('button');
+        btn.type = 'button';
+        btn.className = 'sub-tab' + (panelId === activeId ? ' on' : '');
+        btn.textContent = labels[kind];
+        btn.addEventListener('click', function () { showPanel(panelId); });
+        bar.appendChild(btn);
+      });
+      bar.hidden = !bar.childNodes.length;
+    }
+    $$('.tabs > .tab[data-panel]').forEach(function (t) {
+      t.addEventListener('click', function () { showPanel(t.getAttribute('data-panel')); });
+    });
+    // Logs and other dropdown tabs open their menu on click.
+    $$('.menu > .tab').forEach(function (t) {
+      t.addEventListener('click', function (e) {
+        e.stopPropagation();
+        var dd = t.parentElement.querySelector('.dd');
+        var willOpen = !!dd && !dd.classList.contains('open');
+        closeMenus();
+        if (willOpen) { dd.classList.add('open'); t.setAttribute('aria-expanded', 'true'); }
+      });
+    });
+    $$('.dd button[data-panel]').forEach(function (b) {
+      b.addEventListener('click', function (e) { e.stopPropagation(); showPanel(b.getAttribute('data-panel')); });
+    });
+    document.addEventListener('click', closeMenus);
+
+    // CSV parser: handles quoted cells.
+    function parseCsv(text) {
+      var rows = [], row = [], cell = '', q = false;
+      for (var i = 0; i < text.length; i++) {
+        var c = text[i];
+        if (q) {
+          if (c === '"' && text[i + 1] === '"') { cell += '"'; i++; }
+          else if (c === '"') q = false;
+          else cell += c;
+        } else if (c === '"') q = true;
+        else if (c === ',') { row.push(cell); cell = ''; }
+        else if (c === '\n') { row.push(cell); rows.push(row); row = []; cell = ''; }
+        else if (c !== '\r') cell += c;
+      }
+      if (cell !== '' || row.length) { row.push(cell); rows.push(row); }
+      return rows.filter(function (r) { return r.some(function (x) { return x.trim() !== ''; }); });
+    }
+
+    safeOn('#enroll-form', 'submit', function (e) {
+      e.preventDefault();
+      var f = e.target, msg = $('.msg', f), btn = $('button', f);
+      msg.textContent = ''; msg.className = 'msg bu-msg';
+      var file = f.file.files[0];
+      if (!file) { msg.textContent = 'Choose a CSV file.'; return; }
+      var reader = new FileReader();
+      reader.onload = function () {
+        var grid = parseCsv(String(reader.result || ''));
+        if (grid.length < 2) { msg.textContent = 'The file needs a header row and at least one student.'; return; }
+        var head = grid[0].map(function (h) { return h.trim().toLowerCase().replace(/\s+/g, '_'); });
+        var rows = grid.slice(1).map(function (cells) {
+          var o = {};
+          head.forEach(function (h, i) { o[h] = (cells[i] || '').trim(); });
+          return o;
+        });
+        btn.disabled = true;
+        fetch('/api/registrar/enroll', {
+          method: 'POST', credentials: 'same-origin',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ year: f.year.value.trim(), semester: f.semester.value, rows: rows })
+        }).then(function (r) { return r.json().then(function (j) { return { ok: r.ok, data: j }; }); })
+          .then(function (res) {
+            btn.disabled = false;
+            if (!res.ok) { msg.textContent = res.data.error || 'Upload failed.'; return; }
+            var text = 'Enrolled ' + res.data.created + ' student(s).';
+            if (res.data.errors && res.data.errors.length) {
+              text += ' ' + res.data.errors.length + ' row(s) not saved: ' + res.data.errors.slice(0, 5).map(function (x) { return 'line ' + x.line + ' (' + x.error + ')'; }).join('; ');
+              msg.textContent = text;
+            } else { msg.textContent = text; msg.className = 'msg bu-msg ok'; }
+          })
+          .catch(function () { btn.disabled = false; msg.textContent = 'Upload failed. Please try again.'; });
+      };
+      reader.readAsText(file);
+    });
+
+    $$('form.acct').forEach(function (f) {
+      f.addEventListener('submit', function (e) {
+        e.preventDefault();
+        var msg = $('.msg', f), btn = $('button', f);
+        msg.textContent = ''; msg.className = 'msg bu-msg';
+        btn.disabled = true;
+        fetch('/api/registrar/accounts', {
+          method: 'POST', credentials: 'same-origin',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ college: f.getAttribute('data-college'), name: f.name.value.trim(), email: f.email.value.trim(), password: f.password.value })
+        }).then(function (r) { return r.json().then(function (j) { return { ok: r.ok, data: j }; }); })
+          .then(function (res) {
+            btn.disabled = false;
+            if (!res.ok) { msg.textContent = res.data.error || 'Could not create the account.'; return; }
+            msg.className = 'msg bu-msg ok'; msg.textContent = 'Account created.';
+            f.reset();
+          })
+          .catch(function () { btn.disabled = false; msg.textContent = 'Could not create the account.'; });
+      });
+    });
+
+    
+    // ---- Email & Contact Formatting Rules across Registrar Dashboard ----
+    var STRICT_EMAIL_RE = /^[A-Za-z0-9._%+\-]+@[A-Za-z0-9\-]+(\.[A-Za-z0-9\-]+)*\.[A-Za-z]{2,}$/;
+    var STRICT_CONTACT_RE = /^(09\d{9}|\+639\d{9})$/;
+    document.addEventListener('input', function (e) {
+      var t = e.target;
+      if (!t || !t.matches) return;
+      if (t.matches('input[type="email"], .g-em')) {
+        var v = t.value.trim();
+        t.classList.toggle('invalid-fmt', !!v && !STRICT_EMAIL_RE.test(v));
+      }
+      if (t.matches('input[type="tel"], input[name="contact_number"]')) {
+        var s = String(t.value || '').replace(/[^\d+]/g, '');
+        if (s.indexOf('+') > 0) s = s.replace(/\+/g, '');
+        t.value = s.indexOf('+') === 0 ? s.slice(0, 13) : s.replace(/\D/g, '').slice(0, 11);
+        t.classList.toggle('invalid-fmt', !!t.value && !STRICT_CONTACT_RE.test(t.value));
+      }
+    });
+
+    // ---- 8-Tab Batch Uploads Module (Student, Faculty, Grades) ----
+    var buCollege = 'COACS';
+    var buInterruptedTask = null;
+
+    $$('.bu-col-tab').forEach(function (btn) {
+      btn.addEventListener('click', function () {
+        buCollege = btn.getAttribute('data-bu-college');
+        var label = btn.getAttribute('data-bu-label') || buCollege;
+        $$('.bu-col-tab').forEach(function (b) { b.classList.toggle('on', b === btn); });
+        $('#bu-active-college-label').textContent = '| ' + label;
+        $$('.bu-col-code').forEach(function (el) { el.textContent = label; });
+      });
+    });
+
+    var BU_TEMPLATES = {
+      student: {
+        name: 'Student_Batch_Upload.csv',
+        content: 'student_number,last_name,first_name,middle_name,extension,gender,status,birthday,contact_number,email,program,year_level,section,subjects\r\n' +
+                 '2026-1-0000001-01,Dela Cruz,Juan,Santos,,Male,enrolled,2005-05-14,09171234567,juan.delacruz@example.com,BSN,1,A,NCM 100|NCM 101\r\n'
+      },
+      faculty: {
+        name: 'Faculty_Batch_Upload.csv',
+        content: 'username,first_name,middle_name,last_name,gender,birthdate,email,subjects\r\n' +
+                 'prof.santos,Maria,Clara,Santos,Female,1985-08-20,maria.santos@example.com,NCM 100|NCM 101\r\n'
+      },
+      grades: {
+        name: 'Grades_Batch_Upload.csv',
+        content: 'student_number,course_code,year_level,semester,final_grade\r\n' +
+                 '2026-1-0000001-01,NCM 100,1,1st Semester,1.25\r\n'
+      }
+    };
+
+    $$('[data-bu-tpl]').forEach(function (a) {
+      a.addEventListener('click', function (e) {
+        e.preventDefault();
+        var k = a.getAttribute('data-bu-tpl');
+        var tpl = BU_TEMPLATES[k];
+        if (tpl) downloadCsv(tpl.name, tpl.content);
+      });
+    });
+
+    function readFileAsText(file) {
+      return new Promise(function (resolve, reject) {
+        var r = new FileReader();
+        r.onload = function () { resolve(String(r.result || '')); };
+        r.onerror = function () { reject(new Error('File read interrupted')); };
+        r.readAsText(file);
+      });
+    }
+
+    function showInterruptModal(task, reason) {
+      buInterruptedTask = task;
+      $('#bu-modal-desc').innerHTML = (reason ? '<strong>' + esc(reason) + '</strong><br>' : '') +
+        'The upload and processing of your CSV file(s) was interrupted. Click <strong>Retry / Continue</strong> to resume and complete the upload, or click <strong>Cancel Upload</strong> to abort (no data will be uploaded).';
+      $('#bu-interrupt-modal').hidden = false;
+    }
+
+    safeOn('#bu-modal-cancel', 'click', function () {
+      $('#bu-interrupt-modal').hidden = true;
+      if (buInterruptedTask) {
+        var card = buInterruptedTask.card;
+        $('.bu-progress-bar', card).style.width = '0%';
+        $('.bu-pct-text', card).textContent = '0%';
+        $('.bu-status-text', card).textContent = 'Upload canceled. No data was uploaded.';
+        $('.bu-msg', card).className = 'msg bu-msg';
+        $('.bu-msg', card).textContent = 'Upload canceled by user. Zero records were saved to the database.';
+        $('.bu-start-btn', card).disabled = false;
+        $('.bu-interrupt-btn', card).hidden = true;
+        buInterruptedTask = null;
+      }
+    });
+
+    safeOn('#bu-modal-retry', 'click', function () {
+      $('#bu-interrupt-modal').hidden = true;
+      if (buInterruptedTask) {
+        var task = buInterruptedTask;
+        buInterruptedTask = null;
+        task.interrupted = false;
+        runBatchUploadTask(task);
+      }
+    });
+
+    function renderCredentialDownloads(card, fileResults, type) {
+      var box = $('.bu-cred-list', card);
+      if (!box) return;
+      if (!fileResults || !fileResults.length) { box.hidden = true; box.innerHTML = ''; return; }
+      var head = type === 'faculty'
+        ? 'Username,Name,College,Email,Temporary Password'
+        : 'Student Number,Name,College,Program,Email,Temporary Password';
+      var html = '<strong>✅ Temporary Credentials Ready (' + fileResults.length + ' file' + (fileResults.length > 1 ? 's' : '') + ' processed):</strong>';
+      fileResults.forEach(function (fr, idx) {
+        html += '<button type="button" class="btn gold sm bu-dl-cred" data-idx="' + idx + '" style="margin-top:0">⬇ Download Credentials (' + esc(fr.filename) + ' · ' + (fr.created || []).length + ')</button>';
+      });
+      if (fileResults.length > 1) {
+        html += '<button type="button" class="btn green sm bu-dl-all-creds" style="margin-top:0">⬇ Download All ' + fileResults.length + ' Credential Files</button>';
+      }
+      box.innerHTML = html;
+      box.hidden = false;
+
+      function triggerOneDownload(idx) {
+        var fr = fileResults[idx];
+        if (!fr) return;
+        var baseName = String(fr.filename || ('file_' + (idx + 1))).replace(/\.csv$/i, '');
+        var dlName = 'temporary_credentials_' + type + '_' + buCollege + '_' + baseName + '.csv';
+        var csvBody = head + '\r\n' + (fr.created || []).map(function (c) {
+          return (type === 'faculty'
+            ? [c.username, c.name, c.college, c.email || '', c.temp_password]
+            : [c.student_no || c.username, c.name, c.college, c.program || '', c.email || '', c.temp_password]
+          ).map(csvCell).join(',');
+        }).join('\r\n') + '\r\n';
+        downloadCsv(dlName, csvBody);
+      }
+
+      $$('.bu-dl-cred', box).forEach(function (b) {
+        b.addEventListener('click', function () {
+          triggerOneDownload(Number(b.getAttribute('data-idx')));
+        });
+      });
+      var allBtn = $('.bu-dl-all-creds', box);
+      if (allBtn) {
+        allBtn.addEventListener('click', function () {
+          fileResults.forEach(function (_, idx) {
+            setTimeout(function () { triggerOneDownload(idx); }, idx * 250);
+          });
+        });
+      }
+    }
+
+    function runBatchUploadTask(task) {
+      var card = task.card;
+      var files = task.files;
+      var total = files.length;
+      var pArea = $('.bu-progress-area', card);
+      var pBar = $('.bu-progress-bar', card);
+      var pStatus = $('.bu-status-text', card);
+      var pPct = $('.bu-pct-text', card);
+      var msg = $('.bu-msg', card);
+      var startBtn = $('.bu-start-btn', card);
+      var intBtn = $('.bu-interrupt-btn', card);
+
+      pArea.hidden = false;
+      startBtn.disabled = true;
+      intBtn.hidden = false;
+      msg.textContent = '';
+      msg.className = 'msg bu-msg';
+
+      function setProg(pct, text) {
+        var p = Math.max(0, Math.min(100, Math.round(pct)));
+        pBar.style.width = p + '%';
+        pPct.textContent = p + '%';
+        if (text) pStatus.textContent = text;
+      }
+
+      function stepReadNext() {
+        if (task.interrupted || !navigator.onLine) {
+          showInterruptModal(task, !navigator.onLine ? 'Network connection lost.' : 'Upload paused / interrupted.');
+          return;
+        }
+        if (task.index < total) {
+          var idx = task.index;
+          var f = files[idx];
+          var startPct = (idx / total) * 70;
+          setProg(startPct + 5, 'Reading & validating file ' + (idx + 1) + ' of ' + total + ': ' + f.name + '…');
+          readFileAsText(f).then(function (csvText) {
+            if (task.interrupted) {
+              showInterruptModal(task, 'Upload paused / interrupted.');
+              return;
+            }
+            var ctrl = new AbortController();
+            task.abortCtrl = ctrl;
+            return fetch('/api/registrar/batch-upload/' + task.type, {
+              method: 'POST',
+              credentials: 'same-origin',
+              headers: { 'Content-Type': 'application/json' },
+              signal: ctrl.signal,
+              body: JSON.stringify({
+                college: task.college,
+                dryRun: true,
+                enrollment_status: task.enrollStatus,
+                files: [{ filename: f.name, csv: csvText }]
+              })
+            }).then(function (r) {
+              return r.json().then(function (j) { return { ok: r.ok, j: j, csvText: csvText }; });
+            });
+          }).then(function (res) {
+            if (!res) return;
+            if (task.interrupted) {
+              showInterruptModal(task, 'Upload paused / interrupted.');
+              return;
+            }
+            if (!res.ok) {
+              intBtn.hidden = true;
+              startBtn.disabled = false;
+              setProg(0, 'Validation failed on ' + f.name + '. No data was uploaded.');
+              msg.innerHTML = '<strong>' + esc(f.name) + ':</strong> ' + esc(res.j.error || 'Validation failed.') +
+                (res.j.errors && res.j.errors.length ? '<br>' + res.j.errors.slice(0, 15).map(esc).join('<br>') : '');
+              return;
+            }
+            task.payloads[idx] = { filename: f.name, csv: res.csvText };
+            task.index = idx + 1;
+            setProg((task.index / total) * 75, 'Validated file ' + task.index + ' of ' + total + ' (' + f.name + ')');
+            setTimeout(stepReadNext, 180);
+          }).catch(function () {
+            showInterruptModal(task, 'Connection or file processing was interrupted while uploading ' + f.name + '.');
+          });
+          return;
+        }
+
+        setProg(85, 'Committing all ' + total + ' file(s) to database…');
+        if (task.interrupted || !navigator.onLine) {
+          showInterruptModal(task, 'Interrupted before final database commit.');
+          return;
+        }
+        var ctrl2 = new AbortController();
+        task.abortCtrl = ctrl2;
+        fetch('/api/registrar/batch-upload/' + task.type, {
+          method: 'POST',
+          credentials: 'same-origin',
+          headers: { 'Content-Type': 'application/json' },
+          signal: ctrl2.signal,
+          body: JSON.stringify({
+            college: task.college,
+            dryRun: false,
+            enrollment_status: task.enrollStatus,
+            files: task.payloads
+          })
+        }).then(function (r) {
+          return r.json().then(function (j) { return { ok: r.ok, j: j }; });
+        }).then(function (res) {
+          intBtn.hidden = true;
+          startBtn.disabled = false;
+          if (!res.ok) {
+            setProg(0, 'Database commit rejected. No data was uploaded.');
+            msg.innerHTML = esc(res.j.error || 'Upload failed.') + (res.j.detail ? '<br><small>Details: ' + esc(res.j.detail) + '</small>' : '') +
+              (res.j.errors && res.j.errors.length ? '<br>' + res.j.errors.slice(0, 15).map(esc).join('<br>') : '');
+            return;
+          }
+          setProg(100, 'Completed! Processed ' + total + ' file(s) (' + (res.j.totalSaved || 0) + ' record(s)).');
+          msg.className = 'msg bu-msg ok';
+          if (task.type === 'grades') {
+            msg.textContent = 'Successfully uploaded and aligned ' + (res.j.totalSaved || 0) + ' grade record(s) across ' + total + ' file(s) for ' + task.college + '.';
+            loadGrades();
+          } else {
+            msg.textContent = 'Successfully uploaded and processed ' + (res.j.totalSaved || 0) + ' ' + task.type + ' record(s) across ' + total + ' file(s) for ' + task.college + '. Download the temporary credentials below.';
+            renderCredentialDownloads(card, res.j.fileResults || [], task.type);
+            if (me && me.role === 'superadmin') loadPortalUsers();
+          }
+        }).catch(function () {
+          showInterruptModal(task, 'Network connection interrupted during final commit.');
+        });
+      }
+
+      stepReadNext();
+    }
+
+    $$('.bu-card').forEach(function (card) {
+      var type = card.getAttribute('data-bu-type');
+      var fileInput = $('.bu-files', card);
+      var startBtn = $('.bu-start-btn', card);
+      var intBtn = $('.bu-interrupt-btn', card);
+      var currentTask = null;
+
+      startBtn.addEventListener('click', function () {
+        var msg = $('.bu-msg', card);
+        msg.textContent = '';
+        msg.className = 'msg bu-msg';
+        var credBox = $('.bu-cred-list', card);
+        if (credBox) { credBox.hidden = true; credBox.innerHTML = ''; }
+        var files = Array.prototype.slice.call(fileInput.files || []);
+        if (!files.length) {
+          msg.textContent = 'Please select at least one CSV file to upload.';
+          return;
+        }
+        var modeRadio = card.querySelector('input[name="bu-enroll-student"]:checked');
+        currentTask = {
+          type: type,
+          college: buCollege,
+          card: card,
+          enrollStatus: type === 'student' ? (modeRadio ? modeRadio.value : 'pre-registered') : null,
+          files: files,
+          payloads: new Array(files.length),
+          index: 0,
+          interrupted: false,
+          abortCtrl: null
+        };
+        runBatchUploadTask(currentTask);
+      });
+
+      intBtn.addEventListener('click', function () {
+        if (currentTask) {
+          currentTask.interrupted = true;
+          if (currentTask.abortCtrl) {
+            try { currentTask.abortCtrl.abort(); } catch (e) {}
+          }
+        }
+      });
+    });
+
+    safeOn('#logout', 'click', function () {
+      fetch('/api/registrar/logout', { method: 'POST', credentials: 'same-origin' })
+        .finally(function () { window.location.href = '/CUP-PORTAL/college-registrar/'; });
+    });
+    // Pre-enrollment task tabs live in the panel header; they tell the iframe which task to show.
+    document.addEventListener('click', function (e) {
+      var b = e.target.closest && e.target.closest('.s2-head-btn');
+      if (!b) return;
+      var panel = b.closest('section.panel');
+      if (!panel) return;
+      panel.querySelectorAll('.s2-head-btn').forEach(function (x) {
+        var on = x === b;
+        x.setAttribute('aria-selected', on ? 'true' : 'false');
+        x.style.background = on ? '#fff' : 'rgba(255,255,255,.14)';
+        x.style.color = on ? '#312e81' : '#fff';
+        x.style.borderColor = on ? '#818cf8' : 'transparent';
+      });
+      var frame = panel.querySelector('iframe');
+      if (frame && frame.contentWindow) frame.contentWindow.postMessage({ s2Task: b.getAttribute('data-s2') }, '*');
+    });
+
+    // The Pre-enrollment page reports its count ("0 of 376 advised") to the header above it.
+    window.addEventListener('message', function (e) {
+      var data = e.data;
+      if (!data || typeof data.s2Count !== 'string') return;
+      document.querySelectorAll('section.panel iframe').forEach(function (f) {
+        if (f.contentWindow === e.source) {
+          var c = f.closest('section.panel').querySelector('.s2-head-count');
+          if (c) c.textContent = data.s2Count;
+        }
+      });
+    });
+
+    // Student and Faculty task tabs live in the panel header and switch the page inside the iframe.
+    document.addEventListener('click', function (e) {
+      var b = e.target.closest && e.target.closest('.pn-head-btn');
+      if (!b) return;
+      var panel = b.closest('section.panel');
+      if (!panel) return;
+      panel.querySelectorAll('.pn-head-btn').forEach(function (x) {
+        var on = x === b;
+        x.setAttribute('aria-selected', on ? 'true' : 'false');
+        x.style.background = on ? '#fff' : 'rgba(255,255,255,.14)';
+        x.style.color = on ? '#312e81' : '#fff';
+        x.style.borderColor = on ? '#818cf8' : 'transparent';
+      });
+      var frame = panel.querySelector('iframe');
+      if (frame && frame.contentWindow) frame.contentWindow.postMessage({ panelTab: b.getAttribute('data-ptab') }, '*');
+    });
+  })();
+</script>
+<script src="/CUP-PORTAL/portal-search.js">
+</script>
+</body>
+</html>

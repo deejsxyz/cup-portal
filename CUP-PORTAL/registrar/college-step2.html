@@ -1,0 +1,280 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Pre-enrollment · Step 2</title>
+<script src="https://cdn.tailwindcss.com"></script>
+</head>
+<body class="bg-slate-50 p-4 text-slate-800">
+<div id="s2-app" class="space-y-4">
+
+  <!-- STEP 2: DEAN'S OFFICE (Pre-enrollment) -->
+  <div class="hidden bg-white rounded-xl shadow-sm border border-slate-200 p-4 flex flex-wrap items-center justify-between gap-3">
+    <span id="s2Count" class="text-xs font-bold text-slate-500"></span>
+  </div>
+
+  <!-- Student Evaluation: same search and information layout as Student > Existing Student -->
+  <div id="evalPane" hidden class="space-y-4">
+    <div class="bg-white p-5 rounded-xl shadow-sm border border-slate-200">
+      <label class="block text-[10px] font-bold uppercase text-slate-500 mb-1" for="evalSearchInput">Search Student by ID Number:</label>
+      <input type="text" id="evalSearchInput" inputmode="numeric" maxlength="17" placeholder="xxxx-x-xxxxxxx-xx" autocomplete="off" class="w-full px-3 py-2 rounded-lg border text-sm font-mono border-slate-300">
+      <p id="evalSearchMsg" class="text-xs font-semibold text-rose-600 mt-2"></p>
+    </div>
+    <div id="evalRecordArea" hidden>
+      <div class="bg-white rounded-xl shadow-sm border border-indigo-200 p-5">
+        <div class="flex items-center justify-between gap-3 mb-4 flex-wrap">
+          <h3 class="text-sm font-bold uppercase tracking-wider text-indigo-900">Student Information</h3>
+          <button type="button" id="evalDoneBtn" class="px-4 py-2 rounded-lg text-xs font-bold shadow-md cursor-pointer"></button>
+        </div>
+        <div id="evalBanner" class="mb-4 px-4 py-2.5 rounded-lg border text-xs font-semibold"></div>
+        <div id="evalInfo" class="grid grid-cols-2 md:grid-cols-4 gap-x-6 gap-y-4 text-sm"></div>
+        <div id="evalGrades" class="mt-5 pt-4 border-t border-slate-200"></div>
+        <div id="advEnrollBox" hidden class="mt-5 pt-4 border-t border-slate-200">
+          <iframe id="advEnrollFrame" title="Standard Curriculum Subjects and Instructors" style="width:100%;min-height:640px;border:0;display:block"></iframe>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Advising and Section Assignment: student list -->
+  <div id="listPane" class="space-y-4">
+    <div class="bg-white rounded-xl shadow-sm border border-slate-200 p-5">
+      <div class="flex flex-wrap items-center gap-2 mb-4">
+        <input id="s2Search" type="text" placeholder="Search student number or name" autocomplete="off" class="flex-1 min-w-[200px] px-3 py-2 rounded-lg border border-slate-300 text-sm">
+        <select id="s2Year" aria-label="Year level" class="px-3 py-2 rounded-lg border border-slate-300 text-sm bg-white cursor-pointer">
+          <option value="">All Year Levels</option>
+        </select>
+        <select id="s2Section" aria-label="Section" class="px-3 py-2 rounded-lg border border-slate-300 text-sm bg-white cursor-pointer">
+          <option value="">All Sections</option>
+        </select>
+        <span id="s2LiveCount" class="text-xs font-bold text-indigo-900 px-3 py-2 rounded-lg bg-indigo-50"></span>
+      </div>
+      <div id="s2List"><p class="text-xs text-slate-500">Loading…</p></div>
+      <div class="flex flex-wrap items-center justify-between gap-3 mt-4">
+        <span id="s2PageInfo" class="text-xs font-bold text-slate-500"></span>
+        <div class="flex items-center gap-2">
+          <button type="button" id="s2Prev" class="px-3 py-1.5 rounded-lg border border-slate-300 text-xs font-bold bg-white cursor-pointer disabled:opacity-40">◀ Prev</button>
+          <button type="button" id="s2Next" class="px-3 py-1.5 rounded-lg border border-slate-300 text-xs font-bold bg-white cursor-pointer disabled:opacity-40">Next ▶</button>
+        </div>
+      </div>
+    </div>
+  </div>
+  <p id="s2Msg" class="text-xs font-semibold text-rose-600"></p>
+</div>
+
+<script>
+(function () {
+  var COLLEGE = (new URLSearchParams(location.search).get('college') || '').toUpperCase();
+  var PAGE_SIZE = 15;
+  var FIELDS = { evaluation: 'step2_evaluated_at', advising: 'step2_advised_at', section: 'step2_sectioned_at' };
+  var LABELS = { advising: 'Advising done', section: 'Section assigned' };
+  var TASK_NAME = { evaluation: 'Student evaluation', advising: 'Advising' };
+  var cur = 'evaluation', rows = [], roster = [], page = 1, current = null;
+  window.addEventListener('message', function (e) {
+    var t = e.data && e.data.s2Task;
+    if (t !== 'evaluation' && t !== 'advising' && t !== 'section') return;
+    cur = t; page = 1; render();
+  });
+  var listEl = document.getElementById('s2List'), msgEl = document.getElementById('s2Msg'), countEl = document.getElementById('s2Count');
+  var searchEl = document.getElementById('s2Search'), yearEl = document.getElementById('s2Year'), secEl = document.getElementById('s2Section');
+  var prevEl = document.getElementById('s2Prev'), nextEl = document.getElementById('s2Next'), infoEl = document.getElementById('s2PageInfo');
+  var evalSearch = document.getElementById('evalSearchInput'), evalMsg = document.getElementById('evalSearchMsg');
+  var evalRecord = document.getElementById('evalRecordArea'), evalInfo = document.getElementById('evalInfo');
+  var evalBanner = document.getElementById('evalBanner'), evalDone = document.getElementById('evalDoneBtn');
+
+  function esc(v) { return String(v == null ? '' : v).replace(/[&<>"']/g, function (c) { return { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]; }); }
+  function fullName(r) { return r.last_name + ', ' + r.first_name + (r.middle_name ? ' ' + r.middle_name.charAt(0) + '.' : ''); }
+  function validId(v) { return /^\d{4}-\d-\d{7}-\d{2}$/.test(v); }
+  function labelled(label, value) {
+    return '<div><div class="text-[10px] uppercase font-bold text-slate-500">' + esc(label) + '</div><div class="font-semibold text-slate-900 break-words">' + esc(value == null || value === '' ? '—' : value) + '</div></div>';
+  }
+  function fmtStatus(r) { return r.status === 'enrolled' ? 'Officially Enrolled' : 'Pre-registered'; }
+
+  /* ----- Student Evaluation (Existing Student layout) ----- */
+  function showEvalStudent(no) {
+    evalMsg.textContent = '';
+    evalRecord.hidden = true;
+    if (!validId(no)) return;
+    var s = roster.filter(function (x) { return x.student_no === no; })[0];
+    if (!s) { evalMsg.textContent = 'Student not found. Please check the student number.'; return; }
+    current = s;
+    var ev = rows.filter(function (x) { return x.student_no === no; })[0];
+    var done = !!(ev && ev[FIELDS[cur]]);
+    evalRecord.hidden = false;
+    evalInfo.innerHTML =
+      labelled('First Name', s.first_name) + labelled('Middle Name', s.middle_name) + labelled('Last Name', s.last_name) + labelled('Extension', s.name_extension) +
+      labelled('Gender', s.gender) + labelled('Birthday', s.birthday) + labelled('Email Address', s.email) + labelled('Contact Number', s.contact_number) +
+      labelled('Program', s.program) + labelled('Year Level', s.year_level) + labelled('Section', s.section) + labelled('Student ID', s.student_no) +
+      labelled('Status', ev ? fmtStatus(ev) : '—');
+    evalBanner.className = 'mb-4 px-4 py-2.5 rounded-lg border text-xs font-semibold ' + (done ? 'bg-emerald-50 border-emerald-200 text-emerald-800' : 'bg-amber-50 border-amber-200 text-amber-800');
+    evalBanner.textContent = TASK_NAME[cur] + (done ? ' is done.' : ' is not yet done.');
+    evalDone.className = 'px-4 py-2 rounded-lg text-xs font-bold shadow-md cursor-pointer ' + (done ? 'bg-emerald-600 text-white' : 'bg-indigo-700 hover:bg-indigo-800 text-white');
+    evalDone.textContent = done ? '✔ Done (undo)' : 'Mark ' + TASK_NAME[cur] + ' Done';
+    evalDone.setAttribute('data-done', done ? '1' : '0');
+    evalDone.disabled = !ev;
+    if (cur === 'evaluation') showLatestGrades(no); else document.getElementById('evalGrades').innerHTML = '';
+    var box = document.getElementById('advEnrollBox'), frame = document.getElementById('advEnrollFrame');
+    if (cur === 'advising') {
+      box.hidden = false;
+      var src = '/CUP-PORTAL/registrar/college-student.html?college=' + encodeURIComponent(COLLEGE) + '&view=enroll&student=' + encodeURIComponent(no);
+      if (frame.getAttribute('src') !== src) frame.setAttribute('src', src);
+    } else { box.hidden = true; frame.removeAttribute('src'); }
+  }
+
+  /* ----- Latest grades on file (read-only) ----- */
+  var gradesCache = null;
+  function ensureGrades() {
+    if (gradesCache) return Promise.resolve(gradesCache);
+    return fetch('/api/registrar/grades?college=' + encodeURIComponent(COLLEGE), { credentials: 'same-origin' })
+      .then(function (r) { return r.json(); })
+      .then(function (j) { gradesCache = j.grades || []; return gradesCache; });
+  }
+  var TERM_RANK = { '1st Semester': 1, '2nd Semester': 2, 'Summer': 3 };
+  function showLatestGrades(no) {
+    var box = document.getElementById('evalGrades');
+    box.innerHTML = '<p class="text-xs text-slate-500">Loading grades…</p>';
+    ensureGrades().then(function (list) {
+      if (!current || current.student_no !== no) return;
+      var mine = list.filter(function (g) { return g.student_no === no; });
+      var head = '<h4 class="text-xs font-bold uppercase tracking-wider text-indigo-900 mb-3">Latest Grades on File</h4>';
+      if (!mine.length) { box.innerHTML = head + '<p class="text-xs text-slate-500">No grades on file yet.</p>'; return; }
+      var key = function (g) { return String(g.academic_year) + '|' + String(TERM_RANK[g.term] || 0).padStart(2, '0'); };
+      var latest = mine.reduce(function (a, g) { return key(g) > a ? key(g) : a; }, '');
+      var rows = mine.filter(function (g) { return key(g) === latest; }).sort(function (a, b) { return String(a.course_code).localeCompare(String(b.course_code)); });
+      var body = rows.map(function (g) {
+        return '<tr class="border-t border-slate-200"><td class="p-2 font-mono">' + esc(g.course_code) + '</td><td class="p-2">' + esc(g.final_grade) + '</td><td class="p-2">' + esc(g.remarks) + '</td><td class="p-2">' + esc(g.status === 'approved' ? 'Approved' : 'Submitted') + '</td></tr>';
+      }).join('');
+      box.innerHTML = head + '<p class="text-xs text-slate-500 mb-2">' + esc(rows[0].term + ' (' + rows[0].academic_year + ')') + '</p>' +
+        '<div style="overflow-x:auto"><table class="w-full text-xs"><thead class="bg-slate-100"><tr><th class="text-left p-2">Course</th><th class="text-left p-2">Final Grade</th><th class="text-left p-2">Remarks</th><th class="text-left p-2">Status</th></tr></thead><tbody>' + body + '</tbody></table></div>';
+    }).catch(function () { box.innerHTML = head + '<p class="text-xs text-rose-600">Could not load grades.</p>'; });
+  }
+
+  function fillFilters() {
+    var years = {}, secs = {};
+    rows.forEach(function (r) { if (r.year_level) years[r.year_level] = true; if (r.section) secs[r.section] = true; });
+    var yKeep = yearEl.value, sKeep = secEl.value;
+    yearEl.innerHTML = '<option value="">All Year Levels</option>' + Object.keys(years).sort().map(function (y) { return '<option value="' + esc(y) + '">' + esc(y) + '</option>'; }).join('');
+    secEl.innerHTML = '<option value="">All Sections</option>' + Object.keys(secs).sort().map(function (s) { return '<option value="' + esc(s) + '">' + esc(s) + '</option>'; }).join('');
+    yearEl.value = yKeep; secEl.value = sKeep;
+  }
+
+  function filtered() {
+    var q = searchEl.value.trim().toLowerCase(), y = yearEl.value, s = secEl.value;
+    return rows.filter(function (r) {
+      if (y && String(r.year_level) !== y) return false;
+      if (s && String(r.section) !== s) return false;
+      if (q && (String(r.student_no).toLowerCase().indexOf(q) === -1) && (fullName(r).toLowerCase().indexOf(q) === -1)) return false;
+      return true;
+    });
+  }
+
+  function renderList() {
+    var doneCount = rows.filter(function (r) { return !!r[FIELDS[cur]]; }).length;
+    countEl.textContent = doneCount + ' of ' + rows.length + ' done';
+    var liveEl = document.getElementById('s2LiveCount');
+    var inScope = rows.filter(function (r) {
+      return (!yearEl.value || String(r.year_level) === yearEl.value) && (!secEl.value || String(r.section) === secEl.value);
+    });
+    if (yearEl.value || secEl.value) {
+      var scope = [yearEl.value, secEl.value].filter(Boolean).join(' / ');
+      liveEl.textContent = inScope.length + ' student' + (inScope.length === 1 ? '' : 's') + ' in ' + scope;
+    } else {
+      liveEl.textContent = rows.length + ' student' + (rows.length === 1 ? '' : 's') + ' in total';
+    }
+    if (!rows.length) { listEl.innerHTML = '<p class="text-xs text-slate-500">No enrolled or pre-registered students yet.</p>'; infoEl.textContent = ''; prevEl.disabled = nextEl.disabled = true; return; }
+
+    var list = filtered();
+    var pages = Math.max(1, Math.ceil(list.length / PAGE_SIZE));
+    if (page > pages) page = pages;
+    if (page < 1) page = 1;
+    var slice = list.slice((page - 1) * PAGE_SIZE, page * PAGE_SIZE);
+
+    if (!list.length) { listEl.innerHTML = '<p class="text-xs text-slate-500">No students match the search or filters.</p>'; }
+    else {
+      var head = '<tr><th class="text-left p-2">Student No.</th><th class="text-left p-2">Name</th><th class="text-left p-2">Program</th><th class="text-left p-2">Year / Section</th><th class="text-left p-2">Status</th><th class="text-left p-2">' + LABELS[cur] + '</th></tr>';
+      var body = slice.map(function (r) {
+        var done = !!r[FIELDS[cur]];
+        var no = esc(r.student_no);
+        var btn = '<button type="button" class="s2-toggle px-3 py-1 rounded text-xs font-bold cursor-pointer ' + (done ? 'bg-emerald-600 text-white' : 'bg-slate-200 text-slate-800') + '" data-no="' + no + '" data-done="' + (done ? '1' : '0') + '">' + (done ? '✔ Done (undo)' : 'Mark Done') + '</button>';
+        return '<tr class="border-t border-slate-200"><td class="p-2 font-mono">' + no + '</td><td class="p-2">' + esc(fullName(r)) + '</td><td class="p-2">' + esc(r.program) + '</td><td class="p-2">' + esc((r.year_level || '') + (r.section ? ' / ' + r.section : '')) + '</td><td class="p-2">' + esc(fmtStatus(r)) + '</td><td class="p-2">' + btn + '</td></tr>';
+      }).join('');
+      listEl.innerHTML = '<div style="overflow-x:auto"><table class="w-full text-xs"><thead class="bg-slate-100">' + head + '</thead><tbody>' + body + '</tbody></table></div>';
+    }
+    var from = list.length ? (page - 1) * PAGE_SIZE + 1 : 0, to = (page - 1) * PAGE_SIZE + slice.length;
+    infoEl.textContent = 'Showing ' + from + '–' + to + ' of ' + list.length + ' · Page ' + page + ' of ' + pages;
+    prevEl.disabled = page <= 1;
+    nextEl.disabled = page >= pages;
+  }
+
+  function render() {
+    document.querySelectorAll('.s2-btn').forEach(function (b) {
+      var on = b.getAttribute('data-s2') === cur;
+      b.setAttribute('aria-selected', on ? 'true' : 'false');
+      b.className = 's2-btn px-4 py-2 rounded-lg text-xs font-bold cursor-pointer ' + (on ? 'bg-white text-indigo-900 shadow border border-indigo-400' : 'text-slate-600 hover:text-slate-900');
+    });
+    var usePane = cur === 'evaluation' || cur === 'advising';
+    document.getElementById('evalPane').hidden = !usePane;
+    document.getElementById('listPane').hidden = usePane;
+    if (usePane) {
+      countEl.textContent = rows.filter(function (r) { return !!r[FIELDS[cur]]; }).length + ' of ' + rows.length + (cur === 'evaluation' ? ' evaluated' : ' advised');
+      if (current) showEvalStudent(current.student_no);
+    } else {
+      renderList();
+    }
+    try { parent.postMessage({ s2Count: countEl.textContent }, '*'); } catch (err) {}
+  }
+
+  function load() {
+    msgEl.textContent = '';
+    gradesCache = null;
+    var q = 'college=' + encodeURIComponent(COLLEGE);
+    Promise.all([
+      fetch('/api/registrar/step2?' + q, { credentials: 'same-origin' }).then(function (r) { return r.json().then(function (j) { return { ok: r.ok, j: j }; }); }),
+      fetch('/api/registrar/students?' + q, { credentials: 'same-origin' }).then(function (r) { return r.json().then(function (j) { return { ok: r.ok, j: j }; }); })
+    ]).then(function (res) {
+      if (!res[0].ok) { listEl.innerHTML = '<p class="text-xs text-rose-600">' + esc(res[0].j.error || 'Could not load Pre-enrollment.') + '</p>'; return; }
+      rows = res[0].j.students || [];
+      roster = res[1].ok ? (res[1].j.students || []) : [];
+      fillFilters(); render();
+    }).catch(function () { listEl.innerHTML = '<p class="text-xs text-rose-600">Could not load Pre-enrollment.</p>'; });
+  }
+
+  function post(no, task, done) {
+    return fetch('/api/registrar/step2/' + encodeURIComponent(no) + '/' + task, {
+      method: 'POST', credentials: 'same-origin', headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ done: done, college: COLLEGE })
+    }).then(function (r) { return r.json().then(function (j) { return { ok: r.ok, j: j }; }); });
+  }
+
+  document.querySelectorAll('.s2-btn').forEach(function (b) {
+    b.addEventListener('click', function () { cur = b.getAttribute('data-s2'); page = 1; render(); });
+  });
+  evalSearch.addEventListener('input', function () {
+    var v = evalSearch.value.trim();
+    if (validId(v)) showEvalStudent(v); else { evalRecord.hidden = true; evalMsg.textContent = ''; current = null; }
+  });
+  evalDone.addEventListener('click', function () {
+    if (!current) return;
+    evalDone.disabled = true;
+    post(current.student_no, cur, evalDone.getAttribute('data-done') !== '1')
+      .then(function (res) { if (!res.ok) { msgEl.textContent = res.j.error || 'Could not update.'; } load(); });
+  });
+  searchEl.addEventListener('input', function () { page = 1; renderList(); });
+  yearEl.addEventListener('change', function () { page = 1; renderList(); });
+  secEl.addEventListener('change', function () { page = 1; renderList(); });
+  prevEl.addEventListener('click', function () { page--; renderList(); });
+  nextEl.addEventListener('click', function () { page++; renderList(); });
+
+  listEl.addEventListener('click', function (e) {
+    var t = e.target;
+    if (!t.classList.contains('s2-toggle')) return;
+    t.disabled = true;
+    post(t.getAttribute('data-no'), cur, t.getAttribute('data-done') !== '1')
+      .then(function (res) { if (!res.ok) { msgEl.textContent = res.j.error || 'Could not update.'; } load(); });
+  });
+  load();
+})();
+</script>
+</body>
+</html>

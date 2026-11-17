@@ -1,0 +1,422 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>CUP Student Portal</title>
+<link rel="icon" href="/images/favicon-cup.png">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Libre+Franklin:wght@400;600;700;800&display=swap">
+<style>
+  :root { --dg:#0a3a0a; --g:#106010; --gold:#f2c200; --ink:#1f2a1f; --line:#c9d6c9; --bg:#f4f6f4; --ok:#1e7a2e; --bad:#b42318; }
+  * { box-sizing: border-box; }
+  html, body { margin: 0; background: var(--bg); color: var(--ink); }
+  body { font-family: 'Libre Franklin', Arial, Helvetica, sans-serif; min-height: 100vh; }
+  button, select, input { font: inherit; }
+  header { background: var(--g); color: #fff; display: flex; justify-content: space-between; align-items: center; gap: 12px; padding: 12px 20px; flex-wrap: wrap; border-bottom: 4px solid var(--gold); }
+  .brand { display: flex; align-items: center; gap: 12px; }
+  .brand img { width: 64px; height: 64px; object-fit: contain; background: none; border-radius: 0; padding: 0; }
+  .brand h1 { font-size: 1.05rem; margin: 0; font-weight: 800; letter-spacing: .02em; text-transform: uppercase; }
+  .brand small { display: block; font-size: .8rem; color: var(--gold); font-weight: 700; letter-spacing: .08em; }
+  .who { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; }
+  .who span { font-weight: 700; font-size: .92rem; }
+  .btn { border: 0; border-radius: 4px; padding: 9px 16px; font-weight: 700; cursor: pointer; background: var(--gold); color: var(--dg); }
+  .btn.dark { background: var(--dg); color: #fff; }
+  .btn.light { background: #fff; color: var(--g); border: 1px solid var(--line); }
+  .btn:disabled { opacity: .55; cursor: not-allowed; }
+  .btn.logout { background: var(--gold); color: var(--dg); }
+  nav.tabs { background: #fff; border-bottom: 1px solid var(--line); display: flex; justify-content: center; gap: 4px; padding: 0 12px; flex-wrap: wrap; }
+  nav.tabs button { background: none; border: 0; padding: 14px 22px; font-weight: 700; cursor: pointer; color: #4b5b4b; border-bottom: 4px solid transparent; }
+  nav.tabs button.on { color: var(--g); border-bottom-color: var(--gold); }
+  main { max-width: 980px; margin: 0 auto; padding: 22px 16px 60px; }
+  .card { background: #fff; border: 1px solid var(--line); border-radius: 8px; padding: 18px; margin-bottom: 18px; }
+  .label { font-size: .7rem; text-transform: uppercase; letter-spacing: .04em; color: #5b6b5b; }
+  .value { font-weight: 700; font-size: .88rem; margin-top: 2px; }
+  .controls { display: flex; align-items: center; justify-content: center; gap: 12px; flex-wrap: wrap; }
+  select, input[type=password], input[type=text], input[type=date] { height: 42px; border: 1px solid var(--line); border-radius: 4px; padding: 0 12px; background: #fff; }
+  .actions { display: flex; justify-content: flex-end; gap: 10px; flex-wrap: wrap; margin-bottom: 16px; }
+  .info { display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 14px 18px; margin-bottom: 18px; }
+  .badge { display: inline-block; background: #e7f5ea; color: var(--ok); border: 1px solid #b7dfc0; border-radius: 999px; padding: 4px 12px; font-size: .8rem; font-weight: 700; }
+  table { width: 100%; border-collapse: collapse; font-size: .95rem; }
+  th, td { text-align: left; border-bottom: 1px solid #e1e9e1; padding: 9px 8px; }
+  th { background: #eef4ee; border-bottom: 2px solid var(--line); font-size: .85rem; text-transform: uppercase; }
+  td.c, th.c { text-align: center; }
+  .hint { color: #5b6b5b; font-size: .9rem; }
+  .msg { min-height: 1.3em; font-size: .92rem; margin: 10px 0 0; color: var(--bad); }
+  .msg.ok { color: var(--ok); }
+  /* Profile */
+  .profile { text-align: center; }
+  .photo { width: 160px; height: 160px; border-radius: 50%; object-fit: cover; background: #e6ece6; border: 4px solid var(--gold); display: block; margin: 0 auto 12px; }
+  .name { font-weight: 800; text-transform: uppercase; font-size: 1.15rem; margin: 6px 0 18px; }
+  .row { display: flex; justify-content: center; align-items: center; gap: 10px; flex-wrap: wrap; margin: 6px 0; }
+  .pw { max-width: 420px; margin: 0 auto; text-align: left; }
+  .pw label { display: block; margin: 12px 0 6px; font-weight: 700; font-size: .92rem; }
+  .pw input { width: 100%; }
+  .match { display: flex; align-items: center; gap: 8px; margin-top: 6px; font-size: .9rem; font-weight: 700; min-height: 1.3em; }
+  .match.ok { color: var(--ok); }
+  .match.bad { color: var(--bad); }
+  .pw .btn { width: 100%; margin-top: 16px; }
+  .overlay { position: fixed; inset: 0; background: rgba(0,0,0,.45); display: flex; align-items: center; justify-content: center; padding: 16px; z-index: 20; }
+  .overlay[hidden], [hidden] { display: none !important; }
+  .modal { background: #fff; width: 100%; max-width: 380px; border-radius: 8px; padding: 24px; position: relative; border-top: 6px solid var(--gold); text-align: left; }
+  .modal h2 { margin: 0 0 12px; font-size: 1.15rem; color: var(--g); }
+  .modal .x { position: absolute; top: 8px; right: 12px; background: none; border: 0; font-size: 1.5rem; cursor: pointer; color: #555; }
+  .modal input { width: 100%; margin-top: 8px; }
+  .modal .btn { width: 100%; margin-top: 14px; }
+  #printArea { display: none; }
+  @media print { body > *:not(#printArea) { display: none !important; } #printArea { display: block !important; padding: 24px; color: #000; } #printArea h2 { font-size: 16pt; margin: 0 0 4px; } #printArea h3 { font-size: 11pt; margin: 14px 0 6px; } #printArea table { width: 100%; border-collapse: collapse; font-size: 10pt; } #printArea th, #printArea td { border-bottom: 1px solid #999; padding: 4px 6px; text-align: left; } }
+</style>
+<link rel="stylesheet" href="/CUP-PORTAL/portal-controls.css">
+<script src="/CUP-PORTAL/portal-session.js" data-logout="/api/portal/logout" data-login="/CUP-PORTAL/student/login"></script>
+</head>
+<body>
+<header>
+  <div class="brand">
+    <img id="collegeLogo" src="/images/cup-logo-seal.png" alt="College logo">
+    <div>
+      <h1 id="collegeTitle">Student Portal</h1>
+      <small>STUDENT PORTAL</small>
+    </div>
+  </div>
+  <div class="who">
+    <span id="whoName"></span>
+    <button type="button" class="btn logout" id="logout">Log Out</button>
+  </div>
+</header>
+
+<nav class="tabs" role="tablist">
+  <button type="button" data-tab="enroll" role="tab">Enrollment</button>
+  <button type="button" data-tab="grades" role="tab" class="on">Grades</button>
+  <button type="button" data-tab="profile" role="tab">Profile</button>
+</nav>
+
+<main>
+  <!-- Enrollment: content comes later -->
+  <section id="tab-enroll" hidden>
+    <div class="card"><p class="hint">Enrollment details will appear here.</p></div>
+  </section>
+
+  <!-- Grades -->
+  <section id="tab-grades">
+    <div class="card">
+      <div class="controls">
+        <span class="label">View grades for:</span>
+        <select id="aySelect" aria-label="Academic year"></select>
+        <select id="semSelect" aria-label="Semester"></select>
+      </div>
+    </div>
+    <div class="actions">
+      <button type="button" class="btn dark" id="copyBtn">Copy of Grades (Selected Term)</button>
+      <button type="button" class="btn" id="reportBtn">Report of Grades (All Terms)</button>
+    </div>
+    <div class="card">
+      <div class="info">
+        <div><div class="label">Student name</div><div class="value" id="gName">—</div></div>
+        <div><div class="label">Program</div><div class="value" id="gProgram">—</div></div>
+        <div><div class="label">Student number</div><div class="value" id="gNo">—</div></div>
+        <div><div class="label">Term status</div><div id="gStatus"></div></div>
+        <div><div class="label">Year &amp; section</div><div class="value" id="gYear">—</div></div>
+        <div><div class="label">Academic term</div><div class="value" id="gTerm">—</div></div>
+      </div>
+      <div id="gradesTable"><p class="hint">Loading…</p></div>
+      <p class="hint" style="margin-top:12px">Only grades approved by the University Registrar are shown.</p>
+      <div id="gRetention" class="value" style="text-align:right;margin-top:14px"></div>
+    </div>
+  </section>
+
+  <!-- Profile -->
+  <section id="tab-profile" hidden>
+    <div class="card profile">
+      <img class="photo" id="photo" alt="Student photo">
+      <div class="row"><label class="btn light" for="photoInput" style="margin:0">Change photo</label></div>
+      <input type="file" id="photoInput" accept="image/png,image/jpeg" hidden>
+      <p class="hint" id="photoHint" style="margin:6px 0 0">You can change your photo once a month.</p>
+      <p class="msg" id="photoMsg"></p>
+
+      <h2 class="name" id="fullName">—</h2>
+
+      <div class="row">
+        <label class="label" for="bday">Birthday</label>
+        <input type="date" id="bday">
+        <button type="button" class="btn dark" id="bdaySave">Save birthday</button>
+      </div>
+      <p class="hint" id="bdayHint" style="margin:4px 0 0">You can edit your birthday only once.</p>
+      <p class="msg" id="bdayMsg"></p>
+    </div>
+
+    <div class="card">
+      <h3 style="text-align:center;margin:0 0 6px;color:var(--g)">Change Password</h3>
+      <form class="pw" id="pwForm" novalidate>
+        <label for="pwOld">Old Password</label>
+        <input type="password" id="pwOld" autocomplete="current-password">
+        <label for="pwNew">New Password</label>
+        <input type="password" id="pwNew" autocomplete="new-password">
+        <label for="pwConfirm">Confirm Password</label>
+        <input type="password" id="pwConfirm" autocomplete="new-password">
+        <div class="match" id="pwMatch" aria-live="polite"></div>
+        <button type="submit" class="btn dark" id="pwBtn">Change Password</button>
+        <p class="msg" id="pwMsg"></p>
+      </form>
+    </div>
+  </section>
+</main>
+
+<!-- Email verification before the password changes -->
+<div class="overlay" id="otpModal" hidden>
+  <div class="modal" role="dialog" aria-modal="true" aria-labelledby="otpTitle">
+    <button type="button" class="x" id="otpClose" aria-label="Close">&times;</button>
+    <h2 id="otpTitle">Verify your email</h2>
+    <div id="otpStep1">
+      <p class="hint" id="otpHint">We will send a 6-digit code to your registered email.</p>
+      <button type="button" class="btn dark" id="otpSend">Send code</button>
+    </div>
+    <div id="otpStep2" hidden>
+      <p class="hint">Enter the code sent to <span id="otpTo"></span>.</p>
+      <input type="text" id="otpCode" inputmode="numeric" maxlength="6" autocomplete="one-time-code" placeholder="6-digit code">
+      <button type="button" class="btn dark" id="otpVerify">Verify and change password</button>
+    </div>
+    <p class="msg" id="otpMsg"></p>
+  </div>
+</div>
+
+<div id="printArea"></div>
+
+<script>
+(function () {
+  var $ = function (id) { return document.getElementById(id); };
+  var esc = function (v) { return String(v == null ? '' : v).replace(/[&<>"']/g, function (c) { return { '&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;' }[c]; }); };
+  var PROG_ABBR = function (p) { var m = /\(([^)]+)\)\s*$/.exec(p || ''); return m ? m[1] : (p || ''); };
+  var profile = null, groups = [], pwFilled = { old: '', new: '' };
+
+  function api(path, opts) {
+    return fetch(path, Object.assign({ credentials: 'same-origin' }, opts || {})).then(function (r) {
+      return r.json().catch(function () { return {}; }).then(function (j) { return { ok: r.ok, status: r.status, j: j }; });
+    });
+  }
+  function post(path, body, method) {
+    return api(path, { method: method || 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(body || {}) });
+  }
+
+  /* Tabs */
+  document.querySelectorAll('nav.tabs button').forEach(function (b) {
+    b.addEventListener('click', function () { showTab(b.getAttribute('data-tab')); });
+  });
+  function showTab(id) {
+    ['enroll', 'grades', 'profile'].forEach(function (t) {
+      $('tab-' + t).hidden = t !== id;
+    });
+    document.querySelectorAll('nav.tabs button').forEach(function (b) {
+      b.classList.toggle('on', b.getAttribute('data-tab') === id);
+    });
+  }
+
+  /* Grades: academic year and semester dropdowns */
+  function termLabel(t) { return String(t || '').replace(/^1st\b/, 'First').replace(/^2nd\b/, 'Second'); }
+  function renderGrades() {
+    var ay = $('aySelect').value, sem = $('semSelect').value;
+    var g = groups.filter(function (x) { return x.ay === ay && x.term === sem; })[0];
+    if (!g) { $('gradesTable').innerHTML = '<p class="hint">No approved grades yet.</p>'; $('gTerm').textContent = '—'; return; }
+    $('gTerm').textContent = termLabel(g.term) + ', A.Y. ' + g.ay;
+    $('gradesTable').innerHTML = '<table><thead><tr>' +
+      '<th>Course code</th><th>Descriptive title</th><th class="c">Units</th><th class="c">Final grade</th><th class="c">Remarks</th>' +
+      '</tr></thead><tbody>' + g.items.map(function (x) {
+        return '<tr><td>' + esc(x.course_code) + '</td><td>' + esc(x.descriptive_title || '') +
+          '</td><td class="c">' + esc(x.units == null ? '' : Number(x.units)) + '</td><td class="c">' + esc(x.final_grade || '') +
+          '</td><td class="c">' + esc(x.remarks || '') + '</td></tr>';
+      }).join('') + '</tbody></table>';
+  }
+  function fillSemesters(ay) {
+    var sems = groups.filter(function (x) { return x.ay === ay; }).map(function (x) { return x.term; });
+    $('semSelect').innerHTML = sems.map(function (t) { return '<option value="' + esc(t) + '">' + esc(termLabel(t)) + '</option>'; }).join('');
+    if (sems.length) $('semSelect').value = sems[sems.length - 1];
+  }
+  function loadGrades() {
+    return api('/api/student/grades').then(function (res) {
+      var rows = (res.j && res.j.grades) || [];
+      var map = {};
+      rows.forEach(function (x) {
+        var key = x.academic_year + '|' + x.term;
+        (map[key] = map[key] || { ay: x.academic_year, term: x.term, items: [] }).items.push(x);
+      });
+      groups = Object.keys(map).sort().map(function (k) { return map[k]; });
+      var ayList = Array.from(new Set(groups.map(function (g) { return g.ay; })));
+      $('aySelect').innerHTML = ayList.map(function (a) { return '<option value="' + esc(a) + '">A.Y. ' + esc(a) + '</option>'; }).join('');
+      if (ayList.length) $('aySelect').value = ayList[ayList.length - 1];
+      fillSemesters($('aySelect').value);
+      renderGrades();
+    });
+  }
+  $('aySelect').addEventListener('change', function () { fillSemesters(this.value); renderGrades(); });
+  $('semSelect').addEventListener('change', renderGrades);
+
+  /* Printing: the original Report of Grades layout, grouped by term */
+  function printGroups(list, title) {
+    var who = profile ? fullName(profile) + ' · ' + profile.student_no : '';
+    var html = '<h2>' + esc(title) + '</h2><p>' + esc(who) + '</p>';
+    html += list.map(function (g) {
+      return '<h3>' + esc(termLabel(g.term)) + ' · A.Y. ' + esc(g.ay) + '</h3>' +
+        '<table><thead><tr><th>Course</th><th>Final grade</th></tr></thead><tbody>' +
+        g.items.map(function (x) { return '<tr><td>' + esc(x.course_code) + '</td><td>' + esc(x.final_grade || '') + '</td></tr>'; }).join('') +
+        '</tbody></table>';
+    }).join('');
+    $('printArea').innerHTML = html;
+    window.print();
+  }
+  $('copyBtn').addEventListener('click', function () {
+    var g = groups.filter(function (x) { return x.ay === $('aySelect').value && x.term === $('semSelect').value; });
+    if (g.length) printGroups(g, 'Copy of Grades');
+  });
+  $('reportBtn').addEventListener('click', function () { printGroups(groups, 'Report of Grades'); });
+
+  /* Student status (retention policy 4.17) */
+  function loadStatus() {
+    return api('/api/student/status').then(function (res) {
+      if (!res.ok) return;
+      var r = res.j;
+      var label = { 'REGULAR': 'Regular', 'WARNING': 'Warning', 'PROBATION': 'Probation', 'PERMANENT DISQUALIFICATION': 'Permanent Disqualification', 'IRREGULAR': 'Irregular' }[r.status] || r.status;
+      $('gRetention').innerHTML = 'Status: ' + esc(label);
+    });
+  }
+
+  /* Profile */
+  function fullName(p) {
+    return [p.first_name, p.middle_name, p.last_name].filter(Boolean).join(' ');
+  }
+  function renderProfile() {
+    var p = profile;
+    $('whoName').textContent = fullName(p);
+    $('collegeTitle').textContent = String(p.college_name || '').toUpperCase();
+    if (p.college_logo) $('collegeLogo').src = p.college_logo;
+    $('gName').textContent = fullName(p).toUpperCase();
+    $('gNo').textContent = p.student_no;
+    $('gProgram').textContent = p.program || '';
+    $('gYear').textContent = PROG_ABBR(p.program) + '-' + p.year_level + (p.section || '');
+    $('gStatus').innerHTML = p.status === 'enrolled' ? '<span class="badge">OFFICIALLY ENROLLED</span>' : '<span class="hint">' + esc(p.status || '') + '</span>';
+    $('photo').src = p.photo || '/images/student-default-photo.webp';
+    var next = p.photo_next_change ? new Date(p.photo_next_change) : null;
+    var locked = !!next && next > new Date();
+    $('photoInput').disabled = locked;
+    $('photoHint').textContent = locked ? 'You can change your photo again on ' + next.toISOString().slice(0, 10) + '.' : 'You can change your photo once a month.';
+    $('fullName').textContent = fullName(p).toUpperCase();
+    $('bday').value = p.birthday ? String(p.birthday).slice(0, 10) : '';
+    $('bday').disabled = !!p.birthday_changed;
+    $('bdaySave').disabled = !!p.birthday_changed;
+    $('bdayHint').textContent = p.birthday_changed ? 'Your birthday has been saved. It can no longer be edited here.' : 'You can edit your birthday only once.';
+  }
+  function loadProfile() {
+    return api('/api/student/profile').then(function (res) {
+      if (!res.ok) { window.location.href = '/CUP-PORTAL/student/login'; return; }
+      profile = res.j;
+      renderProfile();
+    });
+  }
+
+  $('photoInput').addEventListener('change', function (e) {
+    var f = e.target.files && e.target.files[0];
+    $('photoMsg').textContent = '';
+    if (!f) return;
+    if (f.size > 2 * 1024 * 1024) { $('photoMsg').textContent = 'Choose an image up to 2 MB.'; e.target.value = ''; return; }
+    var reader = new FileReader();
+    reader.onload = function () {
+      post('/api/student/photo', { photo: reader.result }).then(function (res) {
+        if (!res.ok) { $('photoMsg').textContent = res.j.error || 'Could not save the photo.'; return; }
+        profile.photo = reader.result; $('photo').src = reader.result;
+        profile.photo_next_change = new Date(Date.now() + 30 * 86400000).toISOString();
+        renderProfile();
+        $('photoMsg').className = 'msg ok'; $('photoMsg').textContent = 'Photo saved.';
+      });
+    };
+    reader.readAsDataURL(f);
+    e.target.value = '';
+  });
+
+  $('bdaySave').addEventListener('click', function () {
+    var v = $('bday').value;
+    $('bdayMsg').className = 'msg';
+    if (!v) { $('bdayMsg').textContent = 'Enter your birthday.'; return; }
+    if (!confirm('You can only edit your birthday once. Save ' + v + '?')) return;
+    post('/api/student/birthday', { birthday: v }, 'PUT').then(function (res) {
+      if (!res.ok) { $('bdayMsg').textContent = res.j.error || 'Could not save the birthday.'; return; }
+      profile.birthday = v; profile.birthday_changed = true; renderProfile();
+      $('bdayMsg').className = 'msg ok'; $('bdayMsg').textContent = 'Birthday saved.';
+    });
+  });
+
+  /* Password: match indicator */
+  function updateMatch() {
+    var n = $('pwNew').value, c = $('pwConfirm').value, m = $('pwMatch');
+    if (!c) { m.className = 'match'; m.textContent = ''; return; }
+    if (n === c) { m.className = 'match ok'; m.textContent = '✓ Passwords match'; }
+    else { m.className = 'match bad'; m.textContent = '✗ Passwords do not match'; }
+  }
+  $('pwNew').addEventListener('input', updateMatch);
+  $('pwConfirm').addEventListener('input', updateMatch);
+
+  /* Change password: requires an emailed code first */
+  var otpOpen = false;
+  $('pwForm').addEventListener('submit', function (e) {
+    e.preventDefault();
+    var msg = $('pwMsg');
+    msg.className = 'msg';
+    var o = $('pwOld').value, n = $('pwNew').value, c = $('pwConfirm').value;
+    if (!o) { msg.textContent = 'Enter your old password.'; return; }
+    if (n.length < 8) { msg.textContent = 'The new password must be at least 8 characters.'; return; }
+    if (n !== c) { msg.textContent = 'The passwords do not match.'; return; }
+    pwFilled = { old: o, new: n };
+    openOtp();
+  });
+
+  function openOtp() {
+    $('otpStep1').hidden = false; $('otpStep2').hidden = true;
+    $('otpCode').value = ''; $('otpMsg').textContent = '';
+    $('otpMsg').className = 'msg';
+    $('otpHint').textContent = 'We will send a 6-digit code to your registered email.';
+    $('otpModal').hidden = false;
+  }
+  function closeOtp() { $('otpModal').hidden = true; }
+  $('otpClose').addEventListener('click', closeOtp);
+  $('otpModal').addEventListener('click', function (e) { if (e.target === $('otpModal')) closeOtp(); });
+
+  $('otpSend').addEventListener('click', function () {
+    $('otpMsg').textContent = ''; $('otpSend').disabled = true;
+    post('/api/student/password/otp', {}).then(function (res) {
+      $('otpSend').disabled = false;
+      if (!res.ok) { $('otpMsg').textContent = res.j.error || 'Could not send the code.'; return; }
+      $('otpTo').textContent = res.j.email_hint || 'your registered email';
+      $('otpStep1').hidden = true; $('otpStep2').hidden = false;
+      $('otpCode').focus();
+    });
+  });
+
+  $('otpVerify').addEventListener('click', function () {
+    var code = $('otpCode').value.trim();
+    $('otpMsg').className = 'msg';
+    if (!/^\d{6}$/.test(code)) { $('otpMsg').textContent = 'Enter the 6-digit code.'; return; }
+    $('otpVerify').disabled = true;
+    post('/api/student/password/change', { current: pwFilled.old, new: pwFilled.new, otp: code }).then(function (res) {
+      $('otpVerify').disabled = false;
+      if (!res.ok) { $('otpMsg').textContent = res.j.error || 'Could not change the password.'; return; }
+      closeOtp();
+      $('pwOld').value = ''; $('pwNew').value = ''; $('pwConfirm').value = ''; updateMatch();
+      $('pwMsg').className = 'msg ok'; $('pwMsg').textContent = 'Your password has been changed.';
+      pwFilled = { old: '', new: '' };
+    });
+  });
+
+  /* Log out */
+  $('logout').addEventListener('click', function () {
+    fetch('/api/portal/logout', { method: 'POST', credentials: 'same-origin' }).finally(function () { window.location.href = '/CUP-PORTAL/student/login'; });
+  });
+
+  /* Start: must be a signed-in student who has finished the first-login change */
+  api('/api/portal/me').then(function (res) {
+    if (!res.ok) { window.location.href = '/CUP-PORTAL/student/login'; return null; }
+    if (res.j.must_change) { window.location.href = '/CUP-PORTAL/change-password'; return null; }
+    if (res.j.role !== 'student') { window.location.href = '/CUP-PORTAL/student/login'; return null; }
+    return Promise.all([loadProfile(), loadGrades(), loadStatus()]);
+  }).catch(function () { $('gradesTable').innerHTML = '<p class="hint">Could not load your portal. Please refresh.</p>'; });
+})();
+</script>
+</body>
+</html>

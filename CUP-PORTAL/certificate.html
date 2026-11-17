@@ -1,0 +1,92 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>CUP Certificate of Grades</title>
+<link rel="icon" href="/images/favicon-cup.png">
+<style>
+  body { margin: 0; font-family: Georgia, 'Times New Roman', serif; color: #111; background: #f4f4f4; }
+  .toolbar { display: flex; justify-content: space-between; align-items: center; gap: 8px; padding: 10px 16px; background: #0f5a12; color: #fff; font-family: Arial, sans-serif; flex-wrap: wrap; }
+  .toolbar button { background: #f2c200; color: #0a3a0a; border: 0; padding: 8px 14px; font-weight: 700; cursor: pointer; }
+  .page { background: #fff; max-width: 780px; margin: 20px auto; padding: 36px 44px; box-sizing: border-box; page-break-after: always; }
+  .head { display: grid; grid-template-columns: 80px 1fr 80px; align-items: center; text-align: center; border-bottom: 3px double #0f5a12; padding-bottom: 10px; }
+  .head img { height: 76px; }
+  .head h1 { font-size: 1.25rem; margin: 4px 0 0; color: #0f5a12; letter-spacing: .04em; }
+  .head p { margin: 2px 0; font-size: .85rem; }
+  h2 { text-align: center; font-size: 1.05rem; letter-spacing: .08em; margin: 16px 0 10px; }
+  .info { display: grid; grid-template-columns: 1fr 1fr; gap: 5px 24px; font-size: .93rem; margin-bottom: 12px; }
+  table { width: 100%; border-collapse: collapse; font-size: .93rem; }
+  th, td { border-bottom: 1px solid #999; padding: 5px 6px; text-align: left; }
+  th { border-bottom: 2px solid #333; }
+  td.n, th.n { text-align: center; }
+  .sum { margin-top: 8px; font-size: .95rem; display: flex; justify-content: space-between; flex-wrap: wrap; gap: 6px; }
+  .foot { display: grid; grid-template-columns: 1fr auto; gap: 16px; align-items: end; margin-top: 36px; }
+  .code { font-family: 'Courier New', monospace; font-size: .85rem; }
+  .qr img, .qr canvas { width: 110px; height: 110px; }
+  .sig { margin-top: 40px; display: flex; justify-content: flex-end; }
+  .sig div { text-align: center; width: 240px; font-size: .9rem; }
+  .sig .line { border-top: 1px solid #000; padding-top: 4px; }
+  .note { font-size: .78rem; color: #444; margin-top: 10px; }
+  .msg { padding: 30px; font-family: Arial, sans-serif; }
+  @media print { .toolbar { display: none; } body { background: #fff; } .page { margin: 0; box-shadow: none; max-width: none; } }
+</style>
+<link rel="stylesheet" href="/CUP-PORTAL/portal-controls.css">
+</head>
+<body>
+<div class="toolbar">
+  <span id="title">Certificate of Grades</span>
+  <span><select id="term" hidden></select> <button type="button" id="print">Print</button></span>
+</div>
+<div id="root"><p class="msg">Loading…</p></div>
+<script>
+(function () {
+  var esc = function (v) { return String(v == null ? '' : v).replace(/[&<>"']/g, function (c) { return { '&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;' }[c]; }); };
+  var q = new URLSearchParams(window.location.search);
+  var no = q.get('student_no') || '';
+  var root = document.getElementById('root');
+  var data = null;
+  document.getElementById('print').addEventListener('click', function () { window.print(); });
+
+  function render(ay, term) {
+    var t = data.terms.find(function (x) { return x.academic_year === ay && x.term === term; });
+    if (!t) { root.innerHTML = '<p class="msg">No approved grades for this term.</p>'; return; }
+    var s = data.student;
+    var name = [s.first_name, s.middle_name, s.last_name].filter(Boolean).join(' ');
+    var termLabel = t.term === '1st' || t.term === '1' ? '1st Term' : (t.term === '2nd' || t.term === '2' ? '2nd Term' : t.term);
+    root.innerHTML = '<div class="page">' +
+      '<div class="head"><img src="/images/cup-logo.png" alt="CUP seal"><div><h1>CITY UNIVERSITY OF PASAY</h1><p>Pasadeña St., FB Harrison, Pasay City, Metro Manila, Philippines 1300</p></div><img src="/images/pasay-city-logo.png" alt="Pasay City seal"></div>' +
+      '<h2>CERTIFICATE OF GRADES</h2>' +
+      '<div class="info"><div><b>Student No.:</b> ' + esc(s.student_no) + '</div><div><b>College:</b> ' + esc(s.college) + '</div>' +
+      '<div><b>Name:</b> ' + esc(name) + '</div><div><b>Program:</b> ' + esc(s.program) + '</div>' +
+      '<div><b>Year level / Section:</b> ' + esc(s.year_level) + ' / ' + esc(s.section) + '</div>' +
+      '<div><b>A.Y. / Term:</b> ' + esc(t.academic_year) + ' · ' + esc(termLabel) + '</div></div>' +
+      '<table><thead><tr><th>Subject code</th><th>Descriptive title</th><th class="n">Units</th><th class="n">Final grade</th><th class="n">Remarks</th></tr></thead><tbody>' +
+      t.rows.map(function (r) {
+        return '<tr><td>' + esc(r.course_code) + '</td><td>' + esc(r.descriptive_title) + '</td><td class="n">' + esc(r.units) + '</td><td class="n">' + esc(r.final_grade) + '</td><td class="n">' + esc(r.remarks) + '</td></tr>';
+      }).join('') + '</tbody></table>' +
+      '<div class="sum"><span><b>Total units:</b> ' + esc(t.units_total) + '</span><span><b>General weighted average:</b> ' + esc(t.gwa || '—') + '</span></div>' +
+      '<div class="foot"><div class="code"><div><b>Verification code:</b> ' + esc(t.code) + '</div><div>Verify at: ' + esc(location.host + '/verify-document') + '</div><div>Date issued: ' + esc(data.issued) + '</div></div></div>' +
+      '<div class="sig"><div><div class="line">University Registrar</div></div></div>' +
+      '<p class="note">Issued from approved grade records only. Any change to the printed grades invalidates this certificate.</p>' +
+      '</div>';
+  }
+
+  fetch('/api/portal/certificate' + (no ? '?student_no=' + encodeURIComponent(no) : ''), { credentials: 'same-origin' })
+    .then(function (r) { return r.json().catch(function () { return {}; }).then(function (j) { return { ok: r.ok, j: j }; }); })
+    .then(function (res) {
+      if (!res.ok) { root.innerHTML = '<p class="msg">' + esc(res.j.error || 'Could not load the certificate.') + '</p>'; return; }
+      data = res.j;
+      if (!data.terms.length) { root.innerHTML = '<p class="msg">No approved grades on record yet.</p>'; return; }
+      var sel = document.getElementById('term');
+      sel.hidden = false;
+      sel.innerHTML = data.terms.map(function (t, i) { return '<option value="' + i + '">A.Y. ' + esc(t.academic_year) + ' · ' + esc(t.term) + '</option>'; }).join('');
+      sel.addEventListener('change', function () { var t = data.terms[sel.value]; render(t.academic_year, t.term); });
+      var t = data.terms[0];
+      render(t.academic_year, t.term);
+    }).catch(function () { root.innerHTML = '<p class="msg">Could not load the certificate.</p>'; });
+})();
+</script>
+<script src="/CUP-PORTAL/portal-search.js"></script>
+</body>
+</html>

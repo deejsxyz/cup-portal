@@ -1,0 +1,70 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>CUP Portal - Change Temporary Password</title>
+<link rel="icon" href="/images/favicon-cup.png">
+<style>
+  :root { --g:#0f5a12; --gold:#f2c200; --dg:#0a3a0a; --ink:#1f2a1f; --line:#7fa37f; --bg:#eef3ee; }
+  * { box-sizing: border-box; }
+  body { margin: 0; background: var(--bg); color: var(--ink); font-family: Arial, Helvetica, sans-serif; }
+  header { background: var(--g); color: #fff; padding: 12px max(16px, env(safe-area-inset-left, 0px)); }
+  header h1 { font-size: 1.1rem; margin: 0; letter-spacing: .04em; }
+  main { max-width: 460px; margin: 24px auto; padding: 0 max(16px, env(safe-area-inset-left, 0px)); }
+  .card { background: #fff; border: 1px solid var(--line); padding: 20px; }
+  label { display: block; margin: 12px 0 6px; font-size: .95rem; }
+  input { width: 100%; padding: 9px; font-size: 1rem; border: 1px solid var(--line); }
+  button, .btn { display: block; margin-top: 18px; width: 100%; background: var(--gold); color: var(--dg); border: 0; padding: 11px; font-weight: 700; font-size: 1rem; cursor: pointer; text-align: center; text-decoration: none; box-sizing: border-box; }
+  button:disabled { opacity: .6; cursor: default; }
+  .msg { margin-top: 12px; color: #a11; font-weight: 700; min-height: 1.2em; }
+  .ok { color: #0b4a0b; }
+  .notice { background: #fff8d6; border: 1px solid #e6c200; padding: 10px; margin-bottom: 12px; font-size: .95rem; }
+</style>
+</head>
+<body>
+<header><h1>CUP PORTAL · CHANGE TEMPORARY PASSWORD</h1></header>
+<main>
+  <div class="card">
+    <p class="notice" id="intro">Enter the temporary password from your welcome email, then choose a new password. You will then be able to sign in.</p>
+    <form id="fl-form" novalidate>
+      <label for="cur">Temporary password (from your email)</label>
+      <input id="cur" type="password" autocomplete="off" required>
+      <label for="new">New password (8 characters or more)</label>
+      <input id="new" type="password" autocomplete="new-password" required>
+      <label for="conf">Confirm new password</label>
+      <input id="conf" type="password" autocomplete="new-password" required>
+      <button type="submit" id="go">Change password</button>
+      <p class="msg" id="msg" role="status"></p>
+    </form>
+    <a class="btn" id="login" hidden href="#">Go to login</a>
+  </div>
+</main>
+<script>
+(function () {
+  var $ = function (id) { return document.getElementById(id); };
+  var token = new URLSearchParams(window.location.search).get('token') || '';
+  if (!token) { $('msg').textContent = 'This link is not valid. Ask the University Registrar to send your account email again.'; $('go').disabled = true; return; }
+  $('fl-form').addEventListener('submit', function (e) {
+    e.preventDefault();
+    $('msg').textContent = '';
+    var cur = $('cur').value, nw = $('new').value, conf = $('conf').value;
+    if (!cur || !nw || !conf) { $('msg').textContent = 'Fill in all fields.'; return; }
+    if (nw.length < 8) { $('msg').textContent = 'The new password must be at least 8 characters.'; return; }
+    if (nw !== conf) { $('msg').textContent = 'New password and confirmation do not match.'; return; }
+    $('go').disabled = true;
+    fetch('/api/staff/first-login', {
+      method: 'POST', credentials: 'same-origin', headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ token: token, current: cur, new: nw })
+    }).then(function (r) { return r.json().catch(function () { return {}; }).then(function (j) { return { ok: r.ok, j: j }; }); })
+      .then(function (res) {
+        if (!res.ok) { $('go').disabled = false; $('msg').textContent = res.j.error || 'Could not change the password.'; return; }
+        $('fl-form').hidden = true; $('intro').textContent = 'Your password has been changed. You can now sign in with your new password.';
+        $('intro').className = 'notice';
+        var a = $('login'); a.href = res.j.login || '/CUP-PORTAL/registrar/'; a.hidden = false;
+      }).catch(function () { $('go').disabled = false; $('msg').textContent = 'Could not change the password. Try again.'; });
+  });
+})();
+</script>
+</body>
+</html>

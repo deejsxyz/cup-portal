@@ -1,0 +1,214 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>CUP Central Portal</title>
+<link rel="icon" href="/images/favicon-cup.png">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Libre+Franklin:wght@400;600;700;800&display=swap">
+<style>
+  :root { --green: #106010; --gold: #f2c200; --ink: #222; --line: #c9ccd1; }
+  html, body { margin: 0; background: #f4f6f4; color: var(--ink); }
+  body { font-family: 'Libre Franklin', Arial, Helvetica, sans-serif; min-height: 100vh; min-height: 100dvh; display: flex; align-items: center; justify-content: center; padding: 24px 16px; box-sizing: border-box; }
+  .card { background: #fff; width: 100%; max-width: 400px; border-radius: 8px; box-shadow: 0 2px 12px rgba(0,0,0,.08); padding: 28px 24px; box-sizing: border-box; text-align: center; }
+  .card img { width: 96px; height: auto; }
+  a.logo { display: inline-block; }
+  h1 { font-size: 1.25rem; margin: 12px 0 4px; color: var(--green); }
+  label { display: block; text-align: left; font-size: .95rem; margin: 12px 0 6px; }
+  input { width: 100%; box-sizing: border-box; height: 42px; border: 1px solid var(--line); border-radius: 4px; padding: 0 12px; font: inherit; font-size: 1rem; }
+  .btn { width: 100%; height: 44px; margin-top: 18px; border: 0; border-radius: 4px; background: var(--green); color: #fff; font: inherit; font-size: 1rem; cursor: pointer; }
+  .btn:disabled { opacity: .6; }
+  .msg { min-height: 1.3em; font-size: .92rem; margin: 12px 0 0; color: #b42318; }
+  .links { margin-top: 16px; font-size: .92rem; }
+  .links button { background: none; border: 0; padding: 0; font: inherit; color: #1a73e8; cursor: pointer; text-decoration: underline; }
+  .note { background: #dbeaf7; color: #1e3a5f; border-radius: 4px; padding: 12px 14px; font-size: .92rem; margin-bottom: 8px; text-align: left; }
+  /* Forgot password popup */
+  .overlay { position: fixed; inset: 0; background: rgba(0,0,0,.45); display: flex; align-items: center; justify-content: center; padding: 16px; box-sizing: border-box; z-index: 10; }
+  .modal { background: #fff; width: 100%; max-width: 380px; border-radius: 8px; padding: 24px; box-sizing: border-box; position: relative; text-align: left; }
+  .modal h2 { font-size: 1.2rem; margin: 0 0 14px; color: var(--green); }
+  .modal .x { position: absolute; top: 8px; right: 12px; background: none; border: 0; font-size: 1.5rem; cursor: pointer; color: #555; }
+  .modal .msg { text-align: left; }
+  .modal .ok { color: var(--green); }
+  [hidden] { display: none !important; }
+</style>
+<link rel="stylesheet" href="/CUP-PORTAL/portal-controls.css">
+</head>
+<body>
+  <main class="card">
+    <a class="logo" href="/CUP-PORTAL/" aria-label="Back to the CUP Central Portal"><img src="/images/cup-logo-seal.png" alt="City University of Pasay seal"></a>
+    <h1>STUDENT PORTAL</h1>
+    <form id="login" novalidate>
+      <label for="email">Student number</label>
+      <input id="email" type="text" inputmode="text" autocomplete="username" placeholder="Student number">
+      <label for="password">Password</label>
+      <input id="password" type="password" autocomplete="current-password">
+      <button class="btn" type="submit" id="go">Log in</button>
+      <p class="msg" id="msg" role="status"></p>
+    </form>
+    <div class="links">
+      <button type="button" id="forgot-open">Forgot Password</button>
+    </div>
+  </main>
+
+  <!-- Forgot password popup -->
+  <div class="overlay" id="forgot-overlay" hidden>
+    <div class="modal" role="dialog" aria-modal="true" aria-labelledby="forgot-title">
+      <button class="x" type="button" id="forgot-close" aria-label="Close">&times;</button>
+      <h2 id="forgot-title">Forgot Password</h2>
+
+      <!-- Step 1: email -->
+      <form id="step-email" novalidate>
+        <label for="f-email">Email</label>
+        <input id="f-email" type="email" autocomplete="email" pattern="[A-Za-z0-9._%+\-]+@[A-Za-z0-9\-]+(\.[A-Za-z0-9\-]+)*\.[A-Za-z]{2,}" maxlength="254" title="Enter a valid email address, for example name@example.com">
+        <p class="msg" id="f-email-msg" role="status"></p>
+        <button class="btn" type="submit" id="f-send">Send OTP</button>
+      </form>
+
+      <!-- Step 2: OTP -->
+      <form id="step-otp" novalidate hidden>
+        <div class="note">We've sent a verification code to your registered email.</div>
+        <label for="f-otp">OTP</label>
+        <input id="f-otp" type="text" inputmode="numeric" maxlength="6" autocomplete="one-time-code" placeholder="6-digit code">
+        <p class="msg" id="f-otp-msg" role="status"></p>
+        <button class="btn" type="submit" id="f-verify">Verify OTP</button>
+      </form>
+
+      <!-- Step 3: new password -->
+      <form id="step-pass" novalidate hidden>
+        <label for="f-pass">New Password</label>
+        <input id="f-pass" type="password" autocomplete="new-password">
+        <label for="f-confirm">Confirm Password</label>
+        <input id="f-confirm" type="password" autocomplete="new-password">
+        <p class="msg" id="f-pass-msg" role="status"></p>
+        <button class="btn" type="submit" id="f-change">Change Password</button>
+      </form>
+    </div>
+  </div>
+
+<script>
+  (function () {
+    var form = document.getElementById('login'), msg = document.getElementById('msg'), btn = document.getElementById('go');
+    form.addEventListener('submit', function (e) {
+      e.preventDefault();
+      msg.textContent = '';
+      var email = document.getElementById('email').value.trim();
+      var password = document.getElementById('password').value;
+      if (!email || !password) { msg.textContent = 'Enter your username and password.'; return; }
+      btn.disabled = true;
+      fetch('/api/portal/login', {
+        method: 'POST', credentials: 'same-origin',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ username: email, password: password, portal: 'student' })
+      }).then(function (r) { return r.json().catch(function () { return {}; }).then(function (j) { return { ok: r.ok, data: j }; }); })
+        .then(function (res) {
+          if (!res.ok) { btn.disabled = false; msg.textContent = res.data.error || 'Could not log in.'; return; }
+          try { sessionStorage.setItem("cupPortalTab", "1"); } catch (e) {}
+        window.location.href = res.data.must_change ? '/CUP-PORTAL/change-password' : '/CUP-PORTAL/student/grades';
+        }).catch(function () { btn.disabled = false; msg.textContent = 'Could not log in. Please try again.'; });
+    });
+  })();
+</script>
+
+<script>
+  // Forgot password popup: email -> OTP -> verify -> new password.
+  (function () {
+    var $ = function (id) { return document.getElementById(id); };
+    var overlay = $('forgot-overlay');
+    var stepEmail = $('step-email'), stepOtp = $('step-otp'), stepPass = $('step-pass');
+    var fEmail = $('f-email'), fOtp = $('f-otp'), fPass = $('f-pass'), fConfirm = $('f-confirm');
+    var emailMsg = $('f-email-msg'), otpMsg = $('f-otp-msg'), passMsg = $('f-pass-msg');
+    var sendBtn = $('f-send'), verifyBtn = $('f-verify'), changeBtn = $('f-change');
+    var email = '';
+    var NOT_REGISTERED = 'User not registered. Contact the Registrar’s Office.';
+
+    function post(url, body) {
+      return fetch(url, {
+        method: 'POST', credentials: 'same-origin',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(body)
+      }).then(function (r) { return r.json().catch(function () { return {}; }).then(function (d) { return { status: r.status, ok: r.ok, data: d }; }); });
+    }
+    function show(el, text) { el.textContent = text; }
+    function showStep(step) {
+      stepEmail.hidden = step !== 'email';
+      stepOtp.hidden = step !== 'otp';
+      stepPass.hidden = step !== 'pass';
+    }
+    function open() {
+      email = '';
+      fEmail.value = ''; fOtp.value = ''; fPass.value = ''; fConfirm.value = '';
+      show(emailMsg, ''); show(otpMsg, ''); show(passMsg, '');
+      showStep('email');
+      overlay.hidden = false;
+      fEmail.focus();
+    }
+    function close() { overlay.hidden = true; }
+
+    $('forgot-open').addEventListener('click', open);
+    $('forgot-close').addEventListener('click', close);
+    overlay.addEventListener('click', function (e) { if (e.target === overlay) close(); });
+
+    // Step 1: send OTP only to a registered email
+    stepEmail.addEventListener('submit', function (e) {
+      e.preventDefault();
+      show(emailMsg, '');
+      email = fEmail.value.trim().toLowerCase();
+      if (!email) { show(emailMsg, 'Please enter your email address.'); return; }
+      sendBtn.disabled = true;
+      post('/api/cat/reset/request', { email: email }).then(function (res) {
+        sendBtn.disabled = false;
+        if (res.status === 404) { show(emailMsg, NOT_REGISTERED); return; }
+        if (!res.ok) { show(emailMsg, res.data.error || 'Could not send the OTP. Please try again.'); return; }
+        showStep('otp');
+        fOtp.focus();
+      }).catch(function () {
+        sendBtn.disabled = false;
+        show(emailMsg, 'Could not send the OTP. Please try again.');
+      });
+    });
+
+    // Step 2: verify the OTP
+    stepOtp.addEventListener('submit', function (e) {
+      e.preventDefault();
+      show(otpMsg, '');
+      var otp = fOtp.value.trim();
+      if (!/^\d{6}$/.test(otp)) { show(otpMsg, 'Enter the 6-digit OTP.'); return; }
+      verifyBtn.disabled = true;
+      post('/api/cat/reset/verify', { email: email, otp: otp }).then(function (res) {
+        verifyBtn.disabled = false;
+        if (!res.ok) { show(otpMsg, res.data.error || 'The OTP is incorrect.'); return; }
+        showStep('pass');
+        fPass.focus();
+      }).catch(function () {
+        verifyBtn.disabled = false;
+        show(otpMsg, 'Could not verify the OTP. Please try again.');
+      });
+    });
+
+    // Step 3: new password
+    stepPass.addEventListener('submit', function (e) {
+      e.preventDefault();
+      show(passMsg, '');
+      var pass = fPass.value;
+      if (pass.length < 8) { show(passMsg, 'Password must be at least 8 characters.'); return; }
+      if (pass !== fConfirm.value) { show(passMsg, 'The passwords do not match.'); return; }
+      changeBtn.disabled = true;
+      post('/api/cat/reset/confirm', { email: email, password: pass }).then(function (res) {
+        changeBtn.disabled = false;
+        if (!res.ok) { show(passMsg, res.data.error || 'Could not change the password.'); return; }
+        close();
+        show(document.getElementById('msg'), '');
+        var ok = document.getElementById('msg');
+        ok.classList.add('ok');
+        ok.textContent = 'Your password has been changed. You can log in now.';
+      }).catch(function () {
+        changeBtn.disabled = false;
+        show(passMsg, 'Could not change the password. Please try again.');
+      });
+    });
+  })();
+</script>
+</body>
+</html>

@@ -1,0 +1,1110 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>CONM | Student</title>
+<link rel="icon" href="/images/favicon-cup.png">
+<script src="https://cdn.tailwindcss.com"></script>
+<style>
+  [hidden] { display: none !important; }
+  body { background: #f8fafc; font-family: 'Libre Franklin', system-ui, sans-serif; }
+  input[type=checkbox], input[type=radio] { width: 1rem; height: 1rem; margin: 0; vertical-align: middle; }
+  input[type=date] { -webkit-appearance: none; appearance: none; }
+</style>
+<link rel="stylesheet" href="/CUP-PORTAL/portal-controls.css">
+</head>
+<body class="min-h-screen p-3 md:p-4 text-slate-800">
+<div id="stu-app" class="space-y-4">
+
+  <!-- Four sub-tabs (same as CONM portal) -->
+  <div class="flex flex-wrap items-center justify-between gap-3">
+    <div role="tablist" aria-label="Student tools" class="inline-flex p-1 bg-slate-200 rounded-xl gap-1">
+      <button type="button" role="tab" data-tab="view" aria-selected="true" class="sub-tab-btn px-4 py-2 rounded-lg text-xs font-bold transition-colors cursor-pointer bg-white text-indigo-900 shadow border border-indigo-400">👁️ View Student</button>
+      <button type="button" role="tab" data-tab="new" aria-selected="false" class="sub-tab-btn px-4 py-2 rounded-lg text-xs font-bold transition-colors cursor-pointer text-slate-600 hover:text-slate-900">➕ New Student</button>
+      <button type="button" role="tab" data-tab="existing" aria-selected="false" class="sub-tab-btn px-4 py-2 rounded-lg text-xs font-bold transition-colors cursor-pointer text-slate-600 hover:text-slate-900">✏️ Existing Student</button>
+      <button type="button" role="tab" data-tab="grades" aria-selected="false" class="sub-tab-btn px-4 py-2 rounded-lg text-xs font-bold transition-colors cursor-pointer text-slate-600 hover:text-slate-900">📝 Manage Grade</button>
+    </div>
+  </div>
+
+  <!-- VIEW STUDENT -->
+  <div id="viewStudentSection" data-sec="view" class="bg-white rounded-xl shadow-sm border border-slate-200 p-5 space-y-4">
+    <div id="viewListView" class="space-y-4">
+      <div class="flex flex-col lg:flex-row lg:items-center justify-between gap-3">
+        <h3 class="text-sm font-bold uppercase tracking-wider text-emerald-900">View Students</h3>
+        <div class="flex flex-wrap gap-2">
+          <input id="viewStudentSearch" type="text" autocomplete="off" placeholder="Search student number or name" class="w-full sm:w-64 px-3 py-2 rounded-lg border border-slate-300 text-xs">
+          <button type="button" id="viewAllBtn" class="px-4 py-2 rounded-lg bg-indigo-600 hover:bg-indigo-700 text-white text-xs font-bold shadow-sm">View All Students</button>
+          <button type="button" id="viewPrintListBtn" class="px-4 py-2 rounded-lg bg-slate-700 hover:bg-slate-800 text-white text-xs font-bold shadow-sm">🖨️ Print Student List</button>
+          <select id="viewYearFilter" class="bg-white px-3 py-2 rounded-lg border border-slate-300 text-xs font-bold"><option value="">All Year Levels</option><option value="1">BSN1</option><option value="2">BSN2</option><option value="3">BSN3</option><option value="4">BSN4</option></select>
+          <select id="viewSecFilter" class="bg-white px-3 py-2 rounded-lg border border-slate-300 text-xs font-bold">
+            <option value="">All Sections</option>
+            <option value="A">Section A</option><option value="B">Section B</option><option value="C">Section C</option>
+          </select>
+        </div>
+      </div>
+      <div class="overflow-x-auto rounded-lg border border-slate-200">
+        <table class="w-full text-xs">
+          <thead class="bg-slate-100 text-[10px] uppercase text-slate-600">
+            <tr>
+              <th class="text-left px-4 py-2">Student ID</th>
+              <th class="text-left px-4 py-2">Last Name</th>
+              <th class="text-left px-4 py-2">First Name</th>
+              <th class="text-left px-4 py-2">Middle Name</th>
+              <th class="text-left px-4 py-2">Year Level</th>
+              <th class="text-left px-4 py-2">Section</th>
+              <th class="text-left px-4 py-2">Contact Number</th>
+            </tr>
+          </thead>
+          <tbody id="viewStudentTbody"></tbody>
+        </table>
+      </div>
+      <div class="flex items-center justify-between gap-3 text-xs">
+        <span id="viewPageInfo" class="text-slate-600"></span>
+        <div class="flex gap-2">
+          <button type="button" id="viewPrevBtn" class="px-3 py-1.5 rounded-lg bg-slate-200 hover:bg-slate-300 font-bold disabled:opacity-40">◀ Prev</button>
+          <button type="button" id="viewNextBtn" class="px-3 py-1.5 rounded-lg bg-slate-200 hover:bg-slate-300 font-bold disabled:opacity-40">Next ▶</button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- EXISTING STUDENT -->
+  <div id="studentManageSection" data-sec="existing" hidden class="space-y-4">
+    <div class="bg-white p-5 rounded-xl shadow-sm border border-slate-200">
+      <label class="block text-[10px] font-bold uppercase text-slate-500 mb-1" for="studentSearchInput">Search Student by ID Number:</label>
+      <input type="text" id="studentSearchInput" inputmode="numeric" maxlength="17" placeholder="xxxx-x-xxxxxxx-xx" autocomplete="off" class="w-full px-3 py-2 rounded-lg border text-sm font-mono border-slate-300">
+      <p id="stuSearchMsg" class="text-xs font-semibold text-rose-600 mt-2"></p>
+    </div>
+
+    <div id="enrollRecordArea" hidden>
+      <div class="bg-white rounded-xl shadow-sm border border-indigo-200 p-5">
+        <div class="flex items-center justify-between gap-3 mb-4 flex-wrap">
+          <h3 class="text-sm font-bold uppercase tracking-wider text-indigo-900">Student Information</h3>
+          <div class="flex flex-wrap gap-2">
+            <button type="button" id="stuInfoEditBtn" class="px-4 py-2 bg-amber-500 hover:bg-amber-600 text-white rounded-lg text-xs font-bold shadow-md cursor-pointer">✏️ Edit details</button>
+          </div>
+        </div>
+        <div id="enrollBanner" class="mb-4 px-4 py-2.5 rounded-lg border text-xs font-semibold"></div>
+        <div id="stuInfoView" class="grid grid-cols-2 md:grid-cols-4 gap-x-6 gap-y-4 text-sm"></div>
+        <form id="stuInfoForm" hidden class="grid grid-cols-2 md:grid-cols-4 gap-x-6 gap-y-4 text-sm">
+          <div><label class="block text-[10px] uppercase font-bold text-slate-500 mb-1">First Name</label><input type="text" name="first_name" required class="w-full px-3 py-2 rounded-lg border border-slate-300 text-sm"></div>
+          <div><label class="block text-[10px] uppercase font-bold text-slate-500 mb-1">Middle Name</label><input type="text" name="middle_name" class="w-full px-3 py-2 rounded-lg border border-slate-300 text-sm"></div>
+          <div><label class="block text-[10px] uppercase font-bold text-slate-500 mb-1">Last Name</label><input type="text" name="last_name" required class="w-full px-3 py-2 rounded-lg border border-slate-300 text-sm"></div>
+          <div><label class="block text-[10px] uppercase font-bold text-slate-500 mb-1">Gender</label>
+            <select name="gender" required class="bg-white w-full px-3 py-2 rounded-lg border border-slate-300 text-sm"><option value="Male">Male</option><option value="Female">Female</option></select></div>
+          <div><label class="block text-[10px] uppercase font-bold text-slate-500 mb-1">Birthday</label><input type="date" name="birthday" required class="w-full px-3 py-2 rounded-lg border border-slate-300 text-sm"></div>
+          <div><label class="block text-[10px] uppercase font-bold text-slate-500 mb-1">Email Address</label><input type="email" name="email" required maxlength="254" pattern="[A-Za-z0-9._%+\-]+@[A-Za-z0-9\-]+(\.[A-Za-z0-9\-]+)*\.[A-Za-z]{2,}" title="Enter a valid email address, for example name@example.com" class="w-full px-3 py-2 rounded-lg border border-slate-300 text-sm"></div>
+          <div><label class="block text-[10px] uppercase font-bold text-slate-500 mb-1">Contact Number</label><input type="tel" name="contact_number" required inputmode="numeric" maxlength="13" pattern="(09[0-9]{9}|\+639[0-9]{9})" title="Philippine mobile number: 09XXXXXXXXX or +639XXXXXXXXX" placeholder="09171234567" class="w-full px-3 py-2 rounded-lg border border-slate-300 text-sm"></div>
+          <div><label class="block text-[10px] uppercase font-bold text-slate-500 mb-1">Student Year Level</label>
+            <select name="year_level" class="bg-white w-full px-3 py-2 rounded-lg border border-slate-300 text-sm"><option value="1">BSN1</option><option value="2">BSN2</option><option value="3">BSN3</option><option value="4">BSN4</option></select></div>
+          <div><label class="block text-[10px] uppercase font-bold text-slate-500 mb-1">Section</label>
+            <select name="section" class="bg-white w-full px-3 py-2 rounded-lg border border-slate-300 text-sm"><option>A</option><option>B</option><option>C</option></select></div>
+          <div class="col-span-2 md:col-span-4 flex gap-2 justify-end">
+            <button type="button" id="stuInfoCancelBtn" class="px-4 py-2 bg-slate-200 hover:bg-slate-300 text-slate-700 rounded-lg text-xs font-bold cursor-pointer">Cancel</button>
+            <button type="submit" class="px-5 py-2 bg-indigo-700 hover:bg-indigo-800 text-white rounded-lg text-xs font-bold shadow-md cursor-pointer">Save changes</button>
+          </div>
+          <p id="stuInfoMsg" class="col-span-2 md:col-span-4 text-xs text-rose-700"></p>
+        </form>
+        <div id="enrollForTermBox" class="md:col-span-4 mt-5 pt-4 border-t border-slate-200 space-y-3">
+          <h4 class="text-xs font-bold uppercase tracking-wider text-indigo-900">Enroll for the Active Term</h4>
+          <div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
+            <div><label class="block text-[10px] uppercase font-bold text-slate-500 mb-1">Student Year Level</label>
+              <select id="ex_year_select" class="w-full px-3 py-2 rounded-lg border border-slate-300 bg-white text-xs font-bold text-indigo-900 cursor-pointer">
+                <option value="1">BSN1</option><option value="2">BSN2</option><option value="3">BSN3</option><option value="4">BSN4</option></select></div>
+            <div><label class="block text-[10px] uppercase font-bold text-slate-500 mb-1">Section</label>
+              <select id="ex_section" class="w-full px-3 py-2 rounded-lg border border-slate-300 bg-white text-xs font-bold text-indigo-900 cursor-pointer">
+                <option value="A" selected>A</option><option value="B">B</option><option value="C">C</option></select></div>
+          </div>
+          <button type="button" id="exToggleSubjectsBtn" class="w-full flex items-center justify-between px-4 py-2.5 rounded-lg bg-indigo-50 hover:bg-indigo-100 border border-indigo-200 text-[11px] uppercase font-bold text-indigo-900 cursor-pointer">
+            <span>Standard Curriculum Subjects &amp; Instructors</span><span id="exToggleSubjectsLabel">▼ Show subjects</span></button>
+          <div id="exSubjectWrap" hidden>
+            <div id="exSubjectChecklist" class="p-4 bg-slate-50 rounded-lg border border-slate-200 text-xs"></div>
+          </div>
+          <div class="flex flex-wrap items-center justify-end gap-3">
+            <p id="exEnrollMsg" class="text-xs font-semibold text-rose-600 mr-auto"></p>
+            <button type="button" id="exEnrollBtn" class="px-5 py-2.5 bg-indigo-700 hover:bg-indigo-800 text-white rounded-lg text-xs font-bold shadow-md cursor-pointer">Enroll Student</button>
+          </div>
+        </div>
+        <div class="mt-5 pt-4 border-t border-slate-200">
+          <h4 class="text-[11px] font-bold uppercase tracking-wider text-indigo-900 mb-2">Subjects Enrolled: <span id="enrollTermLabel"></span></h4>
+          <div id="enrollHist"></div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- NEW STUDENT -->
+  <div id="studentRegSection" data-sec="new" hidden class="bg-white rounded-xl shadow-sm border border-slate-200 p-5">
+    <h3 class="text-sm font-bold uppercase tracking-wider text-indigo-900 mb-3">Enroll Student</h3>
+    <p id="regMsg" class="text-xs text-slate-500 mb-3"></p>
+    <form id="preRegisterForm" class="space-y-4 text-sm" novalidate>
+      <div class="grid grid-cols-1 sm:grid-cols-5 gap-3">
+        <div><label class="block text-[10px] uppercase font-bold text-slate-500 mb-1">Student Number</label>
+          <input type="text" disabled value="Auto-generated" class="w-full px-3 py-2 rounded-lg border border-slate-300 bg-slate-100 text-xs font-mono text-slate-500 cursor-not-allowed"></div>
+        <div><label class="block text-[10px] uppercase font-bold text-slate-500 mb-1">First Name</label>
+          <input type="text" name="first_name" required placeholder="First Name" class="w-full px-3 py-2 rounded-lg border border-slate-300 bg-white text-xs"></div>
+        <div><label class="block text-[10px] uppercase font-bold text-slate-500 mb-1">Middle Name</label>
+          <input type="text" name="middle_name" placeholder="Middle Name" class="w-full px-3 py-2 rounded-lg border border-slate-300 bg-white text-xs"></div>
+        <div><label class="block text-[10px] uppercase font-bold text-slate-500 mb-1">Last Name</label>
+          <input type="text" name="last_name" required placeholder="Last Name" class="w-full px-3 py-2 rounded-lg border border-slate-300 bg-white text-xs"></div>
+        <div><label class="block text-[10px] uppercase font-bold text-slate-500 mb-1">Gender</label>
+          <select name="gender" required class="w-full px-3 py-2 rounded-lg border border-slate-300 bg-white text-xs cursor-pointer">
+            <option value="">Select</option><option value="Male">Male</option><option value="Female">Female</option></select></div>
+      </div>
+      <div class="grid grid-cols-1 sm:grid-cols-4 gap-3">
+        <div><label class="block text-[10px] uppercase font-bold text-slate-500 mb-1">Birthday</label>
+          <input type="date" name="birthday" required class="w-full px-3 py-2 rounded-lg border border-slate-300 bg-white text-xs"></div>
+        <div><label class="block text-[10px] uppercase font-bold text-slate-500 mb-1">Email Address</label>
+          <input type="email" name="email" required maxlength="254" pattern="[A-Za-z0-9._%+\-]+@[A-Za-z0-9\-]+(\.[A-Za-z0-9\-]+)*\.[A-Za-z]{2,}" title="Enter a valid email address, for example name@example.com" placeholder="name@example.com" class="w-full px-3 py-2 rounded-lg border border-slate-300 bg-white text-xs"></div>
+        <div><label class="block text-[10px] uppercase font-bold text-slate-500 mb-1">Contact Number</label>
+          <input type="tel" name="contact_number" required inputmode="numeric" maxlength="13" pattern="(09[0-9]{9}|\+639[0-9]{9})" title="Philippine mobile number: 09XXXXXXXXX or +639XXXXXXXXX" placeholder="09171234567" class="w-full px-3 py-2 rounded-lg border border-slate-300 bg-white text-xs"></div>
+        <div><label class="block text-[10px] uppercase font-bold text-slate-500 mb-1">Civil Status</label>
+          <select name="civil_status" required class="w-full px-3 py-2 rounded-lg border border-slate-300 bg-white text-xs cursor-pointer">
+            <option value="">Select</option><option>Single</option><option>Married</option><option>Widowed</option><option>Separated</option><option>Solo Parent</option></select></div>
+      </div>
+      <div class="grid grid-cols-1 gap-3">
+        <div><label class="block text-[10px] uppercase font-bold text-slate-500 mb-1">Program</label>
+          <select name="program" id="regProgram" required class="w-full px-3 py-2 rounded-lg border border-slate-300 bg-white text-xs cursor-pointer"></select></div>
+      </div>
+      <div class="grid grid-cols-1 sm:grid-cols-4 gap-3 border-t border-slate-100 pt-3">
+        <div><label class="block text-[10px] uppercase font-bold text-slate-500 mb-1">Enrollment Academic Year</label>
+          <div class="w-full px-3 py-2 rounded-lg border border-slate-300 bg-slate-100 text-xs font-bold text-slate-700 cursor-not-allowed flex items-center justify-between" title="Set automatically from the Global System Settings">
+            <span id="regAy">—</span><span class="text-[10px] font-semibold text-slate-500">🔒 Auto</span></div></div>
+        <div><label class="block text-[10px] uppercase font-bold text-slate-500 mb-1">Student Year Level</label>
+          <select name="year_level" id="reg_year_select" class="w-full px-3 py-2 rounded-lg border border-slate-300 bg-white text-xs font-bold text-indigo-900 cursor-pointer">
+            <option value="1">BSN1</option><option value="2" selected>BSN2</option><option value="3">BSN3</option><option value="4">BSN4</option></select></div>
+        <div><label class="block text-[10px] uppercase font-bold text-slate-500 mb-1">Section</label>
+          <select name="section" required class="w-full px-3 py-2 rounded-lg border border-slate-300 bg-white text-xs font-bold text-indigo-900 cursor-pointer">
+            <option value="A" selected>A</option><option value="B">B</option><option value="C">C</option></select></div>
+        <div><label class="block text-[10px] uppercase font-bold text-slate-500 mb-1">🔒 Semester (Triggers Subjects)</label>
+          <div class="w-full px-3 py-2 rounded-lg border border-slate-300 bg-slate-100 text-xs font-bold text-slate-700 cursor-not-allowed flex items-center justify-between" title="Set automatically from the Global System Settings">
+            <span id="regTerm">—</span><span class="text-[10px] font-semibold text-slate-500">🔒 Auto</span></div></div>
+      </div>
+      <div class="pt-2">
+        <button type="button" id="toggleSubjectsBtn" class="w-full flex items-center justify-between px-4 py-2.5 rounded-lg bg-indigo-50 hover:bg-indigo-100 border border-indigo-200 text-[11px] uppercase font-bold text-indigo-900 cursor-pointer">
+          <span>Standard Curriculum Subjects &amp; Instructors</span><span id="toggleSubjectsLabel">▼ Show subjects</span></button>
+        <div id="subjectWrap" hidden class="mt-2">
+          <div id="subjectChecklist" class="p-4 bg-slate-50 rounded-lg border border-slate-200 text-xs"></div>
+        </div>
+      </div>
+      <div class="flex gap-3">
+        <button type="button" id="regCancelBtn" class="w-1/4 py-3 bg-slate-200 hover:bg-slate-300 text-slate-700 rounded-lg font-bold text-xs shadow-md cursor-pointer">Cancel</button>
+        <button type="submit" class="w-3/4 py-3 bg-indigo-700 hover:bg-indigo-800 text-white rounded-lg font-bold text-xs shadow-md cursor-pointer">+ Add Student</button>
+      </div>
+      <p id="regFormMsg" class="text-xs"></p>
+    </form>
+  </div>
+
+  <!-- MANAGE GRADE -->
+  <div id="manageGradeSection" data-sec="grades" hidden class="space-y-4">
+    <div class="bg-white rounded-xl shadow-sm border border-slate-200 p-5">
+      <label class="block text-[10px] font-bold uppercase text-slate-500 mb-1" for="gradeSearchInput">Search Student by ID Number:</label>
+      <input type="text" id="gradeSearchInput" inputmode="numeric" maxlength="17" placeholder="xxxx-x-xxxxxxx-xx" autocomplete="off" class="w-full px-3 py-2 rounded-lg border border-slate-300 text-sm font-mono">
+      <p id="gradeSearchMsg" class="text-xs font-semibold text-rose-600 mt-2"></p>
+    </div>
+    <div id="gradeRecordArea" hidden>
+      <div class="bg-white rounded-xl shadow-sm border border-slate-200 p-4 flex flex-wrap items-center justify-between gap-3">
+        <div class="flex flex-wrap items-center gap-2">
+          <span class="text-xs font-bold uppercase text-slate-500">Viewing Term Record:</span>
+          <span id="gradeTermLabel" class="px-3 py-1 bg-indigo-100 text-indigo-900 rounded-lg text-xs font-bold"></span>
+          <span id="gradeStudentLabel" class="px-3 py-1 bg-emerald-100 text-emerald-900 rounded-lg text-xs font-bold" hidden></span>
+          <span id="gradeYearSecLabel" class="px-3 py-1 bg-amber-100 text-amber-900 rounded-lg text-xs font-bold" hidden></span>
+        </div>
+        <div class="flex flex-wrap items-center gap-2">
+          <select id="gradeAySel" class="px-2.5 py-1.5 rounded border border-slate-300 text-xs font-bold bg-white cursor-pointer"></select>
+          <select id="gradeTermSel" class="px-2.5 py-1.5 rounded border border-slate-300 text-xs font-bold bg-white cursor-pointer"></select>
+        </div>
+      </div>
+      <div id="gradeBody" class="bg-white rounded-xl shadow-sm border border-slate-200 p-5 space-y-4"></div>
+    </div>
+  </div>
+
+  <!-- STEP 6: REGISTRAR OFFICE -->
+  <div id="step6Section" data-sec="step6" hidden class="space-y-4">
+    <div class="bg-white rounded-xl shadow-sm border border-slate-200 p-4 flex flex-wrap items-center justify-between gap-3">
+      <div role="tablist" aria-label="Step 6 tasks" class="inline-flex p-1 bg-slate-200 rounded-xl gap-1">
+        <button type="button" role="tab" data-s6="advising" aria-selected="true" class="s6-btn px-4 py-2 rounded-lg text-xs font-bold cursor-pointer bg-white text-indigo-900 shadow border border-indigo-400">Submission of Advising Slip</button>
+        <button type="button" role="tab" data-s6="coe" aria-selected="false" class="s6-btn px-4 py-2 rounded-lg text-xs font-bold cursor-pointer text-slate-600 hover:text-slate-900">Printing of COE</button>
+        <button type="button" role="tab" data-s6="id" aria-selected="false" class="s6-btn px-4 py-2 rounded-lg text-xs font-bold cursor-pointer text-slate-600 hover:text-slate-900">ID Validation</button>
+      </div>
+      <span id="s6Count" class="text-xs font-bold text-slate-500"></span>
+    </div>
+    <div class="bg-white rounded-xl shadow-sm border border-slate-200 p-5">
+      <p class="text-xs text-slate-500 mb-3">Students whose CSC fee (Step 5) is marked PAID. Mark each task done; once all three are done, tag the student Officially Enrolled.</p>
+      <div id="s6List"><p class="text-xs text-slate-500">Loading…</p></div>
+      <p id="s6Msg" class="text-xs font-semibold text-rose-600 mt-3"></p>
+    </div>
+  </div>
+</div>
+
+<script>
+(function () {
+  var COLLEGE = (new URLSearchParams(location.search).get('college') || 'CONM').toUpperCase();
+  /* Every registrar request names the college this page is for. */
+  var _fetch = window.fetch.bind(window);
+  window.fetch = function (url, opts) {
+    if (typeof url === 'string' && url.indexOf('/api/registrar/') === 0 && url.indexOf('college=') === -1) {
+      url += (url.indexOf('?') === -1 ? '?' : '&') + 'college=' + encodeURIComponent(COLLEGE);
+    }
+    if (opts && typeof opts.body === 'string' && opts.method && opts.method !== 'GET') {
+      try { var b = JSON.parse(opts.body); if (b && typeof b === 'object' && !('college' in b)) { b.college = COLLEGE; opts.body = JSON.stringify(b); } } catch (e) {}
+    }
+    return _fetch(url, opts);
+  };
+  /* Show the college's code in every label on the page. */
+  function relabel() {
+    document.title = document.title.replace('CONM', COLLEGE);
+    var w = document.createTreeWalker(document.body, NodeFilter.SHOW_TEXT, null);
+    var n; while ((n = w.nextNode())) {
+      if (n.parentNode && /^(SCRIPT|STYLE)$/.test(n.parentNode.nodeName)) continue;
+      if (n.nodeValue.indexOf('CONM') !== -1) n.nodeValue = n.nodeValue.split('CONM').join(COLLEGE);
+    }
+  }
+  relabel();
+
+  var PER_PAGE = 10;
+  var all = [];
+  var page = 1, showAll = false, current = null;
+  var $ = function (id) { return document.getElementById(id); };
+  function esc(v) { return String(v == null ? '' : v).replace(/[&<>"']/g, function (c) { return { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]; }); }
+  function fullName(s) { return [s.last_name + ',', s.first_name, s.middle_name || ''].join(' ').replace(/\s+/g, ' ').trim(); }
+  function maskStuNo(v) {
+    var d = String(v || '').replace(/\D/g, '').slice(0, 14);
+    var out = d.slice(0, 4);
+    if (d.length > 4) out += '-' + d.slice(4, 5);
+    if (d.length > 5) out += '-' + d.slice(5, 12);
+    if (d.length > 12) out += '-' + d.slice(12, 14);
+    return out;
+  }
+  function validId(v) { return /^\d{4}-\d-\d{7}-\d{2}$/.test(v); }
+
+  /* ----- sub-tabs ----- */
+  function showTab(name) {
+    document.querySelectorAll('[data-tab]').forEach(function (b) {
+      var on = b.getAttribute('data-tab') === name;
+      b.setAttribute('aria-selected', on ? 'true' : 'false');
+      b.className = 'sub-tab-btn px-4 py-2 rounded-lg text-xs font-bold transition-colors cursor-pointer ' +
+        (on ? 'bg-white text-indigo-900 shadow border border-indigo-400' : 'text-slate-600 hover:text-slate-900');
+    });
+    document.querySelectorAll('[data-sec]').forEach(function (s) { s.hidden = s.getAttribute('data-sec') !== name; });
+    try { parent.postMessage({ conmStudentTab: name }, '*'); } catch (e) {}
+  }
+  document.querySelectorAll('[data-tab]').forEach(function (b) {
+    b.addEventListener('click', function () { showTab(b.getAttribute('data-tab')); });
+  });
+
+  /* ----- roster ----- */
+  function loadRoster() {
+    return fetch('/api/registrar/students?college=' + COLLEGE, { credentials: 'same-origin' })
+      .then(function (r) { return r.json().then(function (j) { return { ok: r.ok, j: j }; }); })
+      .then(function (res) { all = res.ok ? (res.j.students || []) : []; });
+  }
+
+  /* ----- View Student ----- */
+  function listActive() { return showAll || $('viewStudentSearch').value.trim() !== '' || $('viewYearFilter').value !== '' || $('viewSecFilter').value !== ''; }
+  function filtered() {
+    if (!listActive()) return [];
+    var q = $('viewStudentSearch').value.trim().toLowerCase();
+    var yr = $('viewYearFilter').value, sec = $('viewSecFilter').value;
+    return all.filter(function (s) {
+      if (yr && String(s.year_level) !== yr) return false;
+      if (sec && s.section !== sec) return false;
+      if (!q) return true;
+      return s.student_no.toLowerCase().indexOf(q) !== -1 || fullName(s).toLowerCase().indexOf(q) !== -1;
+    });
+  }
+  function cell(text, cls) { return '<td class="' + cls + '">' + text + '</td>'; }
+  function renderList() {
+    var rows = filtered();
+    var pages = Math.max(1, Math.ceil(rows.length / PER_PAGE));
+    if (page > pages) page = pages;
+    if (page < 1) page = 1;
+    var tb = $('viewStudentTbody');
+    if (!listActive() || !rows.length) {
+      var msg = !listActive() ? 'Type a student number or name to search, or click "View All Students".' : 'Student not found. Please check the student number.';
+      tb.innerHTML = '<tr><td colspan="7" class="p-5 text-center text-slate-500 italic">' + msg + '</td></tr>';
+    } else {
+      tb.innerHTML = rows.slice((page - 1) * PER_PAGE, page * PER_PAGE).map(function (s) {
+        return '<tr class="border-t border-slate-100 hover:bg-slate-50">' +
+          '<td class="px-4 py-2"><button type="button" data-open="' + esc(s.student_no) + '" class="font-mono font-bold text-indigo-700 underline hover:text-indigo-900">' + esc(s.student_no) + '</button></td>' +
+          cell(esc(s.last_name), 'px-4 py-2 uppercase font-bold text-slate-800') +
+          cell(esc(s.first_name), 'px-4 py-2 uppercase text-slate-800') +
+          cell(esc(s.middle_name || '—'), 'px-4 py-2 uppercase text-slate-800') +
+          cell('BSN' + esc(s.year_level), 'px-4 py-2 font-bold text-slate-600') +
+          cell(esc(s.section), 'px-4 py-2 font-bold text-slate-600') +
+          cell(esc(s.contact_number || '—'), 'px-4 py-2 font-mono text-slate-700') + '</tr>';
+      }).join('');
+    }
+    $('viewPageInfo').textContent = listActive() ? rows.length + ' student(s) · Page ' + page + ' of ' + pages : '';
+    $('viewPrevBtn').disabled = page <= 1;
+    $('viewNextBtn').disabled = page >= pages;
+    $('viewAllBtn').textContent = showAll ? 'Paged View' : 'View All Students';
+  }
+  $('viewStudentTbody').addEventListener('click', function (e) {
+    var b = e.target.closest('[data-open]');
+    if (!b) return;
+    showTab('existing');
+    $('studentSearchInput').value = b.getAttribute('data-open');
+    $('gradeSearchInput').value = b.getAttribute('data-open');
+    gradeOpenStudent(b.getAttribute('data-open'));
+    openStudent(b.getAttribute('data-open'));
+  });
+  $('viewStudentSearch').addEventListener('input', function () { page = 1; renderList(); });
+  $('viewStudentSearch').addEventListener('keydown', function (e) { if (e.key === 'Enter') { e.preventDefault(); page = 1; renderList(); } });
+  $('viewYearFilter').addEventListener('change', function () { page = 1; renderList(); });
+  $('viewSecFilter').addEventListener('change', function () { page = 1; renderList(); });
+  $('viewAllBtn').addEventListener('click', function () { showAll = !showAll; page = 1; renderList(); });
+  $('viewPrevBtn').addEventListener('click', function () { page--; renderList(); });
+  $('viewNextBtn').addEventListener('click', function () { page++; renderList(); });
+  $('viewPrintListBtn').addEventListener('click', function () {
+    var rows = filtered();
+    var w = window.open('', '_blank');
+    if (!w) return;
+    w.document.write('<!doctype html><html><head><meta charset="utf-8"><title>' + COLLEGE + ' Student List</title><style>body{font-family:Arial,sans-serif;margin:24px}table{width:100%;border-collapse:collapse;font-size:12px}th,td{border:1px solid #888;padding:4px 6px;text-align:left}</style></head><body><h2>' + COLLEGE + ' | Student List</h2><p>' + rows.length + ' student(s)</p><table><thead><tr><th>Student ID</th><th>Last Name</th><th>First Name</th><th>Middle Name</th><th>Year Level</th><th>Section</th><th>Contact Number</th></tr></thead><tbody>' +
+      rows.map(function (s) { return '<tr><td>' + esc(s.student_no) + '</td><td>' + esc(s.last_name) + '</td><td>' + esc(s.first_name) + '</td><td>' + esc(s.middle_name) + '</td><td>BSN' + esc(s.year_level) + '</td><td>' + esc(s.section) + '</td><td>' + esc(s.contact_number) + '</td></tr>'; }).join('') +
+      '</tbody></table></body></html>');
+    w.document.close(); w.focus(); w.print();
+  });
+
+  /* ----- Existing Student ----- */
+  var YEARS = { 1: 'BSN1', 2: 'BSN2', 3: 'BSN3', 4: 'BSN4' };
+  function labelled(label, value) {
+    return '<div><span class="block text-[10px] uppercase font-bold text-slate-500">' + label + '</span><span class="font-semibold text-slate-900 break-all">' + esc(value || '—') + '</span></div>';
+  }
+  function openStudent(no) {
+    var msg = $('stuSearchMsg');
+    msg.textContent = '';
+    if (!validId(no)) { $('enrollRecordArea').hidden = true; msg.textContent = 'Student not found. Please check the student number.'; return; }
+    var s = all.filter(function (x) { return x.student_no === no; })[0];
+    if (!s) { $('enrollRecordArea').hidden = true; msg.textContent = 'Student not found. Please check the student number.'; return; }
+    current = s;
+    $('enrollRecordArea').hidden = false;
+    if (s.account_archived) {
+      msg.textContent = "This student's portal account is archived. Restore the account in Accounts first before re-enrolling or editing.";
+      alert("This student's portal account is archived.\n\nRestore the account in Accounts first before re-enrolling or editing this student.");
+    }
+    $('stuInfoView').innerHTML =
+      labelled('First Name', s.first_name) + labelled('Middle Name', s.middle_name) + labelled('Last Name', s.last_name) +
+      labelled('Gender', s.gender) + labelled('Birthday', s.birthday) + labelled('Email Address', s.email) +
+      labelled('Contact Number', s.contact_number) + labelled('Program', s.program) +
+      labelled('Student Year Level', YEARS[s.year_level] || ('BSN' + s.year_level)) + labelled('Section', s.section) +
+      labelled('Student ID', s.student_no) +
+      '<div><span class="block text-[10px] uppercase font-bold text-slate-500">Enrollment Status</span><span id="lastEnrollVal" class="font-semibold text-slate-900 break-all">Loading…</span></div>';
+    $('stuInfoView').hidden = false;
+    $('stuInfoForm').hidden = true;
+    if (s.year_level) $('ex_year_select').value = String(s.year_level);
+    if (s.section) $('ex_section').value = s.section;
+    exLoadContext();
+    loadEnrollments(s.student_no);
+  }
+  function loadEnrollments(no) {
+    Promise.all([
+      fetch('/api/registrar/enroll-context?year_level=1', { credentials: 'same-origin' }).then(function (r) { return r.json(); }),
+      fetch('/api/registrar/enrollments?student_no=' + encodeURIComponent(no), { credentials: 'same-origin' }).then(function (r) { return r.json(); })
+    ]).then(function (out) {
+      var ctx = out[0], hist = (out[1].enrollments || []);
+      var cur = hist.filter(function (h) { return h.term === ctx.term && h.academic_year === ctx.academic_year; })[0];
+      var b = $('enrollBanner');
+      var official = !!(cur && current && current.status === 'enrolled' && current.csc_paid);
+      if (official) { b.className = 'mb-4 px-4 py-2.5 rounded-lg border text-xs font-semibold bg-emerald-50 border-emerald-300 text-emerald-900'; b.textContent = '✅ Enrolled for the active term: A.Y. ' + cur.academic_year + ', ' + cur.term; }
+      else if (cur) { b.className = 'mb-4 px-4 py-2.5 rounded-lg border text-xs font-semibold bg-amber-50 border-amber-300 text-amber-900'; b.textContent = '⚠️ Enrollment recorded for the active term, but not yet officially enrolled (Step 6 pending).'; }
+      else if (hist.length) { b.className = 'mb-4 px-4 py-2.5 rounded-lg border text-xs font-semibold bg-amber-50 border-amber-300 text-amber-900'; b.textContent = '⚠️ Not enrolled for the active term' + (ctx.term ? ' (A.Y. ' + ctx.academic_year + ', ' + ctx.term + ')' : '') + '. Last enrolled: A.Y. ' + hist[0].academic_year + ', ' + hist[0].term + '.'; }
+      else { b.className = 'mb-4 px-4 py-2.5 rounded-lg border text-xs font-semibold bg-slate-100 border-slate-300 text-slate-700'; b.textContent = 'No enrollment record yet.'; }
+      var lastEl = $('lastEnrollVal');
+      if (lastEl && current && current.student_no === no) lastEl.textContent = official ? 'Currently enrolled' : (hist.length ? ('A.Y. ' + hist[0].academic_year + ', ' + hist[0].term) : 'No enrollment yet');
+      var curSubj = cur && cur.subjects ? cur.subjects : [];
+      // Already enrolled for the active term: lock enrolling and hide the subject picker.
+      $('exEnrollBtn').disabled = !!cur;
+      $('exEnrollBtn').classList.toggle('opacity-50', !!cur);
+      $('exEnrollBtn').classList.toggle('cursor-not-allowed', !!cur);
+      $('exToggleSubjectsBtn').hidden = !!cur;
+      $('enrollForTermBox').hidden = !!cur;
+      if (cur) { $('exSubjectWrap').hidden = true; $('exEnrollMsg').textContent = ''; }
+      $('enrollTermLabel').textContent = ctx.term + ' ' + ctx.academic_year;
+      $('enrollHist').innerHTML = !cur
+        ? '<p class="text-xs text-slate-500 italic">The student has no enrollment for the current term.</p>'
+        : (curSubj.length
+          ? '<div class="overflow-x-auto border border-slate-200 rounded-lg"><table class="w-full text-xs"><thead class="bg-slate-100 text-slate-600 uppercase text-[10px]"><tr><th class="px-3 py-2 text-left">Code</th><th class="px-3 py-2 text-left">Descriptive Title</th><th class="px-3 py-2 text-left">Instructor</th></tr></thead><tbody>' +
+            curSubj.map(function (sj) {
+              return '<tr class="border-t border-slate-200"><td class="px-3 py-2 font-mono font-bold">' + esc(sj.course_code) + '</td><td class="px-3 py-2">' + esc(sj.descriptive_title || '') + '</td><td class="px-3 py-2">' + esc(sj.instructor_name || '—') + '</td></tr>';
+            }).join('') + '</tbody></table></div>'
+          : '<p class="text-xs text-slate-500 italic">No subjects enrolled for the current term.</p>');
+    });
+  }
+  function exLoadContext() {
+    var year = $('ex_year_select').value, sec = $('ex_section').value || 'A';
+    return fetch('/api/registrar/enroll-context?year_level=' + encodeURIComponent(year) + '&section=' + encodeURIComponent(sec), { credentials: 'same-origin' })
+      .then(function (r) { return r.json().then(function (j) { return { ok: r.ok, j: j }; }); })
+      .then(function (res) {
+        if (!res.ok) { $('exEnrollMsg').textContent = res.j.error || 'Could not load the enrollment setup.'; return; }
+        reg.term = res.j.term; reg.ay = res.j.academic_year; reg.instructors = res.j.instructors || [];
+        regSubjectsRender(res.j.subjects || [], $('exSubjectChecklist'), Number(year));
+      });
+  }
+  function exEnroll() {
+    var msg = $('exEnrollMsg');
+    if ($('exEnrollBtn').disabled) return;
+    msg.textContent = '';
+    if (!current) return;
+    if (current.account_archived) { alert("This student's portal account is archived. Restore the account in Accounts first."); return; }
+    var body = {
+      mode: 'existing', student_no: current.student_no, first_name: current.first_name || '', middle_name: current.middle_name || '',
+      last_name: current.last_name || '', gender: current.gender || '', birthday: current.birthday || '', email: current.email || '',
+      contact_number: current.contact_number || '', year_level: $('ex_year_select').value, section: $('ex_section').value || 'A',
+      subjects: collectSubjects($('exSubjectChecklist'))
+    };
+    msg.textContent = 'Saving…';
+    fetch('/api/registrar/enroll-student', { method: 'POST', credentials: 'same-origin', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(body) })
+      .then(function (r) { return r.json().then(function (j) { return { ok: r.ok, j: j }; }); })
+      .then(function (res) {
+        if (!res.ok) { msg.textContent = res.j.error || 'Could not enroll the student.'; return; }
+        msg.innerHTML = '<span class="text-emerald-800 font-bold">Enrolled for the active term.</span>';
+        loadEnrollments(current.student_no);
+        loadRoster();
+      })
+      .catch(function () { msg.textContent = 'Could not enroll the student.'; });
+  }
+  $('exEnrollBtn').addEventListener('click', exEnroll);
+  $('ex_year_select').addEventListener('change', exLoadContext);
+  $('ex_section').addEventListener('change', exLoadContext);
+  $('exToggleSubjectsBtn').addEventListener('click', function () {
+    var w = $('exSubjectWrap'); w.hidden = !w.hidden;
+    $('exToggleSubjectsLabel').textContent = w.hidden ? '▼ Show standard curriculum subjects & instructors' : '▲ Hide standard curriculum subjects & instructors';
+  });
+  $('studentSearchInput').addEventListener('input', function (e) {
+    e.target.value = maskStuNo(e.target.value);
+    var v = e.target.value.trim();
+    if (validId(v)) openStudent(v);
+    else { $('enrollRecordArea').hidden = true; $('stuSearchMsg').textContent = ''; }
+  });
+  $('studentSearchInput').addEventListener('keydown', function (e) {
+    if (e.key === 'Enter') {
+      e.preventDefault();
+      e.target.value = maskStuNo(e.target.value);
+      openStudent(e.target.value.trim());
+    }
+  });
+  $('stuInfoEditBtn').addEventListener('click', function () {
+    if (current && current.account_archived) { alert("This student's portal account is archived. Restore the account in Accounts first."); return; }
+    var f = $('stuInfoForm');
+    ['first_name', 'middle_name', 'last_name', 'gender', 'birthday', 'email', 'contact_number', 'year_level', 'section'].forEach(function (k) {
+      f.elements[k].value = current[k] == null ? '' : current[k];
+    });
+    f.elements.year_level.value = String(current.year_level);
+    $('stuInfoView').hidden = true;
+    f.hidden = false;
+    $('stuInfoMsg').textContent = '';
+  });
+  $('stuInfoCancelBtn').addEventListener('click', function () { $('stuInfoForm').hidden = true; $('stuInfoView').hidden = false; });
+  var EMAIL_RE = /^[A-Za-z0-9._%+\-]+@[A-Za-z0-9\-]+(\.[A-Za-z0-9\-]+)*\.[A-Za-z]{2,}$/;
+  var CONTACT_RE = /^(09\d{9}|\+639\d{9})$/;
+  function cleanContactInput(v) {
+    var s = String(v || '').replace(/[^\d+]/g, '');
+    if (s.indexOf('+') > 0) s = s.replace(/\+/g, '');
+    if (s.indexOf('+63') === 0) return s.slice(0, 13);
+    if (s.indexOf('+') === 0) return s.slice(0, 13);
+    return s.replace(/\D/g, '').slice(0, 11);
+  }
+  document.querySelectorAll('input[name="contact_number"]').forEach(function (inp) {
+    inp.addEventListener('input', function () {
+      this.value = cleanContactInput(this.value);
+      var ok = !this.value || CONTACT_RE.test(this.value);
+      this.style.borderColor = ok ? '' : '#e11d48';
+    });
+  });
+  document.querySelectorAll('input[name="email"]').forEach(function (inp) {
+    inp.addEventListener('input', function () {
+      var v = this.value.trim();
+      var ok = !v || EMAIL_RE.test(v);
+      this.style.borderColor = ok ? '' : '#e11d48';
+    });
+  });
+
+  $('stuInfoForm').addEventListener('submit', function (e) {
+    e.preventDefault();
+    var f = e.target, msg = $('stuInfoMsg');
+    var body = {};
+    ['first_name', 'middle_name', 'last_name', 'gender', 'birthday', 'email', 'contact_number', 'year_level', 'section'].forEach(function (k) { body[k] = f.elements[k].value.trim(); });
+    if (body.email && !EMAIL_RE.test(body.email)) { msg.textContent = 'Invalid email format. Use a valid email address (e.g. name@example.com).'; return; }
+    if (body.contact_number && !CONTACT_RE.test(body.contact_number)) { msg.textContent = 'Invalid contact number format. Must be 09XXXXXXXXX (11 digits) or +639XXXXXXXXX.'; return; }
+    msg.textContent = 'Saving…';
+    fetch('/api/registrar/students/' + encodeURIComponent(current.student_no), { method: 'PUT', credentials: 'same-origin', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(body) })
+      .then(function (r) { return r.json().then(function (j) { return { ok: r.ok, j: j }; }); })
+      .then(function (res) {
+        if (!res.ok) { msg.textContent = res.j.error || 'Could not save.'; return; }
+        loadRoster().then(function () { openStudent(current.student_no); });
+      })
+      .catch(function () { msg.textContent = 'Could not save.'; });
+  });
+
+  /* ----- New Student ----- */
+  var reg = { term: '', ay: '', instructors: [] };
+  function regSubjectsRender(list, box, yr) {
+    if (!list.length) { box.innerHTML = '<p class="text-slate-500">No curriculum subjects uploaded yet. Upload subjects in Subjects and Units first.</p>'; return; }
+    var opts = '<option value="">-- Instructor --</option>' + reg.instructors.map(function (u) { return '<option value="' + u.id + '">' + esc(u.name) + '</option>'; }).join('');
+    var defaults = list.map(function (c) { return c.default_instructor_id || ''; });
+    var filterBar = '<div class="flex flex-wrap items-center justify-between gap-2 mb-3 pb-2 border-b border-slate-200">' +
+      '<div class="flex flex-wrap items-center gap-2">' +
+      '<span class="font-bold text-slate-700">Show Subjects:</span>' +
+      '<select class="subj-year-filter bg-white px-2.5 py-1 rounded border border-slate-300 text-xs font-bold">' +
+      '<option value="all">All Subjects (All Year Levels & Terms)</option>' +
+      '<option value="current">Current Year Level Only (Year ' + yr + ')</option>' +
+      '<option value="1">1st Year Subjects</option>' +
+      '<option value="2">2nd Year Subjects</option>' +
+      '<option value="3">3rd Year Subjects</option>' +
+      '<option value="4">4th Year Subjects</option>' +
+      '</select>' +
+      '<input type="text" class="subj-search" placeholder="Search subject code or title..." class="bg-white px-2.5 py-1 rounded border border-slate-300 text-xs w-56">' +
+      '</div>' +
+      '<span class="text-[11px] text-indigo-800 font-semibold">Tip: Check any subject from another year level or term to add it to this student.</span>' +
+      '</div>';
+    box.innerHTML = filterBar + '<div class="max-h-96 overflow-y-auto"><table class="w-full text-xs"><thead class="bg-slate-100 text-[10px] uppercase text-slate-600 sticky top-0"><tr><th class="px-2 py-2 text-left">Take</th><th class="px-2 py-2 text-left">Code</th><th class="px-2 py-2 text-left">Descriptive Title</th><th class="px-2 py-2 text-left">Units</th><th class="px-2 py-2 text-left">Year &amp; Sem</th><th class="px-2 py-2 text-left">Instructor</th></tr></thead><tbody class="reg-subj-tbody">' +
+      list.map(function (c, i) {
+        var sameYear = Number(c.year_level) === yr;
+        var sameSem = !c.semester || !reg.term || c.semester === reg.term;
+        var sameCol = !c.college || c.college === COLLEGE;
+        var autoCheck = sameYear && sameSem && sameCol;
+        var yrLabel = c.year_level ? ('Year ' + esc(c.year_level)) : 'Any Year';
+        var semLabel = c.semester ? (' · ' + esc(c.semester)) : '';
+        var colLabel = (c.college && c.college !== COLLEGE) ? (' [' + esc(c.college) + ']') : '';
+        return '<tr class="border-t border-slate-200 reg-subj-row" data-yr="' + esc(c.year_level || '') + '" data-q="' + esc((c.course_code + ' ' + c.descriptive_title + ' ' + (c.college || '')).toLowerCase()) + '">' +
+          '<td class="px-2 py-2"><input type="checkbox" class="reg-take" data-i="' + i + '"' + (autoCheck ? ' checked' : '') + '></td>' +
+          '<td class="px-2 py-2 font-mono font-bold">' + esc(c.course_code) + colLabel + '</td>' +
+          '<td class="px-2 py-2">' + esc(c.descriptive_title) + '</td>' +
+          '<td class="px-2 py-2">' + esc(c.units) + '</td>' +
+          '<td class="px-2 py-2 ' + (sameYear ? 'text-slate-700' : 'text-amber-700 font-bold') + '">' + yrLabel + semLabel + (sameYear ? '' : ' (cross-year)') + '</td>' +
+          '<td class="px-2 py-2"><select class="reg-inst bg-white px-2 py-1 rounded border border-slate-300" data-i="' + i + '">' + opts.replace('value="' + defaults[i] + '"', 'value="' + defaults[i] + '" selected') + '</select></td></tr>';
+      }).join('') + '</tbody></table></div>';
+    box.dataset.list = JSON.stringify(list.map(function (c) { return c.course_code; }));
+
+    function applySubjFilter() {
+      var yf = box.querySelector('.subj-year-filter').value;
+      var q = (box.querySelector('.subj-search').value || '').trim().toLowerCase();
+      box.querySelectorAll('.reg-subj-row').forEach(function (tr) {
+        var rYr = tr.getAttribute('data-yr');
+        var rQ = tr.getAttribute('data-q') || '';
+        var cb = tr.querySelector('.reg-take');
+        var show = true;
+        if (yf === 'current' && String(rYr) !== String(yr) && !(cb && cb.checked)) show = false;
+        else if (['1', '2', '3', '4'].indexOf(yf) !== -1 && String(rYr) !== yf && !(cb && cb.checked)) show = false;
+        if (q && rQ.indexOf(q) === -1) show = false;
+        tr.hidden = !show;
+      });
+    }
+    box.querySelector('.subj-year-filter').addEventListener('change', applySubjFilter);
+    box.querySelector('.subj-search').addEventListener('input', applySubjFilter);
+  }
+  function regLoadContext() {
+    var year = $('reg_year_select').value;
+    var sec = document.querySelector('#preRegisterForm [name=section]').value;
+    return fetch('/api/registrar/enroll-context?year_level=' + encodeURIComponent(year) + '&section=' + encodeURIComponent(sec), { credentials: 'same-origin' })
+      .then(function (r) { return r.json().then(function (j) { return { ok: r.ok, j: j }; }); })
+      .then(function (res) {
+        if (!res.ok) { $('regFormMsg').textContent = res.j.error || 'Could not load the enrollment setup.'; return; }
+        reg.term = res.j.term; reg.ay = res.j.academic_year; reg.instructors = res.j.instructors || [];
+        $('regProgram').innerHTML = '<option value="">Select program</option>' + (res.j.programs || []).map(function (x) { return '<option>' + esc(x) + '</option>'; }).join('');
+        $('regAy').textContent = reg.ay ? 'A.Y. ' + reg.ay : 'Not set';
+        $('regTerm').textContent = reg.term || 'Not set';
+        regSubjectsRender(res.j.subjects || [], $('subjectChecklist'), Number($('reg_year_select').value));
+        if (!reg.term || !reg.ay) $('regFormMsg').textContent = 'The academic year and semester are not set yet. The University Registrar sets them in Settings → Grading period.';
+      });
+  }
+  function collectSubjects(box) {
+    var codes = JSON.parse(box.dataset.list || '[]');
+    var out = [];
+    box.querySelectorAll('.reg-take').forEach(function (cb) {
+      if (!cb.checked) return;
+      var i = cb.getAttribute('data-i');
+      out.push({ course_code: codes[i], instructor_id: box.querySelector('.reg-inst[data-i="' + i + '"]').value || null });
+    });
+    return out;
+  }
+  function regSubmit(e) {
+    e.preventDefault();
+    var f = e.target, msg = $('regFormMsg');
+    msg.textContent = '';
+    var emailVal = f.elements.email.value.trim();
+    var contactVal = f.elements.contact_number.value.trim();
+    if (!emailVal || !EMAIL_RE.test(emailVal)) { msg.textContent = 'Enter a valid email address (e.g. name@example.com).'; return; }
+    if (!contactVal || !CONTACT_RE.test(contactVal)) { msg.textContent = 'Contact number must be in the format 09XXXXXXXXX (11 digits) or +639XXXXXXXXX.'; return; }
+    if (!f.elements.civil_status.value) { msg.textContent = 'Choose the civil status.'; return; }
+    if (!f.elements.program.value) { msg.textContent = 'Choose the program.'; return; }
+    var subjects = collectSubjects($('subjectChecklist'));
+    var body = { mode: 'new', subjects: subjects };
+    ['first_name', 'middle_name', 'last_name', 'gender', 'birthday', 'email', 'contact_number', 'civil_status', 'program', 'year_level', 'section'].forEach(function (k) { body[k] = f.elements[k].value.trim(); });
+    msg.textContent = 'Saving…';
+    fetch('/api/registrar/enroll-student', { method: 'POST', credentials: 'same-origin', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(body) })
+      .then(function (r) { return r.json().then(function (j) { return { ok: r.ok, j: j }; }); })
+      .then(function (res) {
+        if (!res.ok) { msg.textContent = res.j.error || 'Could not save.'; return; }
+        msg.innerHTML = '<span class="text-emerald-800 font-bold">Enrolled. Student number: ' + esc(res.j.student_no) + '. The temporary password was emailed to the student.</span>';
+        loadRoster();
+      })
+      .catch(function () { msg.textContent = 'Could not save.'; });
+  }
+  $('preRegisterForm').addEventListener('submit', regSubmit);
+  $('reg_year_select').addEventListener('change', regLoadContext);
+  document.querySelector('#preRegisterForm [name=section]').addEventListener('change', regLoadContext);
+  $('regCancelBtn').addEventListener('click', function () { showTab('view'); });
+  $('toggleSubjectsBtn').addEventListener('click', function () {
+    var w = $('subjectWrap'); w.hidden = !w.hidden;
+    $('toggleSubjectsLabel').textContent = w.hidden ? '▼ Show subjects' : '▲ Hide subjects';
+  });
+  regLoadContext();
+
+  /* ----- Manage Grade ----- */
+  var GRADE_OPTS = ['', '1.00', '1.25', '1.50', '1.75', '2.00', '2.25', '2.50', '2.75', '3.00', '4.00', '5.00', 'X', 'INC', 'W', 'NG'];
+  var grade = { no: '', stu: null, enrollments: [], rows: [], editing: false, term: '', ay: '' };
+  function formatStudentNameMI(s) {
+    if (!s) return '';
+    var mi = s.middle_name && String(s.middle_name).trim() ? (String(s.middle_name).trim().charAt(0).toUpperCase() + '.') : '';
+    return [s.last_name + ',', s.first_name, mi].filter(Boolean).join(' ').replace(/\s+/g, ' ').trim();
+  }
+  function formatProgCode(s) {
+    var p = String((s && s.program) || '').trim();
+    var m = p.match(/\(([^)]+)\)\s*$/);
+    if (m) return m[1].toUpperCase();
+    if (p && p.length <= 8) return p.toUpperCase();
+    return COLLEGE === 'CONM' ? 'BSN' : COLLEGE;
+  }
+  function updateGradeHeaderBadges(en) {
+    var s = grade.stu;
+    var nameEl = $('gradeStudentLabel');
+    var ysEl = $('gradeYearSecLabel');
+    if (!s) {
+      nameEl.hidden = true;
+      ysEl.hidden = true;
+      return;
+    }
+    nameEl.textContent = formatStudentNameMI(s);
+    nameEl.hidden = false;
+    var yr = (en && en.year_level) ? en.year_level : s.year_level;
+    var sec = (en && en.section) ? en.section : s.section;
+    ysEl.textContent = formatProgCode(s) + '-' + yr + sec;
+    ysEl.hidden = false;
+  }
+  function gradeRemark(g) {
+    if (['1.00','1.25','1.50','1.75','2.00','2.25','2.50','2.75','3.00'].indexOf(g) !== -1) return 'PASSED';
+    return { '4.00': 'CONDITIONAL', '5.00': 'FAILED', 'X': 'ABSENT FROM EXAMINATION', 'INC': 'INCOMPLETE', 'W': 'DROPPED', 'NG': 'NO GRADE' }[g] || '';
+  }
+  function gradeOpenStudent(no) {
+    var msg = $('gradeSearchMsg');
+    msg.textContent = '';
+    if (!validId(no)) { $('gradeRecordArea').hidden = true; msg.textContent = 'Student not found. Please check the student number.'; return; }
+    var s = all.filter(function (x) { return x.student_no === no; })[0];
+    if (!s) { $('gradeRecordArea').hidden = true; msg.textContent = 'Student not found. Please check the student number.'; return; }
+    grade.no = no;
+    grade.stu = s;
+    fetch('/api/registrar/enrollments?student_no=' + encodeURIComponent(no), { credentials: 'same-origin' })
+      .then(function (r) { return r.json(); })
+      .then(function (j) {
+        grade.enrollments = j.enrollments || [];
+        if (!grade.enrollments.length) {
+          $('gradeRecordArea').hidden = false;
+          $('gradeBody').innerHTML = '<p class="text-sm text-slate-600">No subjects are enrolled for this student yet. Enroll the student first in New Student.</p>';
+          $('gradeTermLabel').textContent = '—';
+          updateGradeHeaderBadges(null);
+          $('gradeAySel').innerHTML = ''; $('gradeTermSel').innerHTML = '';
+          return;
+        }
+        var ays = [];
+        grade.enrollments.forEach(function (e) { if (ays.indexOf(e.academic_year) === -1) ays.push(e.academic_year); });
+        $('gradeAySel').innerHTML = ays.map(function (a) { return '<option>' + esc(a) + '</option>'; }).join('');
+        $('gradeAySel').value = grade.enrollments[0].academic_year;
+        gradeFillTerms();
+        gradeLoad();
+      });
+  }
+  function gradeFillTerms() {
+    var ay = $('gradeAySel').value;
+    var terms = grade.enrollments.filter(function (e) { return e.academic_year === ay; }).map(function (e) { return e.term; });
+    $('gradeTermSel').innerHTML = terms.map(function (t) { return '<option>' + esc(t) + '</option>'; }).join('');
+  }
+  function gradeLoad() {
+    grade.ay = $('gradeAySel').value;
+    grade.term = $('gradeTermSel').value;
+    grade.editing = false;
+    $('gradeRecordArea').hidden = false;
+    $('gradeTermLabel').textContent = grade.term + ' (' + grade.ay + ')';
+    var en = grade.enrollments.filter(function (e) { return e.academic_year === grade.ay && e.term === grade.term; })[0];
+    updateGradeHeaderBadges(en);
+    if (!en) { $('gradeBody').innerHTML = '<p class="text-sm text-slate-600">No enrollment for this term.</p>'; return; }
+    fetch('/api/registrar/grades', { credentials: 'same-origin' })
+      .then(function (r) { return r.json(); })
+      .then(function (j) {
+        var found = (j.grades || []).filter(function (g) { return g.student_no === grade.no && g.term === grade.term && g.academic_year === grade.ay; });
+        var by = {}; found.forEach(function (g) { by[g.course_code] = g; });
+        grade.rows = (en.subjects || []).map(function (sj) {
+          var g = by[sj.course_code] || {};
+          return { course_code: sj.course_code, title: sj.descriptive_title || '', final_grade: g.final_grade || '', remarks: g.remarks || '', instructor: sj.instructor_name || '' };
+        });
+        gradeRender();
+      });
+  }
+  function downloadCog() {
+    var msg = $('gradeSearchMsg');
+    msg.textContent = '';
+    if (!grade.no || !grade.ay || !grade.term) { msg.textContent = 'Open a student record and choose the academic year and semester first.'; return; }
+    var box = $('cogProg'), bar = $('cogBar'), pct = $('cogPct'), btn = $('gradeCogBtn');
+    var q = new URLSearchParams({ college: COLLEGE, student_no: grade.no, academic_year: grade.ay, term: grade.term });
+    box.hidden = false; bar.style.width = '100%'; bar.style.opacity = '0.35'; pct.textContent = 'Generating…';
+    if (btn) btn.disabled = true;
+    function fail(text) { box.hidden = true; bar.style.opacity = '1'; if (btn) btn.disabled = false; msg.textContent = text; }
+    var xhr = new XMLHttpRequest();
+    xhr.open('GET', '/api/registrar/certificate-of-grades.xlsx?' + q.toString());
+    xhr.responseType = 'blob';
+    xhr.withCredentials = true;
+    xhr.onprogress = function (e) {
+      bar.style.opacity = '1';
+      if (e.lengthComputable && e.total > 0) {
+        var p = Math.min(100, Math.round(e.loaded / e.total * 100));
+        bar.style.width = p + '%'; pct.textContent = 'Downloading… ' + p + '%';
+      } else {
+        pct.textContent = 'Downloading…';
+      }
+    };
+    xhr.onerror = function () { fail('Connection lost. Please try again.'); };
+    xhr.onload = function () {
+      if (xhr.status !== 200) {
+        return xhr.response.text().then(function (t) {
+          var m = 'Could not generate the COG.';
+          try { m = JSON.parse(t).error || m; } catch (err) {}
+          fail(m);
+        }, function () { fail('Could not generate the COG.'); });
+      }
+      var cd = /filename="([^"]+)"/.exec(xhr.getResponseHeader('Content-Disposition') || '');
+      var name = cd ? cd[1] : 'COG.xlsx';
+      var url = URL.createObjectURL(xhr.response);
+      var a = document.createElement('a');
+      a.href = url; a.download = name;
+      document.body.appendChild(a); a.click(); a.remove();
+      setTimeout(function () { URL.revokeObjectURL(url); }, 1000);
+      bar.style.width = '100%'; bar.style.opacity = '1'; pct.textContent = '100%';
+      if (btn) btn.disabled = false;
+      msg.textContent = 'Download complete: ' + name;
+      setTimeout(function () { box.hidden = true; bar.style.width = '0%'; pct.textContent = ''; msg.textContent = ''; }, 2000);
+    };
+    xhr.send();
+  }
+  function gradeRender() {
+    var rows = grade.rows;
+    var head = '<div class="flex items-center justify-between gap-3"><h3 class="text-sm font-bold uppercase tracking-wider text-indigo-900">Manage Grades</h3><div class="flex gap-2">' +
+      '<button type="button" id="gradeCogBtn" class="px-4 py-2 bg-emerald-700 hover:bg-emerald-800 text-white rounded-lg text-xs font-bold shadow-md cursor-pointer">📄 Generate COG</button>' +
+      (grade.editing
+        ? '<button type="button" id="gradeCancelBtn" class="px-4 py-2 bg-slate-200 hover:bg-slate-300 text-slate-700 rounded-lg text-xs font-bold cursor-pointer">Cancel</button><button type="button" id="gradeSaveBtn" class="px-5 py-2 bg-indigo-700 hover:bg-indigo-800 text-white rounded-lg text-xs font-bold shadow-md cursor-pointer">Save Changes</button>'
+        : '<button type="button" id="gradeEditBtn" class="px-4 py-2 bg-amber-500 hover:bg-amber-600 text-white rounded-lg text-xs font-bold shadow-md cursor-pointer">✏️ Edit Grades</button>') +
+      '</div></div>' +
+      '<div id="cogProg" hidden class="flex items-center gap-3 mt-2"><div class="flex-1 h-2 rounded-full overflow-hidden" style="background:#e2e8e2"><div id="cogBar" class="h-full" style="width:0;background:#065f46;transition:width .15s"></div></div><span id="cogPct" class="text-xs font-bold text-emerald-800" style="min-width:48px;text-align:right"></span></div>';
+    var list = rows.length ? rows.map(function (r, i) {
+      var opts = GRADE_OPTS.map(function (o) { return '<option value="' + o + '"' + (o === r.final_grade ? ' selected' : '') + '>' + (o || '-- Select --') + '</option>'; }).join('');
+      return '<div class="grid grid-cols-1 sm:grid-cols-6 gap-3 items-center bg-slate-50 p-3 rounded-lg border border-slate-200 text-sm">' +
+        '<div><span class="text-[10px] uppercase text-slate-400 block font-bold">Code</span><span class="font-mono font-bold text-indigo-900">' + esc(r.course_code) + '</span></div>' +
+        '<div class="sm:col-span-2"><span class="text-[10px] uppercase text-slate-400 block font-bold">Title</span><span class="text-slate-700 text-xs">' + esc(r.title) + '</span></div>' +
+        '<div><span class="text-[10px] uppercase text-slate-400 block font-bold">Final Grade</span>' +
+          '<select class="grade-sel w-full px-2 py-1.5 rounded border border-slate-300 font-bold text-indigo-700 bg-white text-xs" data-i="' + i + '"' + (grade.editing ? '' : ' disabled') + '>' + opts + '</select></div>' +
+        '<div><span class="text-[10px] uppercase text-slate-400 block font-bold">Remarks</span><span id="rem_' + i + '" class="block w-full px-2 py-1.5 rounded border border-slate-200 text-xs bg-slate-100 font-medium">' + esc(gradeRemark(r.final_grade)) + '</span></div>' +
+        '<div class="sm:col-span-6"><span class="text-[10px] uppercase text-slate-400 block font-bold">Instructor</span><span class="text-xs text-slate-700">' + esc(r.instructor || '—') + '</span></div>' +
+        '</div>';
+    }).join('') : '<p class="text-sm text-slate-600">No subjects are enrolled in this term.</p>';
+    $('gradeBody').innerHTML = head + '<div class="space-y-2">' + list + '</div>';
+    var cogBtn = $('gradeCogBtn'); if (cogBtn) cogBtn.addEventListener('click', downloadCog);
+    document.querySelectorAll('.grade-sel').forEach(function (sel) {
+      sel.addEventListener('change', function () { $('rem_' + sel.getAttribute('data-i')).textContent = gradeRemark(sel.value); });
+    });
+    var eb = $('gradeEditBtn'); if (eb) eb.addEventListener('click', function () { grade.editing = true; gradeRender(); });
+    var cb = $('gradeCancelBtn'); if (cb) cb.addEventListener('click', function () { gradeLoad(); });
+    var sb = $('gradeSaveBtn'); if (sb) sb.addEventListener('click', gradeSave);
+  }
+  function gradeSave() {
+    var jobs = [];
+    document.querySelectorAll('.grade-sel').forEach(function (sel) {
+      var r = grade.rows[Number(sel.getAttribute('data-i'))];
+      if (sel.value === r.final_grade || !sel.value) return;
+      jobs.push({ student_no: grade.no, course_code: r.course_code, final_grade: sel.value, instructor: r.instructor, term: grade.term, academic_year: grade.ay });
+    });
+    if (!jobs.length) { gradeLoad(); return; }
+    Promise.all(jobs.map(function (b) {
+      return fetch('/api/registrar/grades', { method: 'POST', credentials: 'same-origin', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(b) })
+        .then(function (r) { return r.ok; }).catch(function () { return false; });
+    })).then(function (oks) {
+      var bad = oks.filter(function (x) { return !x; }).length;
+      if (bad) alert(bad + ' grade(s) could not be saved.');
+      gradeLoad();
+    });
+  }
+  $('gradeSearchInput').addEventListener('input', function (e) {
+    e.target.value = maskStuNo(e.target.value);
+    var v = e.target.value.trim();
+    if (validId(v)) gradeOpenStudent(v);
+    else { $('gradeRecordArea').hidden = true; $('gradeSearchMsg').textContent = ''; }
+  });
+  $('gradeSearchInput').addEventListener('keydown', function (e) {
+    if (e.key === 'Enter') {
+      e.preventDefault();
+      e.target.value = maskStuNo(e.target.value);
+      gradeOpenStudent(e.target.value.trim());
+    }
+  });
+  $('gradeAySel').addEventListener('change', function () { gradeFillTerms(); gradeLoad(); });
+  $('gradeTermSel').addEventListener('change', gradeLoad);
+
+  /* ----- view=enroll: only the Standard Curriculum checklist, opened under Pre-enrollment > Advising ----- */
+  function enrollView(no) {
+    // Advising page: only the Standard Curriculum Subjects & Instructors checklist (New Student section),
+    // used to enroll this existing student for the active term.
+    document.getElementById('stu-app').hidden = true;
+    var block = document.getElementById('toggleSubjectsBtn').parentElement;
+    var wrap = document.createElement('div');
+    wrap.className = 'bg-white rounded-xl shadow-sm border border-slate-200 p-5 space-y-4';
+    wrap.innerHTML = '<h3 class="text-sm font-bold uppercase tracking-wider text-indigo-900">Enroll for the Active Term</h3>' +
+      '<p id="advEnrollMsg" class="text-xs font-semibold text-rose-600"></p>';
+    wrap.appendChild(block);
+    var row = document.createElement('div');
+    row.className = 'flex justify-end';
+    row.innerHTML = '<button type="button" id="advEnrollBtn" class="px-5 py-2.5 bg-indigo-700 hover:bg-indigo-800 text-white rounded-lg text-xs font-bold shadow-md cursor-pointer">Enroll Student</button>';
+    wrap.appendChild(row);
+    document.body.appendChild(wrap);
+
+    openStudent(no);
+    var stu = current;
+    if (!stu) return;
+    document.getElementById('reg_year_select').value = String(stu.year_level || '1');
+    document.querySelector('#preRegisterForm [name=section]').value = stu.section || 'A';
+    $('subjectWrap').hidden = false;
+    $('toggleSubjectsLabel').textContent = '▲ Hide subjects';
+    regLoadContext();
+
+    function refreshEnrolled() {
+      Promise.all([
+        fetch('/api/registrar/enroll-context?year_level=' + encodeURIComponent(stu.year_level || '1'), { credentials: 'same-origin' }).then(function (r) { return r.json(); }),
+        fetch('/api/registrar/enrollments?student_no=' + encodeURIComponent(no), { credentials: 'same-origin' }).then(function (r) { return r.json(); })
+      ]).then(function (out) {
+        var ctx = out[0], hist = out[1].enrollments || [];
+        var cur = hist.filter(function (h) { return h.term === ctx.term && h.academic_year === ctx.academic_year; })[0];
+        var btn = document.getElementById('advEnrollBtn');
+        btn.disabled = !!cur;
+        btn.classList.toggle('opacity-50', !!cur);
+        btn.classList.toggle('cursor-not-allowed', !!cur);
+        document.getElementById('advEnrollMsg').textContent = cur ? 'Already enrolled for the active term.' : '';
+      });
+    }
+    refreshEnrolled();
+
+    document.getElementById('advEnrollBtn').addEventListener('click', function () {
+      var btn = this, msg = document.getElementById('advEnrollMsg');
+      if (btn.disabled || !current) return;
+      if (current.account_archived) { alert("This student's portal account is archived. Restore the account in Accounts first."); return; }
+      msg.textContent = 'Saving…';
+      var body = {
+        mode: 'existing', student_no: current.student_no, first_name: current.first_name || '', middle_name: current.middle_name || '',
+        last_name: current.last_name || '', gender: current.gender || '', birthday: current.birthday || '', email: current.email || '',
+        contact_number: current.contact_number || '', year_level: document.getElementById('reg_year_select').value,
+        section: document.querySelector('#preRegisterForm [name=section]').value || 'A',
+        subjects: collectSubjects($('subjectChecklist'))
+      };
+      fetch('/api/registrar/enroll-student', { method: 'POST', credentials: 'same-origin', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(body) })
+        .then(function (r) { return r.json().then(function (j) { return { ok: r.ok, j: j }; }); })
+        .then(function (res) {
+          if (!res.ok) { msg.textContent = res.j.error || 'Could not enroll the student.'; return; }
+          msg.innerHTML = '<span class="text-emerald-800 font-bold">Enrolled for the active term.</span>';
+          refreshEnrolled();
+          loadRoster();
+        })
+        .catch(function () { msg.textContent = 'Could not enroll the student.'; });
+    });
+  }
+
+  /* ----- boot ----- */
+  fetch('/api/registrar/me', { credentials: 'same-origin' }).then(function (r) {
+    if (!r.ok) { top.location.href = '/CUP-PORTAL/registrar/'; return; }
+    return loadRoster().then(function () {
+      renderList();
+      var qp = new URLSearchParams(location.search);
+      if (qp.get('view') === 'enroll' && qp.get('student')) enrollView(qp.get('student'));
+    });
+  }).catch(function () {});
+})();
+</script>
+<script src="/CUP-PORTAL/portal-search.js"></script>
+<script>
+  // ESC: closes the warning if open; otherwise presses the visible Cancel button.
+  // If the form has unsaved work, a warning asks to Confirm (discard) or Close (keep editing).
+  var cupDirty = false, cupModal = null, cupPending = null;
+  document.addEventListener('input', function (e) { if (!/search/i.test(e.target.id || '')) cupDirty = true; });
+  document.addEventListener('change', function (e) { if (!/search/i.test(e.target.id || '')) cupDirty = true; });
+  document.addEventListener('submit', function () { cupDirty = false; }, true);
+  document.addEventListener('click', function (e) {
+    var b = e.target.closest ? e.target.closest('button') : null;
+    if (b && /save|register|submit|add student/i.test((b.id || '') + ' ' + (b.textContent || ''))) cupDirty = false;
+  }, true);
+  function cupCloseModal() { if (cupModal) cupModal.hidden = true; cupPending = null; }
+  function cupEnsureModal() {
+    if (cupModal) return cupModal;
+    cupModal = document.createElement('div');
+    cupModal.hidden = true;
+    cupModal.setAttribute('role', 'dialog');
+    cupModal.style.cssText = 'position:fixed;inset:0;background:rgba(0,0,0,.45);display:flex;align-items:center;justify-content:center;z-index:9999;padding:16px;';
+    cupModal.innerHTML = '<div style="background:#fff;border-radius:10px;max-width:420px;width:100%;padding:22px 24px;box-shadow:0 12px 32px rgba(0,0,0,.3);">' +
+      '<h3 style="margin:0 0 8px;font-size:15px;font-weight:700;color:#3b0764;">Unsaved work</h3>' +
+      '<p style="margin:0 0 18px;font-size:13px;color:#334155;line-height:1.5;">Cancelling this form will clear the unsaved work. Do you want to continue?</p>' +
+      '<div style="display:flex;justify-content:flex-end;gap:10px;">' +
+      '<button type="button" id="cupEscClose" style="padding:9px 16px;border:0;border-radius:6px;background:#e2e8f0;color:#334155;font-weight:700;cursor:pointer;">Close</button>' +
+      '<button type="button" id="cupEscConfirm" style="padding:9px 16px;border:0;border-radius:6px;background:#b91c1c;color:#fff;font-weight:700;cursor:pointer;">Confirm</button>' +
+      '</div></div>';
+    document.body.appendChild(cupModal);
+    cupModal.querySelector('#cupEscClose').addEventListener('click', cupCloseModal);
+    cupModal.querySelector('#cupEscConfirm').addEventListener('click', function () {
+      var fn = cupPending;
+      cupCloseModal();
+      cupDirty = false;
+      document.querySelectorAll('form').forEach(function (f) { if (f.offsetParent !== null) f.reset(); });
+      if (fn) fn();
+    });
+    return cupModal;
+  }
+  function cupEsc() {
+    if (cupModal && !cupModal.hidden) { cupCloseModal(); return; }
+    var action = cupEscAction();
+    if (!action) {
+      // Nothing left to close on this page: ask the dashboard to close the section.
+      if (window.parent && window.parent !== window) window.parent.postMessage({ type: 'cup-esc-none' }, '*');
+      return;
+    }
+    if (action.discards && cupDirty) {
+      cupPending = action.run;
+      cupEnsureModal().hidden = false;
+      cupModal.querySelector('#cupEscConfirm').focus();
+      return;
+    }
+    action.run();
+  }
+  document.addEventListener('keydown', function (e) { if (e.key === 'Escape') cupEsc(); });
+  window.addEventListener('message', function (e) { if (e.data && e.data.type === 'cup-esc') cupEsc(); });
+  function cupEscAction() {
+    var g = function (id) { return document.getElementById(id); };
+    var vc = Array.prototype.find.call(document.querySelectorAll('button'), function (b) { return /cancel/i.test(b.id) && b.offsetParent !== null; });
+    if (vc) return { discards: true, run: function () { vc.click(); } };
+    var sec = document.querySelector('[data-sec]:not([hidden])');
+    var name = sec && sec.getAttribute('data-sec');
+    if (name === 'existing' && g('enrollRecordArea') && !g('enrollRecordArea').hidden) {
+      return { discards: false, run: function () {
+        g('enrollRecordArea').hidden = true;
+        if (g('studentSearchInput')) g('studentSearchInput').value = '';
+        if (g('stuSearchMsg')) g('stuSearchMsg').textContent = '';
+      } };
+    }
+    if (name === 'grades' && g('gradeRecordArea') && !g('gradeRecordArea').hidden) {
+      return { discards: false, run: function () {
+        g('gradeRecordArea').hidden = true;
+        if (g('gradeSearchInput')) g('gradeSearchInput').value = '';
+        if (g('gradeSearchMsg')) g('gradeSearchMsg').textContent = '';
+      } };
+    }
+    if (name === 'view') {
+      var vs = g('viewStudentSearch'), yf = g('viewYearFilter'), sf = g('viewSecFilter'), va = g('viewAllBtn');
+      var showingAll = !!va && va.textContent.trim() === 'Paged View';
+      if ((vs && vs.value) || (yf && yf.value) || (sf && sf.value) || showingAll) {
+        return { discards: false, run: function () {
+          if (showingAll) va.click();
+          if (vs && vs.value) { vs.value = ''; vs.dispatchEvent(new Event('input')); }
+          if (yf && yf.value) { yf.value = ''; yf.dispatchEvent(new Event('change')); }
+          if (sf && sf.value) { sf.value = ''; sf.dispatchEvent(new Event('change')); }
+          cupDirty = false;
+        } };
+      }
+    }
+    return null;
+  }
+</script>
+<script>
+(function () {
+  var TASKS = { advising: { field: 'advising_slip_at', label: 'Advising slip submitted' }, coe: { field: 'coe_printed_at', label: 'COE printed' }, id: { field: 'id_validated_at', label: 'ID validated' } };
+  var cur = 'advising', rows = [];
+  var listEl = document.getElementById('s6List'), msgEl = document.getElementById('s6Msg'), countEl = document.getElementById('s6Count');
+  function esc2(v) { return String(v == null ? '' : v).replace(/[&<>"']/g, function (c) { return { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]; }); }
+  function allDone(r) { return !!(r.advising_slip_at && r.coe_printed_at && r.id_validated_at); }
+  function render() {
+    document.querySelectorAll('.s6-btn').forEach(function (b) {
+      var on = b.getAttribute('data-s6') === cur;
+      b.setAttribute('aria-selected', on ? 'true' : 'false');
+      b.className = 's6-btn px-4 py-2 rounded-lg text-xs font-bold cursor-pointer ' + (on ? 'bg-white text-indigo-900 shadow border border-indigo-400' : 'text-slate-600 hover:text-slate-900');
+    });
+    var doneCount = rows.filter(function (r) { return !!r[TASKS[cur].field]; }).length;
+    countEl.textContent = doneCount + ' of ' + rows.length + ' done';
+    if (!rows.length) { listEl.innerHTML = '<p class="text-xs text-slate-500">No CSC-paid students yet.</p>'; return; }
+    var head = '<tr><th class="text-left p-2">Student No.</th><th class="text-left p-2">Name</th><th class="text-left p-2">Program</th><th class="text-left p-2">Year / Section</th><th class="text-left p-2">Status</th><th class="text-left p-2">' + TASKS[cur].label + '</th>' + (cur === 'id' ? '<th class="text-left p-2">Official</th>' : '') + '</tr>';
+    var body = rows.map(function (r) {
+      var done = !!r[TASKS[cur].field];
+      var no = esc2(r.student_no);
+      var btn = '<button type="button" class="s6-toggle px-3 py-1 rounded text-xs font-bold cursor-pointer ' + (done ? 'bg-emerald-600 text-white' : 'bg-slate-200 text-slate-800') + '" data-no="' + no + '" data-done="' + (done ? '1' : '0') + '">' + (done ? '✔ Done (undo)' : 'Mark Done') + '</button>';
+      var official = '';
+      if (cur === 'id') {
+        if (r.status === 'enrolled') official = '<span class="text-xs font-bold text-emerald-700">Officially Enrolled</span>';
+        else if (allDone(r)) official = '<button type="button" class="s6-official px-3 py-1 rounded text-xs font-bold cursor-pointer bg-indigo-700 text-white" data-no="' + no + '">Tag Officially Enrolled</button>';
+        else official = '<span class="text-xs text-slate-400">Complete all 3 tasks</span>';
+        official = '<td class="p-2">' + official + '</td>';
+      }
+      return '<tr class="border-t border-slate-200"><td class="p-2 font-mono">' + no + '</td><td class="p-2">' + esc2(r.last_name + ', ' + r.first_name + (r.middle_name ? ' ' + r.middle_name.charAt(0) + '.' : '')) + '</td><td class="p-2">' + esc2(r.program) + '</td><td class="p-2">' + esc2((r.year_level || '') + (r.section ? ' / ' + r.section : '')) + '</td><td class="p-2">' + esc2(r.status === 'enrolled' ? 'Officially Enrolled' : 'Pre-registered') + '</td><td class="p-2">' + btn + '</td>' + official + '</tr>';
+    }).join('');
+    listEl.innerHTML = '<div style="overflow-x:auto"><table class="w-full text-xs"><thead class="bg-slate-100">' + head + '</thead><tbody>' + body + '</tbody></table></div>';
+  }
+  function load() {
+    msgEl.textContent = '';
+    fetch('/api/registrar/step6?college=' + encodeURIComponent(COLLEGE), { credentials: 'same-origin' })
+      .then(function (r) { return r.json().then(function (j) { return { ok: r.ok, j: j }; }); })
+      .then(function (res) {
+        if (!res.ok) { listEl.innerHTML = '<p class="text-xs text-rose-600">' + esc2(res.j.error || 'Could not load Step 6.') + '</p>'; return; }
+        rows = res.j.students || []; render();
+      }).catch(function () { listEl.innerHTML = '<p class="text-xs text-rose-600">Could not load Step 6.</p>'; });
+  }
+  function post(url, body) {
+    return fetch(url, { method: 'POST', credentials: 'same-origin', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(body) })
+      .then(function (r) { return r.json().then(function (j) { return { ok: r.ok, j: j }; }); });
+  }
+  document.querySelectorAll('.s6-btn').forEach(function (b) {
+    b.addEventListener('click', function () { cur = b.getAttribute('data-s6'); render(); });
+  });
+  listEl.addEventListener('click', function (e) {
+    var t = e.target;
+    if (t.classList.contains('s6-toggle')) {
+      t.disabled = true;
+      post('/api/registrar/step6/' + encodeURIComponent(t.getAttribute('data-no')) + '/' + cur, { done: t.getAttribute('data-done') !== '1' })
+        .then(function (res) { if (!res.ok) { msgEl.textContent = res.j.error || 'Could not update.'; } load(); });
+    } else if (t.classList.contains('s6-official')) {
+      t.disabled = true;
+      post('/api/registrar/step6/' + encodeURIComponent(t.getAttribute('data-no')) + '/official', {})
+        .then(function (res) { if (!res.ok) { msgEl.textContent = res.j.error || 'Could not tag.'; } load(); });
+    }
+  });
+  // Opened from the University Registrar dashboard as its own tab: show only Step 6
+  if (new URLSearchParams(location.search).get('view') === 'step6') {
+    var tl = document.querySelector('[role="tablist"]');
+    if (tl && tl.parentElement) tl.parentElement.hidden = true;
+    document.querySelectorAll('[data-sec]').forEach(function (x) { x.hidden = x.getAttribute('data-sec') !== 'step6'; });
+    load();
+  }
+})();
+</script>
+<script>
+(function () {
+  // When framed by the College Registrar dashboard, its panel header holds these tabs.
+  var framed = false;
+  try { framed = !!(window.parent && window.parent !== window && window.parent.document.querySelector('.pn-head-btn')); } catch (e) {}
+  if (framed) {
+    var tl = document.querySelector('[role="tablist"]');
+    if (tl) {
+      var target = (tl.parentElement && tl.parentElement.children.length === 1) ? tl.parentElement : tl;
+      target.style.display = 'none';
+    }
+  }
+  window.addEventListener('message', function (e) {
+    var t = e.data && e.data.panelTab;
+    if (!t) return;
+    var b = document.querySelector('[data-tab="' + t + '"]');
+    if (b) b.click();
+  });
+})();
+</script>
+</body>
+</html>

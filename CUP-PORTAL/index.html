@@ -1,0 +1,121 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>CUP Central Portal</title>
+<link rel="icon" href="/images/favicon-cup.png">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Libre+Franklin:wght@400;600;700;800&display=swap">
+<style>
+  :root { --dg: #0a3a0a; --g: #0f5a12; --g2: #1d7a20; --gold: #f2c200; --ink: #1f2a1f; --line: #7fa37f; }
+  * { box-sizing: border-box; }
+  html, body { margin: 0; background: #eef3ee; color: var(--ink); }
+  body { font-family: 'Libre Franklin', Arial, Helvetica, sans-serif; min-height: 100vh; }
+
+  .top { background: #fff; position: relative; height: 75px; display: flex; align-items: flex-end; padding: 0 24px 0 190px; }
+  .top .name { line-height: 1.1; }
+  .top .w1 { font-size: 2.5rem; }
+  .top .w2 { font-size: 3.7rem; line-height: 0; }
+  .top .small { font-size: .75rem; line-height: 1; margin-bottom: 0px; margin-left: 2px; font-weight: 700; letter-spacing: .08em; color: var(--g); text-transform: uppercase; }
+  .top .big { font-size: 2.3rem; line-height: 0.8; font-weight: 800; color: var(--dg); }
+  .seal { position: absolute; left: 36px; top: -2px; width: 130px; height: 130px; display: flex; align-items: center; justify-content: center; z-index: 2; }
+  .seal img { width: 130px; height: 130px; object-fit: contain; }
+
+  .nav { background: linear-gradient(90deg, var(--dg), var(--g2)); height: 52px; display: flex; align-items: center; padding: 0 24px 0 190px; gap: 26px; }
+  .nav a { color: #fff; text-decoration: none; font-weight: 700; font-size: .92rem; letter-spacing: .03em; text-transform: uppercase; }
+  .nav a:hover { color: var(--gold); }
+
+  main { max-width: 900px; margin: 34px auto 60px; padding: 0 16px; }
+  .panel { border: 3px solid var(--line); background: #f6f9f6; }
+  .panel-head { background: linear-gradient(90deg, var(--dg), var(--g2)); color: #fff; padding: 22px 26px; font-size: 1.25rem; font-weight: 600; letter-spacing: .04em; text-transform: uppercase; }
+  .choices { padding: 50px 0 60px; display: flex; flex-direction: column; align-items: center; gap: 14px; }
+  .choice { width: 100%; max-width: 560px; display: flex; align-items: center; gap: 18px; background: linear-gradient(90deg, var(--g), var(--g2)); color: #fff; text-decoration: none; padding: 18px 22px; border-radius: 4px; font-size: 1.1rem; font-weight: 600; letter-spacing: .02em; text-transform: uppercase; box-shadow: 0 1px 3px rgba(0,0,0,.15); transition: filter .15s; }
+  .choice:hover { filter: brightness(1.12); }
+  .choice svg { width: 28px; height: 28px; flex: 0 0 28px; stroke: #fff; fill: none; stroke-width: 1.8; }
+  .choice .arrow { margin-left: auto; font-size: 1.3rem; opacity: .85; }
+
+  footer { text-align: center; color: #557055; font-size: .85rem; padding: 0 16px 30px; }
+
+  @media (max-width: 720px) {
+    .top { height: auto; padding: 96px 18px 14px; }
+    .seal { left: 50%; transform: translateX(-50%); top: 0; width: 92px; height: 92px; }
+    .seal img { width: 92px; height: 92px; }
+    .top .big { font-size: 1.2rem; text-align: center; }
+    .top .small { text-align: center; }
+    .nav { height: auto; padding: 12px 16px; flex-wrap: wrap; justify-content: center; gap: 14px; }
+    .choices { padding: 36px 16px 42px; }
+    .choice { font-size: .98rem; padding: 16px; }
+  }
+  .dd-choice { position: relative; width: 100%; max-width: 560px; display: flex; flex-direction: column; }
+  .dd-choice > summary { list-style: none; cursor: pointer; width: 100%; }
+  .dd-choice > summary::-webkit-details-marker { display: none; }
+  .dd-menu { display: grid; grid-template-columns: 1fr 1fr; width: 100%; background: #fff; border: 1px solid #c9ccd1; border-radius: 6px; margin-top: 6px; overflow: hidden; }
+  .dd-menu a { padding: 14px 16px; color: #106010; font-weight: 700; text-decoration: none; border-bottom: 1px solid #e5e7eb; border-right: 1px solid #e5e7eb; text-align: center; }
+  .dd-menu a:nth-child(2n) { border-right: 0; }
+    .dd-menu a:hover { background: #f1f7f1; }
+</style>
+<link rel="stylesheet" href="/CUP-PORTAL/portal-controls.css">
+</head>
+<body>
+  <header>
+    <div class="top">
+      <div class="seal"><img src="/images/cup-logo-seal.png" alt="City University of Pasay seal"></div>
+      <div class="name">
+        <div class="small">City University of Pasay</div>
+        <div class="big"><span class="w1">CENTRAL</span> <span class="w2">PORTAL</span></div>
+      </div>
+    </div>
+    <nav class="nav">
+      <a href="https://cup.edu.ph" target="_blank" rel="noopener">CUP Website</a>
+    </nav>
+  </header>
+
+  <main>
+    <section class="panel">
+      <div class="panel-head">Login as</div>
+            <div class="choices">
+        <a class="choice" href="/CUP-PORTAL/student/login" target="_blank" rel="noopener">
+          <svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="10" cy="8" r="4"/><path d="M3 21c0-3.9 3.1-7 7-7 1.4 0 2.7.4 3.8 1.1"/><path d="M15.5 16.5l2 2 4-4"/></svg>
+          Student
+          <span class="arrow">›</span>
+        </a>
+        <a class="choice" href="/CUP-PORTAL/faculty/" target="_blank" rel="noopener">
+          <svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="10" cy="8" r="4"/><path d="M3 21c0-3.9 3.1-7 7-7 1.4 0 2.7.4 3.8 1.1"/><path d="M15.5 16.5l2 2 4-4"/></svg>
+          Faculty
+          <span class="arrow">›</span>
+        </a>
+        <details class="dd-choice">
+          <summary class="choice">
+            <svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="10" cy="8" r="4"/><path d="M3 21c0-3.9 3.1-7 7-7 1.4 0 2.7.4 3.8 1.1"/><path d="M15.5 16.5l2 2 4-4"/></svg>
+            College Registrar
+            <span class="arrow">▾</span>
+          </summary>
+          <div class="dd-menu">
+            <a href="/CUP-PORTAL/college-registrar/" target="_blank" rel="noopener">College Registrar Login</a>
+            <a href="/CUP-PORTAL/csc/" target="_blank" rel="noopener">CSC</a>
+          </div>
+        </details>
+        <a class="choice" href="/CUP-PORTAL/registrar/" target="_blank" rel="noopener">
+          <svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="10" cy="8" r="4"/><path d="M3 21c0-3.9 3.1-7 7-7 1.4 0 2.7.4 3.8 1.1"/><path d="M15.5 16.5l2 2 4-4"/></svg>
+          Registrar
+          <span class="arrow">›</span>
+        </a>
+        <a class="choice" href="/CUP-CAT/login" target="_blank" rel="noopener">
+          <svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="10" cy="8" r="4"/><path d="M3 21c0-3.9 3.1-7 7-7 1.4 0 2.7.4 3.8 1.1"/><path d="M15.5 16.5l2 2 4-4"/></svg>
+          Applicant (CUP College Admission Test)
+          <span class="arrow">›</span>
+        </a>
+        <a class="choice" href="/CUP-PORTAL/graduate-studies/" target="_blank" rel="noopener">
+          <svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="10" cy="8" r="4"/><path d="M3 21c0-3.9 3.1-7 7-7 1.4 0 2.7.4 3.8 1.1"/><path d="M15.5 16.5l2 2 4-4"/></svg>
+          Applicant (Graduate Studies/School)
+          <span class="arrow">›</span>
+        </a>
+      </div>
+    </section>
+  </main>
+
+  <footer>City University of Pasay · Central Portal</footer>
+</body>
+</html>

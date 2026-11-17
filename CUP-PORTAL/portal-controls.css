@@ -1,0 +1,16 @@
+/* Shared control sizing for the CUP portal. Each control's height follows its text size:
+   padding is in em, so changing the font size changes the height in step. */
+input:not([type=checkbox]):not([type=radio]), select, button {
+  height: auto !important;
+  line-height: 1.5 !important;
+  padding: .4em .75em !important;
+  box-sizing: border-box !important;
+  font-size: .75rem !important;
+}
+input[type=checkbox], input[type=radio] { width: 1rem; height: 1rem; margin: 0; vertical-align: middle; }
+input[type=date] { -webkit-appearance: none; appearance: none; }
+.flex:not(.flex-col):not(.flex-col-reverse) { align-items: center; }
+td, th { line-height: 1.5; vertical-align: middle; font-size: .75rem !important; }
+td, th { padding-top: .45em !important; padding-bottom: .45em !important; }
+td input, td select, td button { padding: .3em .5em !important; }
+label { line-height: 1.4; }

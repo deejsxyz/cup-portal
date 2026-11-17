@@ -1,0 +1,185 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>CUP Student Portal - Pre-Enrollment</title>
+<link rel="icon" href="/images/favicon-cup.png">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Libre+Franklin:wght@400;600;700;800&display=swap">
+<style>
+  :root { --green: #106010; --dg: #0b4a0b; --gold: #f2c200; --ink: #222; --line: #d6dbd6; }
+  * { box-sizing: border-box; }
+  html, body { margin: 0; background: #f4f6f4; color: var(--ink); }
+  body { font-family: 'Libre Franklin', Arial, Helvetica, sans-serif; min-height: 100vh; }
+  header { background: var(--green); color: #fff; display: flex; align-items: center; justify-content: space-between; gap: 12px; padding: 12px 20px; flex-wrap: wrap; }
+  header .brand { display: flex; align-items: center; gap: 12px; }
+  header img { width: 44px; height: 44px; background: #fff; border-radius: 50%; padding: 3px; }
+  header h1 { font-size: 1.05rem; margin: 0; font-weight: 800; }
+  header .who { font-size: .92rem; opacity: .92; }
+  header button { background: rgba(255,255,255,.18); color: #fff; border: 1px solid rgba(255,255,255,.6); border-radius: 4px; padding: 7px 14px; font: inherit; cursor: pointer; }
+  main { max-width: 900px; margin: 0 auto; padding: 22px 16px 60px; }
+  .card { background: #fff; border: 1px solid var(--line); border-radius: 8px; padding: 18px; margin-bottom: 18px; }
+  .info { display: grid; grid-template-columns: repeat(auto-fit, minmax(180px, 1fr)); gap: 12px 18px; }
+  .info .k { font-size: .8rem; text-transform: uppercase; color: #5b6b5b; letter-spacing: .04em; }
+  .info .v { font-weight: 700; font-size: 1.02rem; margin-top: 2px; }
+  .notice { border-radius: 6px; padding: 12px 14px; margin-bottom: 18px; font-size: .95rem; }
+  .notice.info-n { background: #e8f1fb; color: #1e3a5f; }
+  .notice.ok-n { background: #e7f5ea; color: #0b4a0b; }
+  .notice.warn-n { background: #fff7e0; color: #5c4400; }
+  h2 { font-size: 1.1rem; margin: 0 0 12px; color: var(--dg); }
+  table { width: 100%; border-collapse: collapse; font-size: .95rem; }
+  th, td { text-align: left; padding: 10px 8px; border-bottom: 1px solid var(--line); }
+  th { font-size: .8rem; text-transform: uppercase; color: #5b6b5b; letter-spacing: .03em; }
+  td.num, th.num { text-align: right; white-space: nowrap; }
+  input[type=checkbox] { width: 18px; height: 18px; accent-color: var(--green); }
+  .total { margin-top: 12px; text-align: right; font-weight: 700; }
+  .actions { display: flex; gap: 10px; justify-content: flex-end; flex-wrap: wrap; margin-top: 16px; }
+  .btn { padding: 11px 18px; border-radius: 4px; border: 0; font: inherit; font-size: 1rem; cursor: pointer; }
+  .btn-s { background: #fff; color: var(--green); border: 1px solid var(--green); }
+  .btn-p { background: var(--green); color: #fff; }
+  .btn:disabled { opacity: .6; cursor: wait; }
+  .msg { font-size: .95rem; margin-top: 12px; }
+  .msg.bad { color: #b42318; }
+  .msg.ok { color: var(--dg); }
+  .empty { color: #555; padding: 18px 0; text-align: center; }
+  [hidden] { display: none !important; }
+  @media (max-width: 600px) { header h1 { font-size: .95rem; } th:nth-child(4), td:nth-child(4) { display: none; } }
+</style>
+<link rel="stylesheet" href="/CUP-PORTAL/portal-controls.css">
+<script src="/CUP-PORTAL/portal-session.js" data-logout="/api/cat/logout" data-login="/CUP-PORTAL/student/login"></script>
+</head>
+<body>
+<header>
+  <div class="brand"><img src="/images/cup-logo-seal.png" alt="CUP seal"><h1>CUP Central Portal</h1></div>
+  <div style="display:flex;align-items:center;gap:12px;flex-wrap:wrap">
+    <span class="who" id="who"></span>
+    <button type="button" id="logout">Log Out</button>
+  </div>
+</header>
+<main>
+  <section class="card">
+    <div class="info">
+      <div><div class="k">Student number</div><div class="v" id="s-num">—</div></div>
+      <div><div class="k">Program</div><div class="v" id="s-prog">—</div></div>
+      <div><div class="k">Year level</div><div class="v" id="s-year">—</div></div>
+      <div><div class="k">Pre-enrollment term</div><div class="v" id="s-term">—</div></div>
+    </div>
+  </section>
+
+  <div class="notice info-n" id="n-closed" hidden>Pre-enrollment is not open yet. You can view your subjects here once it opens.</div>
+  <div class="notice ok-n" id="n-submitted" hidden>Your pre-enrollment has been submitted. Your subjects are now locked for this term.</div>
+
+  <section class="card">
+    <h2>Subjects for this term</h2>
+    <div id="subjects-wrap">
+      <table id="subjects" hidden>
+        <thead><tr><th></th><th>Code</th><th>Subject</th><th class="num">Units</th></tr></thead>
+        <tbody id="rows"></tbody>
+      </table>
+      <div class="empty" id="no-subjects" hidden>No subjects are listed for your program and year level for this term yet. Please contact the Registrar's Office.</div>
+    </div>
+    <div class="total">Total units: <span id="total">0</span></div>
+    <div class="actions" id="actions" hidden>
+      <button type="button" class="btn btn-s" id="save">Save draft</button>
+      <button type="button" class="btn btn-p" id="submit">Submit pre-enrollment</button>
+    </div>
+    <p class="msg" id="msg" role="status" hidden></p>
+  </section>
+</main>
+
+<script>
+  (function () {
+    function $(id) { return document.getElementById(id); }
+    var state = null;
+
+    function say(t, ok) { var m = $('msg'); m.textContent = t; m.className = 'msg ' + (ok ? 'ok' : 'bad'); m.hidden = false; }
+    function checked() {
+      return Array.prototype.filter.call(document.querySelectorAll('#rows input[type=checkbox]'), function (c) { return c.checked; })
+        .map(function (c) { return Number(c.value); });
+    }
+    function updateTotal() {
+      var total = 0;
+      Array.prototype.forEach.call(document.querySelectorAll('#rows input[type=checkbox]'), function (c) {
+        if (c.checked) total += Number(c.getAttribute('data-units'));
+      });
+      $('total').textContent = Math.round(total * 100) / 100;
+    }
+
+    function render(d) {
+      state = d;
+      $('who').textContent = d.student.name;
+      $('s-num').textContent = d.student.number;
+      $('s-prog').textContent = d.student.program;
+      $('s-year').textContent = d.student.yearLevel + (d.student.yearLevel === 2 ? 'nd' : d.student.yearLevel === 3 ? 'rd' : 'th') + ' Year';
+      $('s-term').textContent = 'A.Y. ' + d.term.ay + ' · ' + (d.term.semester === 2 ? '2nd' : '1st') + ' Semester';
+
+      $('n-closed').hidden = d.term.open;
+      $('n-submitted').hidden = !d.submitted;
+
+      var tbody = $('rows');
+      tbody.innerHTML = '';
+      d.subjects.forEach(function (s) {
+        var tr = document.createElement('tr');
+        var locked = d.submitted || !d.term.open;
+        tr.innerHTML = '<td><input type="checkbox" value="' + s.id + '" data-units="' + s.units + '"' + (d.selected.indexOf(s.id) >= 0 ? ' checked' : '') + (locked ? ' disabled' : '') + '></td>' +
+          '<td></td><td></td><td class="num"></td>';
+        tr.children[1].textContent = s.code;
+        tr.children[2].textContent = s.title;
+        tr.children[3].textContent = s.units;
+        tbody.appendChild(tr);
+      });
+      var has = d.subjects.length > 0;
+      $('subjects').hidden = !has;
+      $('no-subjects').hidden = has;
+      var canEdit = d.term.open && !d.submitted;
+      $('actions').hidden = !has || !canEdit;
+      updateTotal();
+    }
+
+    function load() {
+      fetch('/api/student/me', { credentials: 'same-origin' }).then(function (r) {
+        if (r.status === 401) { window.location.href = '/CUP-PORTAL/student/login'; return null; }
+        return r.json().then(function (j) { return { ok: r.ok, data: j }; });
+      }).then(function (res) {
+        if (!res) return;
+        if (!res.ok) { say(res.data.error || 'Could not load your pre-enrollment.', false); return; }
+        render(res.data);
+      }).catch(function () { say('Could not load your pre-enrollment. Please refresh.', false); });
+    }
+
+    function save(submit) {
+      var ids = checked();
+      if (submit && !ids.length) return say('Select at least one subject before you submit.', false);
+      if (submit && !window.confirm('Submit your pre-enrollment? Your subjects will be locked and you will not be able to change them.')) return;
+      $('save').disabled = true; $('submit').disabled = true;
+      fetch('/api/student/pre-enroll', {
+        method: 'POST', credentials: 'same-origin',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ subjectIds: ids, submit: submit })
+      }).then(function (r) { return r.json().catch(function () { return {}; }).then(function (j) { return { ok: r.ok, data: j }; }); })
+        .then(function (res) {
+          $('save').disabled = false; $('submit').disabled = false;
+          if (!res.ok) return say(res.data.error || 'Could not save.', false);
+          say(submit ? 'Pre-enrollment submitted.' : 'Draft saved.', true);
+          load();
+        }).catch(function () {
+          $('save').disabled = false; $('submit').disabled = false;
+          say('Could not save. Please try again.', false);
+        });
+    }
+
+    document.addEventListener('change', function (e) {
+      if (e.target && e.target.matches && e.target.matches('#rows input[type=checkbox]')) updateTotal();
+    });
+    $('save').addEventListener('click', function () { save(false); });
+    $('submit').addEventListener('click', function () { save(true); });
+    $('logout').addEventListener('click', function () {
+      fetch('/api/cat/logout', { method: 'POST', credentials: 'same-origin' }).finally(function () { window.location.href = '/CUP-PORTAL/'; });
+    });
+    load();
+  })();
+</script>
+</body>
+</html>
