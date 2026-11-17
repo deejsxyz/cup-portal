@@ -378,6 +378,7 @@
     if (!validId(no)) { $('enrollRecordArea').hidden = true; msg.textContent = 'Student not found. Please check the student number.'; return; }
     var s = all.filter(function (x) { return x.student_no === no; })[0];
     if (!s) { $('enrollRecordArea').hidden = true; msg.textContent = 'Student not found. Please check the student number.'; return; }
+    try { sessionStorage.setItem('cupStu:' + COLLEGE, no); } catch (e) {}
     current = s;
     $('enrollRecordArea').hidden = false;
     if (s.account_archived) {
@@ -919,6 +920,7 @@
       renderList();
       var qp = new URLSearchParams(location.search);
       if (qp.get('view') === 'enroll' && qp.get('student')) enrollView(qp.get('student'));
+      else { var savedStu = null; try { savedStu = sessionStorage.getItem('cupStu:' + COLLEGE); } catch (e) {} if (savedStu) openStudent(savedStu); }
     });
   }).catch(function () {});
 })();
