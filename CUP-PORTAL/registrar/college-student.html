@@ -857,11 +857,11 @@
     var block = document.getElementById('toggleSubjectsBtn').parentElement;
     var wrap = document.createElement('div');
     wrap.className = 'bg-white rounded-xl shadow-sm border border-slate-200 p-5 space-y-4';
-    wrap.innerHTML = '<h3 class="text-sm font-bold uppercase tracking-wider text-indigo-900">Enroll for the Active Term</h3>';
+    wrap.innerHTML = '<h3 class="text-sm font-bold uppercase tracking-wider text-indigo-900">Enroll Subject</h3>';
     wrap.appendChild(block);
     var row = document.createElement('div');
     row.className = 'flex justify-end';
-    row.innerHTML = '<button type="button" id="advEnrollBtn" class="px-5 py-2.5 bg-indigo-700 hover:bg-indigo-800 text-white rounded-lg text-xs font-bold shadow-md cursor-pointer">Enroll Student</button>';
+    row.innerHTML = '<button type="button" id="advEnrollBtn" class="px-5 py-2.5 bg-indigo-700 hover:bg-indigo-800 text-white rounded-lg text-xs font-bold shadow-md cursor-pointer">Enroll Subject</button>';
     wrap.appendChild(row);
     document.body.appendChild(wrap);
 
@@ -882,9 +882,6 @@
         var ctx = out[0], hist = out[1].enrollments || [];
         var cur = hist.filter(function (h) { return h.term === ctx.term && h.academic_year === ctx.academic_year; })[0];
         var btn = document.getElementById('advEnrollBtn');
-        btn.disabled = !!cur;
-        btn.classList.toggle('opacity-50', !!cur);
-        btn.classList.toggle('cursor-not-allowed', !!cur);
       });
     }
     refreshEnrolled();
