@@ -915,7 +915,12 @@
 
   /* ----- boot ----- */
   fetch('/api/registrar/me', { credentials: 'same-origin' }).then(function (r) {
-    if (!r.ok) { top.location.href = '/CUP-PORTAL/registrar/'; return; }
+    if (!r.ok) {
+      // Send the user back to the login page of the dashboard they were using (College or University Registrar).
+      var onCollege = false; try { onCollege = (top.location.pathname || '').indexOf('/CUP-PORTAL/college-registrar/') === 0; } catch (e) {}
+      top.location.href = onCollege ? '/CUP-PORTAL/college-registrar/' : '/CUP-PORTAL/registrar/';
+      return;
+    }
     return loadRoster().then(function () {
       renderList();
       var qp = new URLSearchParams(location.search);
