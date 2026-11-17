@@ -2209,6 +2209,18 @@
       });
       var frame = panel.querySelector('iframe');
       if (frame && frame.contentWindow) frame.contentWindow.postMessage({ panelTab: b.getAttribute('data-ptab') }, '*');
+      try { sessionStorage.setItem('cupPtab:' + panel.id, b.getAttribute('data-ptab')); } catch (e) {}
+    });
+    // Refresh keeps the header tab (View Student / New Student / Advising etc.) that was open.
+    document.querySelectorAll('section.panel').forEach(function (panel) {
+      var t = null; try { t = sessionStorage.getItem('cupPtab:' + panel.id); } catch (e) {}
+      var frame = panel.querySelector('iframe');
+      var btn = t && panel.querySelector('.pn-head-btn[data-ptab="' + t + '"]');
+      if (!btn || !frame) return;
+      var send = function () { try { frame.contentWindow.postMessage({ panelTab: t }, '*'); } catch (e) {} };
+      frame.addEventListener('load', send);
+      setTimeout(send, 1500);
+      btn.click();
     });
   })();
 </script>
