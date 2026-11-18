@@ -1571,11 +1571,22 @@ app.post('/api/registrar/portal-users', requireSuperAdmin, async (req, res) => {
     if (role === 'faculty') {
       const username = await autoStaffUsername(b.first_name, b.last_name);
       const college = String(b.college || '');
-      if (!REG_COLLEGES.includes(college)) return res.status(400).json({ error: 'Choose a valid college.' });
+      if (!REG_COLLEGES.includes(college) && college !== 'NSTP') return res.status(400).json({ error: 'Choose a valid college.' });
       if (!username || !name) return res.status(400).json({ error: 'Name and username are required.' });
       const email = String(b.email || '').trim().toLowerCase().slice(0, 254);
       const emailProblem = await facultyEmailProblem(email);
       if (emailProblem) return res.status(400).json({ error: emailProblem });
+      if (college === 'NSTP') {
+        // NSTP Officer: one account with no college, signs in on the NSTP Portal.
+        const first = String(b.first_name || '').trim().slice(0, 100), last = String(b.last_name || '').trim().slice(0, 100);
+        if (!first || !last) return res.status(400).json({ error: 'Last name and first name are required.' });
+        const officer = await pool.query(
+          "INSERT INTO accounts (category, first_name, middle_name, last_name, name_extension, email, password_hash, role, college, username, must_change_password) VALUES ('REGISTRAR',$1,'',$2,'',$3,$4,'nstp','',$5,TRUE) RETURNING id",
+          [first, last, email, hashPassword(temp), username]);
+        logAction(req, 'University Registrar', 'NSTP officer account created', email);
+        const sent = await sendStaffWelcome(req, { kind: 'nstp', to: email, name: first + ' ' + last, username, temp });
+        return res.json({ ok: true, id: officer.rows[0].id, username, temp_password: temp, email_sent: sent });
+      }
       const r = await pool.query(
         'INSERT INTO reg_users (role, username, password_hash, name, college, must_change_password, email) VALUES ($1,$2,$3,$4,$5,TRUE,$6) RETURNING id',
         ['faculty', username, hashPassword(temp), name, college, email]);

@@ -363,7 +363,6 @@
           <button type="button" class="acct-tab" data-acct-tab="faculty">Faculty Accounts</button>
           <button type="button" class="acct-tab" data-acct-tab="university">Registrar Accounts</button>
           <button type="button" class="acct-tab" data-acct-tab="registrar">College Registrar Accounts</button>
-          <button type="button" class="acct-tab" data-acct-tab="nstp">NSTP Accounts</button>
           <button type="button" class="acct-tab" data-acct-tab="csc">CSC Accounts</button>
         </div>
         <div class="acct-pane" id="acct-pane-student">
@@ -394,7 +393,7 @@
             <h3>Register one faculty account</h3>
             <form id="pu-form-faculty" novalidate class="acct-form">
               <input id="pu-ln-faculty" placeholder="Last name" aria-label="Last name"><input id="pu-fn-faculty" placeholder="First name" aria-label="First name"><input id="pu-mn-faculty" placeholder="Middle name" aria-label="Middle name"><input id="pu-ext-faculty" placeholder="Extension (Jr., III)" aria-label="Extension"><input id="pu-user-faculty" class="auto-user" readonly placeholder="Username (auto-generated)" aria-label="Username (auto-generated)"><input id="pu-mail-faculty" type="email" placeholder="Email address (for OTP codes)" pattern="[A-Za-z0-9._%+\-]+@[A-Za-z0-9\-]+(\.[A-Za-z0-9\-]+)*\.[A-Za-z]{2,}" maxlength="254" title="Enter a valid email address, for example name@example.com">
-              <select id="pu-college-faculty"><option>COACS</option><option>CAS</option><option>CONM</option><option>COED</option><option>COBM</option><option>LAW</option><option>GS</option><option>TESDA-TVI</option></select>
+              <select id="pu-college-faculty"><option>COACS</option><option>CAS</option><option>CONM</option><option>COED</option><option>COBM</option><option>LAW</option><option>GS</option><option>TESDA-TVI</option><option>NSTP</option></select>
               <button type="button" id="pu-save-faculty">Create faculty account</button>
               <p class="hint" id="pu-msg-faculty"></p>
             </form>
@@ -426,42 +425,6 @@
           <div class="sub-body" data-role="registrar" data-sub="archive" hidden><div class="bulk" data-role="registrar" data-mode="archive"></div></div>
           <div class="sub-body" data-role="registrar" data-sub="restore" hidden><div class="bulk" data-role="registrar" data-mode="restore"></div></div>
           <div class="sub-body" data-role="registrar" data-sub="delete" hidden><div class="bulk" data-role="registrar" data-mode="delete"></div></div>
-        </div>
-        <div class="acct-pane" id="acct-pane-nstp" hidden>
-          <div class="sub-tabs"><button type="button" class="sub-tab on" data-role="nstp" data-sub="register">Register</button><button type="button" class="sub-tab" data-role="nstp" data-sub="manage">Manage Account</button><button type="button" class="sub-tab" data-role="nstp" data-sub="archive">Bulk Archive</button><button type="button" class="sub-tab" data-role="nstp" data-sub="restore">Bulk Restore</button><button type="button" class="sub-tab" data-role="nstp" data-sub="delete">Bulk Delete</button></div>
-          <div class="sub-body" data-role="nstp" data-sub="register">
-            <h3>Register one NSTP account</h3>
-            <form novalidate class="acct-form" onsubmit="return false">
-              <input id="nst-ln" placeholder="Last name" aria-label="Last name"><input id="nst-fn" placeholder="First name" aria-label="First name"><input id="nst-mn" placeholder="Middle name" aria-label="Middle name"><input id="nst-ext" placeholder="Extension (Jr., III)" aria-label="Extension">
-              <input id="nst-user" class="auto-user" readonly placeholder="Username (auto-generated)" aria-label="Username (auto-generated)">
-              <input id="nst-mail" type="email" placeholder="Email address (for OTP codes)" autocomplete="off" pattern="[A-Za-z0-9._%+\-]+@[A-Za-z0-9\-]+(\.[A-Za-z0-9\-]+)*\.[A-Za-z]{2,}" maxlength="254" title="Enter a valid email address, for example name@example.com">
-              
-              <button type="button" id="nst-create">Create NSTP account</button>
-              <p class="hint staff-msg" data-role="nstp"></p>
-            </form>
-          </div>
-          <div class="sub-body" data-role="nstp" data-sub="manage" hidden><div class="manage" data-role="nstp"></div></div>
-          <div class="sub-body" data-role="nstp" data-sub="archive" hidden><div class="bulk" data-role="nstp" data-mode="archive"></div></div>
-          <div class="sub-body" data-role="nstp" data-sub="restore" hidden><div class="bulk" data-role="nstp" data-mode="restore"></div></div>
-          <div class="sub-body" data-role="nstp" data-sub="delete" hidden><div class="bulk" data-role="nstp" data-mode="delete"></div></div>
-        </div>
-        <div class="acct-pane" id="acct-pane-university" hidden>
-          <div class="sub-tabs"><button type="button" class="sub-tab on" data-role="university" data-sub="register">Register</button><button type="button" class="sub-tab" data-role="university" data-sub="manage">Manage Account</button><button type="button" class="sub-tab" data-role="university" data-sub="archive">Bulk Archive</button><button type="button" class="sub-tab" data-role="university" data-sub="restore">Bulk Restore</button><button type="button" class="sub-tab" data-role="university" data-sub="delete">Bulk Delete</button></div>
-          <div class="sub-body" data-role="university" data-sub="register">
-            <h3>Register one University Registrar account</h3>
-            <form novalidate class="acct-form" onsubmit="return false">
-              <input id="uni-ln" placeholder="Last name" aria-label="Last name"><input id="uni-fn" placeholder="First name" aria-label="First name"><input id="uni-mn" placeholder="Middle name" aria-label="Middle name"><input id="uni-ext" placeholder="Extension (Jr., III)" aria-label="Extension">
-              <input id="uni-user" class="auto-user" readonly placeholder="Username (auto-generated)" aria-label="Username (auto-generated)">
-              <input id="uni-mail" type="email" placeholder="Email address (for OTP codes)" autocomplete="off" pattern="[A-Za-z0-9._%+\-]+@[A-Za-z0-9\-]+(\.[A-Za-z0-9\-]+)*\.[A-Za-z]{2,}" maxlength="254" title="Enter a valid email address, for example name@example.com">
-              <select id="uni-college" aria-label="College"><option value="">Choose a college</option><option value="COACS">COACS Records-in-Charge</option><option value="CAS">CAS Records-in-Charge</option><option value="CONM">CONM Records-in-Charge</option><option value="COED">COED Records-in-Charge</option><option value="COBM">CoBM Records-in-Charge</option><option value="LAW">School of Law Records-in-Charge</option><option value="GS">Graduate School Records-in-Charge</option><option value="TESDA-TVI">TESDA-TVI Records-in-Charge</option></select>
-              <button type="button" id="uni-create">Create University Registrar account</button>
-              <p class="hint staff-msg" data-role="university"></p>
-            </form>
-          </div>
-          <div class="sub-body" data-role="university" data-sub="manage" hidden><div class="manage" data-role="university"></div></div>
-          <div class="sub-body" data-role="university" data-sub="archive" hidden><div class="bulk" data-role="university" data-mode="archive"></div></div>
-          <div class="sub-body" data-role="university" data-sub="restore" hidden><div class="bulk" data-role="university" data-mode="restore"></div></div>
-          <div class="sub-body" data-role="university" data-sub="delete" hidden><div class="bulk" data-role="university" data-mode="delete"></div></div>
         </div>
         <div class="acct-pane" id="acct-pane-csc" hidden>
           <div class="sub-tabs"><button type="button" class="sub-tab on" data-role="csc" data-sub="register">Register</button><button type="button" class="sub-tab" data-role="csc" data-sub="manage">Manage Account</button><button type="button" class="sub-tab" data-role="csc" data-sub="archive">Bulk Archive</button><button type="button" class="sub-tab" data-role="csc" data-sub="restore">Bulk Restore</button><button type="button" class="sub-tab" data-role="csc" data-sub="delete">Bulk Delete</button></div>
@@ -966,7 +929,7 @@
         renderAllPanes();
       });
     }
-    buildManage('student'); buildManage('faculty'); buildManage('registrar'); buildManage('university'); buildManage('nstp'); buildManage('csc');
+    buildManage('student'); buildManage('faculty'); buildManage('registrar'); buildManage('university'); buildManage('csc');
     document.querySelectorAll('.bulk').forEach(buildBulk);
 
     document.addEventListener('click', function (e) {
@@ -1458,7 +1421,6 @@
     safeOn('#reg-create', 'click', function () { registerStaff('registrar'); });
     safeOn('#csc-create', 'click', function () { registerStaff('csc'); });
     safeOn('#uni-create', 'click', function () { registerStaff('university'); });
-    safeOn('#nst-create', 'click', function () { registerStaff('nstp'); });
     safeOn('#pu-save-student', 'click', function () { createOne('student'); });
     syncPrograms($('#pu-program-student'), $('#pu-college-student').value);
     safeOn('#pu-college-student', 'change', function () { syncPrograms($('#pu-program-student'), this.value); });
