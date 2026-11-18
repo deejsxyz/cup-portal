@@ -2295,7 +2295,17 @@
           return;
         }
 
-        setProg(85, 'Saving ' + (task.rowsDone || 0).toLocaleString() + ' rows from ' + total + ' file(s) to database…');
+        var jobId = 'j' + Date.now() + Math.random().toString(36).slice(2, 8);
+        var pollT = setInterval(function () {
+          fetch('/api/registrar/batch-upload-progress/' + jobId, { credentials: 'same-origin' })
+            .then(function (r) { return r.json(); })
+            .then(function (j) {
+              if (!j.active) return;
+              var pct = j.total ? Math.round((j.done / j.total) * 100) : 0;
+              setProg(pct, 'Saving ' + j.done.toLocaleString() + ' of ' + j.total.toLocaleString() + ' rows (' + pct + '%)');
+            }).catch(function () {});
+        }, 400);
+        setProg(0, 'Saving rows to database…');
         if (task.interrupted || !navigator.onLine) {
           showInterruptModal(task, 'Interrupted before final database commit.');
           return;
@@ -2312,9 +2322,11 @@
             dryRun: false,
             enrollment_status: task.enrollStatus,
             academic_year: task.academicYear || '',
-            files: task.payloads
+            files: task.payloads,
+            jobId: jobId
           })
         }).then(function (r) {
+          clearInterval(pollT);
           return r.json().then(function (j) { return { ok: r.ok, j: j }; });
         }).then(function (res) {
           intBtn.hidden = true;

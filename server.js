@@ -3945,6 +3945,16 @@ app.post('/api/registrar/welcome-emails/:action', requireRegistrar, (req, res) =
   res.json({ ok: true, stopped: welcomeEmailsStopped });
 });
 
+// Live progress for batch commits. The browser polls the job id while rows are being saved.
+const batchJobs = new Map();
+function batchJobStart(jobId, total) { if (jobId) batchJobs.set(jobId, { done: 0, total, at: Date.now() }); }
+function batchJobTick(jobId) { const j = jobId && batchJobs.get(jobId); if (j) j.done += 1; }
+function batchJobEnd(jobId) { if (jobId) setTimeout(() => batchJobs.delete(jobId), 60000); }
+app.get('/api/registrar/batch-upload-progress/:jobId', requireRegistrar, (req, res) => {
+  const j = batchJobs.get(String(req.params.jobId || ''));
+  if (!j) return res.json({ done: 0, total: 0, active: false });
+  res.json({ done: j.done, total: j.total, active: true });
+});
 app.post('/api/registrar/batch-upload/:type', requireRegistrar, async (req, res) => {
   const type = String(req.params.type || '').toLowerCase();
   if (!['student', 'faculty', 'grades'].includes(type)) return res.status(400).json({ error: 'Invalid batch upload type.' });
@@ -4085,6 +4095,8 @@ app.post('/api/registrar/batch-upload/:type', requireRegistrar, async (req, res)
     if (errors.length) return res.status(400).json({ error: 'Validation failed. Fix the listed rows and retry.', errors });
     if (dryRun) return res.json({ ok: true, validatedFiles: filePlans.length });
 
+    const jobId = String(b.jobId || '').slice(0, 64);
+    batchJobStart(jobId, filePlans.reduce((n, fp) => n + fp.rows.length, 0));
     const client = await pool.connect();
     try {
       await client.query('BEGIN');
@@ -4164,11 +4176,13 @@ app.post('/api/registrar/batch-upload/:type', requireRegistrar, async (req, res)
           });
           if (p.email) welcomeItems.push({ to: p.email, student_no: p.student_no, name: fullName, temp });
           totalSaved += 1;
+          batchJobTick(jobId);
         }
         fileResults.push({ filename: fp.filename, created });
       }
 
       await client.query('COMMIT');
+      batchJobEnd(jobId);
       sendPortalWelcomeEmails(req, welcomeItems);
       logAction(req, req.reg.role === 'registrar' ? college + ' registrar' : 'University Registrar', 'batch upload students', `${college}: ${totalSaved} student(s) in ${filePlans.length} file(s)`);
       return res.json({ ok: true, totalSaved, fileResults });
@@ -4241,6 +4255,8 @@ app.post('/api/registrar/batch-upload/:type', requireRegistrar, async (req, res)
     if (errors.length) return res.status(400).json({ error: 'Validation failed. Fix the listed rows and retry.', errors });
     if (dryRun) return res.json({ ok: true, validatedFiles: filePlans.length });
 
+    const jobId = String(b.jobId || '').slice(0, 64);
+    batchJobStart(jobId, filePlans.reduce((n, fp) => n + fp.rows.length, 0));
     const client = await pool.connect();
     try {
       await client.query('BEGIN');
@@ -4290,11 +4306,13 @@ app.post('/api/registrar/batch-upload/:type', requireRegistrar, async (req, res)
             temp_password: temp
           });
           totalSaved += 1;
+          batchJobTick(jobId);
         }
         fileResults.push({ filename: fp.filename, created });
       }
 
       await client.query('COMMIT');
+      batchJobEnd(jobId);
       logAction(req, req.reg.role === 'registrar' ? college + ' registrar' : 'University Registrar', 'batch upload faculty', `${college}: ${totalSaved} faculty in ${filePlans.length} file(s)`);
       return res.json({ ok: true, totalSaved, fileResults });
     } catch (err) {
@@ -4394,6 +4412,8 @@ app.post('/api/registrar/batch-upload/:type', requireRegistrar, async (req, res)
     if (errors.length) return res.status(400).json({ error: 'Validation failed. Fix the listed rows and retry.', errors });
     if (dryRun) return res.json({ ok: true, validatedFiles: filePlans.length });
 
+    const jobId = String(b.jobId || '').slice(0, 64);
+    batchJobStart(jobId, filePlans.reduce((n, fp) => n + fp.rows.length, 0));
     const client = await pool.connect();
     try {
       await client.query('BEGIN');
@@ -4426,10 +4446,12 @@ app.post('/api/registrar/batch-upload/:type', requireRegistrar, async (req, res)
             }
           }
           totalSaved += 1;
+          batchJobTick(jobId);
         }
       }
 
       await client.query('COMMIT');
+      batchJobEnd(jobId);
       logAction(req, req.reg.role === 'registrar' ? college + ' registrar' : 'University Registrar', 'batch upload grades', `${college}: ${totalSaved} grade(s) in ${filePlans.length} file(s)`);
       return res.json({ ok: true, totalSaved });
     } catch (err) {
