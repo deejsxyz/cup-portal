@@ -203,6 +203,7 @@
       : (curStatus !== 'enrolled' ? 'PRINT COE is available once the student is officially enrolled.' : '');
   }
   // Certificate of Enrollment: auto-filled from the student's record. Layout is a placeholder until the template is provided.
+  var STANDING_ABBR = { 'REGULAR': 'REG', 'IRREGULAR': 'IRREG', 'WARNING': 'WARN', 'PROBATION': 'PROB', 'PERMANENT DISQUALIFICATION': 'DISQ' };
   function printCoe() {
     var s = current, w = window.open('', '_blank');
     if (!w) { document.getElementById('s6Msg').textContent = 'Allow pop-ups for this site to print the COE.'; return false; }
@@ -215,7 +216,7 @@
       '<div class="f"><b>Student No.:</b> ' + esc(s.student_no) + '</div>' +
       '<div class="f"><b>Name:</b> ' + esc(fullName(s)) + '</div>' +
       '<div class="f"><b>Program:</b> ' + esc(s.program) + '</div>' +
-      '<div class="f"><b>Status:</b> ' + esc(curStanding) + '</div>' +
+      '<div class="f"><b>Status:</b> ' + esc(STANDING_ABBR[curStanding] || curStanding) + '</div>' +
       '<div class="f"><b>Student Type:</b> ' + esc(curStudentType) + '</div>' +
       '<div class="f"><b>College:</b> ' + esc(COLLEGE) + '</div>' +
       '<div class="f"><b>Year &amp; Section:</b> ' + esc((s.year_level || '') + (s.section || '')) + '</div>' +
