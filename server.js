@@ -3441,14 +3441,14 @@ const STAFF_KINDS = { registrar: 'accounts', university: 'accounts', uniregistra
 const CSC_POSITIONS = ['President', 'Vice President', 'Secretary', 'Assistant Secretary', 'Treasurer', 'Auditor', 'Public Information Officer', 'Business Manager', 'Representative'];
 function staffTable(kind) { return STAFF_KINDS[kind] || null; }
 function staffRole(kind) { return kind === 'nstp' ? 'nstp' : kind === 'university' ? 'university' : kind === 'uniregistrar' ? 'uniregistrar' : 'registrar'; }
-function staffWhere(kind) { return kind === 'registrar' || kind === 'university' || kind === 'uniregistrar' || kind === 'nstp' ? " WHERE role = '" + staffRole(kind) + "'" : ''; }
-function staffAnd(kind) { return kind === 'registrar' || kind === 'university' || kind === 'uniregistrar' || kind === 'nstp' ? " AND role = '" + staffRole(kind) + "'" : ''; }
+function staffWhere(kind) { return kind === 'university' ? " WHERE role IN ('university','uniregistrar')" : kind === 'registrar' || kind === 'uniregistrar' || kind === 'nstp' ? " WHERE role = '" + staffRole(kind) + "'" : ''; }
+function staffAnd(kind) { return kind === 'university' ? " AND role IN ('university','uniregistrar')" : kind === 'registrar' || kind === 'uniregistrar' || kind === 'nstp' ? " AND role = '" + staffRole(kind) + "'" : ''; }
 app.get('/api/registrar/staff/:kind', requireSuperAdmin, async (req, res) => {
   const kind = req.params.kind;
   if (!staffTable(kind)) return res.status(404).json({ error: 'Unknown account type.' });
   try {
     const sql = kind === 'registrar' || kind === 'university' || kind === 'nstp'
-      ? "SELECT id, COALESCE(username, email) AS username, last_name, first_name, COALESCE(middle_name,'') AS middle_name, COALESCE(name_extension,'') AS extension, email, COALESCE(college,'') AS college, '' AS position, archived_at FROM accounts WHERE role = '" + staffRole(kind) + "' ORDER BY archived_at IS NOT NULL, last_name, first_name"
+      ? "SELECT id, COALESCE(username, email) AS username, last_name, first_name, COALESCE(middle_name,'') AS middle_name, COALESCE(name_extension,'') AS extension, email, CASE WHEN role = 'uniregistrar' THEN 'University Registrar' ELSE COALESCE(college,'') END AS college, '' AS position, archived_at FROM accounts WHERE " + (kind === 'university' ? "role IN ('university','uniregistrar')" : "role = '" + staffRole(kind) + "'") + " ORDER BY archived_at IS NOT NULL, last_name, first_name"
       : "SELECT id, username, last_name, first_name, middle_name, extension, email, '' AS college, position, archived_at FROM csc_accounts ORDER BY archived_at IS NOT NULL, last_name, first_name";
     const { rows } = await pool.query(sql);
     res.json({ accounts: rows, positions: CSC_POSITIONS });
