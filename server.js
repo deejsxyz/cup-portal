@@ -2669,7 +2669,10 @@ app.post('/api/faculty/grades/batch', requirePortal('faculty'), async (req, res)
 app.get('/api/student/grades', requirePortal('student'), async (req, res) => {
   const { rows } = await pool.query(
     `SELECT g.course_code, c.descriptive_title, c.units, g.final_grade, g.remarks, g.term, g.academic_year, g.approved_at
-       FROM reg_grades g LEFT JOIN reg_courses c ON c.college = g.college AND c.course_code = g.course_code
+       FROM reg_grades g LEFT JOIN LATERAL (
+         SELECT descriptive_title, units FROM reg_courses
+          WHERE course_code = g.course_code
+          ORDER BY (college = g.college) DESC, college LIMIT 1) c ON true
       WHERE g.student_no = $1 AND g.status = 'approved' ORDER BY g.academic_year, g.term, g.course_code`, [req.portal.student_no]);
   res.json({ grades: rows });
 });
