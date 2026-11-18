@@ -3714,13 +3714,15 @@ const ENROLL_CHECKS = [
   { label: 'Step 2 · Evaluation', ok: (r) => !!r.step2_evaluated_at },
   { label: 'Step 2 · Advising', ok: (r) => !!r.step2_advised_at },
   { label: 'Step 2 · Section Assignment', ok: (r) => !!r.step2_sectioned_at },
+  // NSTP: required for Year 1 and 2, or for anyone who chose an NSTP subject in Step 2. Otherwise Step 3 is automatically done.
+  { label: 'Step 3 · NSTP', ok: (r) => !((Number(r.year_level) <= 2) || !!r.nstp_subject) || !!r.nstp_enrolled_at },
   { label: 'Step 6 · CSC payment', ok: (r) => !!r.csc_paid_at },
   { label: 'Step 6 · Advising slip submitted', ok: (r) => !!r.advising_slip_at },
   { label: 'Step 6 · COE printed', ok: (r) => !!r.coe_printed_at },
   { label: 'Step 6 · ID validated', ok: (r) => !!r.id_validated_at },
 ];
 function enrollMissing(r) { return ENROLL_CHECKS.filter((c) => !c.ok(r)).map((c) => c.label); }
-const ENROLL_ROW_SQL = `SELECT student_no, status, step1_status, step2_evaluated_at, step2_advised_at, step2_sectioned_at, csc_paid_at, advising_slip_at, coe_printed_at, id_validated_at
+const ENROLL_ROW_SQL = `SELECT student_no, status, year_level, COALESCE(nstp_subject, '') AS nstp_subject, nstp_enrolled_at, step1_status, step2_evaluated_at, step2_advised_at, step2_sectioned_at, csc_paid_at, advising_slip_at, coe_printed_at, id_validated_at
   FROM reg_students WHERE student_no = $1 AND college = $2`;
 // Readiness for the Submission of Advising Slip page: which steps are still not done.
 app.get('/api/registrar/enroll-readiness/:no', requireSuperAdmin, async (req, res) => {
