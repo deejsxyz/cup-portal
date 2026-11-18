@@ -4158,10 +4158,7 @@ app.post('/api/registrar/batch-upload/:type', requireRegistrar, async (req, res)
           const userId = uRes.rows[0].id;
 
           for (const code of p.subjects) {
-            await client.query(
-              `INSERT INTO reg_courses (college, course_code, descriptive_title, units, year_level, semester)
-               VALUES ($1, $2, $2, 3, 1, $3) ON CONFLICT (college, course_code) DO NOTHING`,
-              [college, code, activeSem]);
+            // Do not create subject rows here: the title, units and term come from the curriculum upload (Subjects and Units).
             const ex = await client.query(
               'SELECT id FROM reg_subject_assignments WHERE user_id = $1 AND college = $2 AND course_code = $3 AND term = $4 AND academic_year = $5',
               [userId, college, code, activeSem, activeAy]);
