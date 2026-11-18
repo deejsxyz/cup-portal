@@ -225,7 +225,9 @@
       .then(function (res) {
         if (!res.ok) { msgEl.textContent = res.j.error || 'Could not save the section.'; evalDone.disabled = false; return; }
         msgEl.textContent = '';
-        load();
+        var no = current.student_no;
+        // Reload the roster and reopen the student so the live counts show the new section.
+        return load().then(function () { if (current) showEvalStudent(no); });
       }).catch(function () { msgEl.textContent = 'Could not save the section.'; evalDone.disabled = false; });
   }
 
