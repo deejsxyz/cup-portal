@@ -2995,11 +2995,15 @@ app.get('/api/registrar/enrollments', requireRegistrar, async (req, res) => {
   const codes = [...new Set(r.rows.flatMap((e) => (Array.isArray(e.subjects) ? e.subjects : []).map((x) => x.course_code)))];
   const titles = new Map();
   if (codes.length) {
-    const c = await pool.query('SELECT course_code, descriptive_title FROM reg_courses WHERE course_code = ANY($1)', [codes]);
-    c.rows.forEach((x) => { if (!titles.has(x.course_code)) titles.set(x.course_code, x.descriptive_title); });
+    const c = await pool.query('SELECT course_code, descriptive_title, units FROM reg_courses WHERE course_code = ANY($1)', [codes]);
+    c.rows.forEach((x) => { if (!titles.has(x.course_code)) titles.set(x.course_code, { title: x.descriptive_title, units: x.units }); });
   }
   r.rows.forEach((e) => {
-    if (Array.isArray(e.subjects)) e.subjects.forEach((x) => { if (!x.descriptive_title) x.descriptive_title = titles.get(x.course_code) || ''; });
+    if (Array.isArray(e.subjects)) e.subjects.forEach((x) => {
+      const t = titles.get(x.course_code) || {};
+      if (!x.descriptive_title) x.descriptive_title = t.title || '';
+      if (x.units == null) x.units = t.units == null ? null : Number(t.units);
+    });
   });
   res.json({ enrollments: r.rows });
 });
