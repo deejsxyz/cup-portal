@@ -3734,7 +3734,9 @@ app.get('/api/registrar/enroll-readiness/:no', requireSuperAdmin, async (req, re
     const r = await pool.query(ENROLL_ROW_SQL, [String(req.params.no || '').trim(), college]);
     if (!r.rows.length) return res.status(404).json({ error: 'Student not found.' });
     const missing = enrollMissing(r.rows[0]);
-    res.json({ ready: missing.length === 0 && r.rows[0].status === 'pre-registered', missing, status: r.rows[0].status });
+    const x = r.rows[0];
+    res.json({ ready: missing.length === 0 && x.status === 'pre-registered', missing, status: x.status,
+      tasks: { csc: !!x.csc_paid_at, advising: !!x.advising_slip_at, coe: !!x.coe_printed_at, id: !!x.id_validated_at } });
   } catch (err) {
     console.error(err);
     res.status(500).json({ error: 'Could not check the steps.' });

@@ -25,6 +25,9 @@
   .list button { display: block; width: 100%; text-align: left; background: #fff; border: 0; border-bottom: 1px solid #f1f5f9; padding: 8px 10px; cursor: pointer; font: inherit; }
   .list button:hover { background: #eef2ff; }
   .banner { margin-top: 12px; padding: 10px 14px; border-radius: 8px; font-weight: 700; font-size: 13px; background: #fffbeb; border: 1px solid #fcd34d; color: #92400e; }
+  .btn.s6 { background: #e2e8f0; color: #0f172a; }
+  .btn.s6.on { background: #047857; color: #fff; }
+  .btn.s6:disabled { background: #e2e8f0; color: #94a3b8; }
   .banner.good { background: #ecfdf5; border-color: #6ee7b7; color: #065f46; }
 </style>
 </head>
@@ -42,6 +45,15 @@
     <h2>Student information</h2>
     <div class="grid" id="info"></div>
     <div id="stepBanner" class="banner" hidden></div>
+    <div id="step6" style="margin-top:14px" hidden>
+      <div class="lbl" style="margin-bottom:6px">Step 6 · Enrollment tasks</div>
+      <div style="display:flex;gap:8px;flex-wrap:wrap">
+        <button type="button" class="btn s6" data-task="advising" disabled>Advising slip submitted</button>
+        <button type="button" class="btn s6" data-task="coe" disabled>COE printed</button>
+        <button type="button" class="btn s6" data-task="id" disabled>ID validated</button>
+      </div>
+      <p id="s6Msg" class="hint" style="margin:6px 0 0"></p>
+    </div>
     <div style="margin-top:14px;display:flex;gap:12px;align-items:center;flex-wrap:wrap">
       <button type="button" class="btn" id="enrollBtn">ENROLL STUDENT</button>
       <span id="enrollMsg" class="msg"></span>
@@ -114,6 +126,7 @@
     record.hidden = false;
     getJson('/api/registrar/enroll-readiness/' + encodeURIComponent(no) + '?college=' + encodeURIComponent(COLLEGE)).then(function (res) {
       if (!res.ok) { enrollMsg.textContent = res.j.error || 'Could not check the steps.'; enrollMsg.className = 'msg bad'; return; }
+      renderTasks(no, res.j.tasks || {});
       if (res.j.status === 'enrolled') return;
       if (res.j.missing.length) {
         banner.className = 'banner';
@@ -137,6 +150,33 @@
         : '<p class="hint">No pre-enrolled subjects for the active term yet.</p>';
     });
   }
+
+  function renderTasks(no, tasks) {
+    var box = document.getElementById('step6');
+    box.hidden = false;
+    var map = { advising: 'advising', coe: 'coe', id: 'id' };
+    document.querySelectorAll('.btn.s6').forEach(function (b) {
+      var k = b.getAttribute('data-task'), done = !!tasks[map[k]];
+      b.classList.toggle('on', done);
+      b.textContent = { advising: 'Advising slip submitted', coe: 'COE printed', id: 'ID validated' }[k] + (done ? ' ✔' : '');
+      b.disabled = !tasks.csc;
+      b.setAttribute('data-done', done ? '1' : '0');
+      b.setAttribute('data-no', no);
+    });
+    document.getElementById('s6Msg').textContent = tasks.csc ? '' : 'CSC payment is not yet recorded, so these tasks are not available.';
+  }
+  document.getElementById('step6').addEventListener('click', function (e) {
+    var b = e.target.closest('.btn.s6'); if (!b || b.disabled || !current) return;
+    var msg = document.getElementById('s6Msg'); b.disabled = true; msg.textContent = 'Saving…';
+    fetch('/api/registrar/step6/' + encodeURIComponent(current.student_no) + '/' + b.getAttribute('data-task'), {
+      method: 'POST', credentials: 'same-origin', headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ done: b.getAttribute('data-done') !== '1', college: COLLEGE })
+    }).then(function (r) { return r.json().then(function (j) { return { ok: r.ok, j: j }; }); })
+      .then(function (res) {
+        if (!res.ok) { msg.textContent = res.j.error || 'Could not update.'; msg.className = 'hint bad'; b.disabled = false; return; }
+        msg.textContent = ''; open(current.student_no);
+      }).catch(function () { msg.textContent = 'Could not update.'; b.disabled = false; });
+  });
 
   enrollBtn.addEventListener('click', function () {
     if (!current || enrollBtn.disabled) return;
