@@ -405,6 +405,15 @@
           <div class="sub-body" data-role="faculty" data-sub="archive" hidden><div class="bulk" data-role="faculty" data-mode="archive"></div></div>
           <div class="sub-body" data-role="faculty" data-sub="restore" hidden><div class="bulk" data-role="faculty" data-mode="restore"></div></div>
           <div class="sub-body" data-role="faculty" data-sub="delete" hidden><div class="bulk" data-role="faculty" data-mode="delete"></div></div>
+        <div class="nstp-officer" style="margin-top:28px">
+          <h3>NSTP Officer accounts</h3>
+          <p class="hint">Create them with NSTP in the college dropdown above. Manage, archive, restore, and delete them here.</p>
+          <div class="sub-tabs"><button type="button" class="sub-tab on" data-role="nstp" data-sub="manage">Manage Account</button><button type="button" class="sub-tab" data-role="nstp" data-sub="archive">Bulk Archive</button><button type="button" class="sub-tab" data-role="nstp" data-sub="restore">Bulk Restore</button><button type="button" class="sub-tab" data-role="nstp" data-sub="delete">Bulk Delete</button></div>
+          <div class="sub-body" data-role="nstp" data-sub="manage"><div class="manage" data-role="nstp"></div></div>
+          <div class="sub-body" data-role="nstp" data-sub="archive" hidden><div class="bulk" data-role="nstp" data-mode="archive"></div></div>
+          <div class="sub-body" data-role="nstp" data-sub="restore" hidden><div class="bulk" data-role="nstp" data-mode="restore"></div></div>
+          <div class="sub-body" data-role="nstp" data-sub="delete" hidden><div class="bulk" data-role="nstp" data-mode="delete"></div></div>
+        </div>
         </div>
 
 
@@ -929,7 +938,7 @@
         renderAllPanes();
       });
     }
-    buildManage('student'); buildManage('faculty'); buildManage('registrar'); buildManage('university'); buildManage('csc');
+    buildManage('student'); buildManage('faculty'); buildManage('registrar'); buildManage('university'); buildManage('nstp'); buildManage('csc');
     document.querySelectorAll('.bulk').forEach(buildBulk);
 
     document.addEventListener('click', function (e) {
