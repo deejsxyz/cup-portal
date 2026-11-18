@@ -3718,7 +3718,7 @@ const ENROLL_CHECKS = [
   { label: 'Step 3 · NSTP', ok: (r) => !((Number(r.year_level) <= 2) || !!r.nstp_subject) || !!r.nstp_enrolled_at },
   // Step 4 (Official CUP ID): done automatically once the student has a student number.
   { label: 'Step 4 · Official CUP ID', ok: (r) => !!String(r.student_no || '').trim() },
-  { label: 'Step 6 · CSC payment', ok: (r) => !!r.csc_paid_at },
+  { label: 'Step 5 · CSC payment', ok: (r) => !!r.csc_paid_at },
   { label: 'Step 6 · Advising slip submitted', ok: (r) => !!r.advising_slip_at },
   { label: 'Step 6 · COE printed', ok: (r) => !!r.coe_printed_at },
   { label: 'Step 6 · ID validated', ok: (r) => !!r.id_validated_at },
