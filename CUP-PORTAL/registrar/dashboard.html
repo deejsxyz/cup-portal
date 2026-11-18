@@ -1547,18 +1547,55 @@
     safeOn('#al-load', 'click', loadActivity);
     // Subjects and units (college registrar: own college; University Registrar: any college)
     function sjCollege() { return me.role === 'superadmin' ? $('#sj-college').value : me.college; }
+    var sjRows = [], sjYear = '', sjPage = 1, sjSize = 10;
+    var SJ_SEM_ORDER = { '1st Semester': 1, '2nd Semester': 2, 'Summer': 3 };
     function loadSubjects() {
       var c = sjCollege();
       if (!c) return;
       fetch('/api/registrar/courses?college=' + encodeURIComponent(c), { credentials: 'same-origin' }).then(function (r) { return r.json(); }).then(function (j) {
-        var rows = j.courses || [];
-        $('#sj-list').innerHTML = !rows.length ? '<p class="hint">No subjects uploaded for ' + esc(c) + ' yet.</p>' :
-          '<p class="hint">' + rows.length + ' subject(s) for ' + esc(c) + '.</p><table style="width:100%;border-collapse:collapse;font-size:.9rem"><thead><tr>' +
-          ['Code', 'Descriptive title', 'Units'].map(function (t) { return '<th style="text-align:left;border-bottom:1px solid #7fa37f;padding:6px">' + t + '</th>'; }).join('') +
-          '</tr></thead><tbody>' + rows.map(function (r) {
-            return '<tr>' + [r.course_code, r.descriptive_title, r.units].map(function (v) { return '<td style="padding:6px;border-bottom:1px solid #d5e2d5">' + esc(v) + '</td>'; }).join('') + '</tr>';
-          }).join('') + '</tbody></table>';
+        sjRows = (j.courses || []).slice().sort(function (a, b) {
+          return (Number(a.year_level) || 9) - (Number(b.year_level) || 9) ||
+            (SJ_SEM_ORDER[a.semester] || 9) - (SJ_SEM_ORDER[b.semester] || 9) ||
+            String(a.course_code).localeCompare(String(b.course_code));
+        });
+        sjPage = 1;
+        renderSubjects(c);
       });
+    }
+    function renderSubjects(c) {
+      var rows = sjYear ? sjRows.filter(function (r) { return String(r.year_level) === sjYear; }) : sjRows;
+      var pages = Math.max(1, Math.ceil(rows.length / sjSize));
+      if (sjPage > pages) sjPage = pages;
+      if (sjPage < 1) sjPage = 1;
+      var slice = rows.slice((sjPage - 1) * sjSize, sjPage * sjSize);
+      var th = 'text-align:left;border-bottom:1px solid #7fa37f;padding:6px';
+      var td = 'padding:6px;border-bottom:1px solid #d5e2d5';
+      var html = '<p class="hint">' + sjRows.length + ' subject(s) for ' + esc(c) + '.</p>' +
+        '<div style="display:flex;gap:10px;align-items:center;flex-wrap:wrap;margin-bottom:8px">' +
+        '<label>Year level <select id="sj-filter-year"><option value="">All</option><option value="1">1</option><option value="2">2</option><option value="3">3</option><option value="4">4</option></select></label>' +
+        '<label>Rows per page <select id="sj-size"><option>10</option><option>25</option><option>50</option></select></label></div>';
+      if (!rows.length) {
+        html += '<p class="hint">No subjects' + (sjYear ? ' for year ' + esc(sjYear) : '') + ' yet.</p>';
+      } else {
+        html += '<table style="width:100%;border-collapse:collapse;font-size:.9rem"><thead><tr>' +
+          ['Code', 'Descriptive title', 'Units', 'Year level', 'Semester'].map(function (t) { return '<th style="' + th + '">' + t + '</th>'; }).join('') +
+          '</tr></thead><tbody>' + slice.map(function (r) {
+            return '<tr>' + [r.course_code, r.descriptive_title, r.units, r.year_level == null ? '' : r.year_level, r.semester || ''].map(function (v) {
+              return '<td style="' + td + '">' + esc(v) + '</td>';
+            }).join('') + '</tr>';
+          }).join('') + '</tbody></table>' +
+          '<div style="display:flex;gap:10px;align-items:center;margin-top:10px">' +
+          '<button type="button" id="sj-prev"' + (sjPage <= 1 ? ' disabled' : '') + '>Previous</button>' +
+          '<span class="hint">Page ' + sjPage + ' of ' + pages + '</span>' +
+          '<button type="button" id="sj-next"' + (sjPage >= pages ? ' disabled' : '') + '>Next</button></div>';
+      }
+      $('#sj-list').innerHTML = html;
+      $('#sj-filter-year').value = sjYear;
+      $('#sj-size').value = String(sjSize);
+      $('#sj-filter-year').onchange = function () { sjYear = this.value; sjPage = 1; renderSubjects(c); };
+      $('#sj-size').onchange = function () { sjSize = Number(this.value) || 10; sjPage = 1; renderSubjects(c); };
+      if ($('#sj-prev')) $('#sj-prev').onclick = function () { sjPage--; renderSubjects(c); };
+      if ($('#sj-next')) $('#sj-next').onclick = function () { sjPage++; renderSubjects(c); };
     }
     safeOn('#sj-college', 'change', loadSubjects);
     safeOn('#sj-tpl', 'click', function (e) {
