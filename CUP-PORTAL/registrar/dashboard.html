@@ -2231,6 +2231,7 @@
       msg.textContent = '';
       msg.className = 'msg bu-msg';
 
+      function countRows(t) { return Math.max(0, String(t || '').split(/\r?\n/).filter(function (l) { return l.trim(); }).length - 1); }
       function setProg(pct, text) {
         var p = Math.max(0, Math.min(100, Math.round(pct)));
         pBar.style.width = p + '%';
@@ -2286,7 +2287,7 @@
             }
             task.payloads[idx] = { filename: f.name, csv: res.csvText };
             task.index = idx + 1;
-            setProg((task.index / total) * 75, 'Validated file ' + task.index + ' of ' + total + ' (' + f.name + ')');
+            setProg((task.index / total) * 75, 'Validated file ' + task.index + ' of ' + total + ' (' + f.name + ') · ' + ((task.rowsDone = (task.rowsDone || 0) + countRows(res.csvText)).toLocaleString()) + ' rows checked');
             setTimeout(stepReadNext, 180);
           }).catch(function () {
             showInterruptModal(task, 'Connection or file processing was interrupted while uploading ' + f.name + '.');
@@ -2294,7 +2295,7 @@
           return;
         }
 
-        setProg(85, 'Committing all ' + total + ' file(s) to database…');
+        setProg(85, 'Saving ' + (task.rowsDone || 0).toLocaleString() + ' rows from ' + total + ' file(s) to database…');
         if (task.interrupted || !navigator.onLine) {
           showInterruptModal(task, 'Interrupted before final database commit.');
           return;
