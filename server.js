@@ -758,6 +758,13 @@ function requireRegistrar(req, res, next) {
   req.reg = s;
   next();
 }
+// Step 2 (Pre-enrollment) is for the College Registrar of the student's college only, not the University Registrar or Records-in-Charge.
+function requireCollegeRegistrar(req, res, next) {
+  const s = readRegSession(req);
+  if (!s || s.role !== 'registrar' || s.records) return res.status(403).json({ error: 'Step 2 is for the College Registrar only.' });
+  req.reg = s;
+  next();
+}
 function requireSuperAdmin(req, res, next) {
   const s = readRegSession(req);
   if (!s || s.role !== 'superadmin') return res.status(403).json({ error: 'University Registrar only.' });
@@ -3655,7 +3662,7 @@ app.post('/api/registrar/step6/:no/official', requireRegistrar, async (req, res)
 });
 
 // Step 2 (Dean's Office, College Registrar): student evaluation, advising and section assignment
-app.get('/api/registrar/step2', requireRegistrar, async (req, res) => {
+app.get('/api/registrar/step2', requireCollegeRegistrar, async (req, res) => {
   const college = regCollege(req, req.query.college);
   if (!college || !REG_COLLEGES.includes(college)) return res.status(400).json({ error: 'Choose a college.' });
   try {
@@ -3674,7 +3681,7 @@ app.get('/api/registrar/step2', requireRegistrar, async (req, res) => {
 const STEP2_TASKS = { evaluation: 'step2_evaluated_at', advising: 'step2_advised_at', section: 'step2_sectioned_at' };
 const STEP2_LABELS = { evaluation: 'Student evaluation', advising: 'Advising', section: 'Section assignment' };
 // Step 2 advising: the NSTP subject the student is pre-registered for (NSTP 1 = CWTS, ROTC 1 = ROTC).
-app.post('/api/registrar/step2/:no/nstp', requireRegistrar, async (req, res) => {
+app.post('/api/registrar/step2/:no/nstp', requireCollegeRegistrar, async (req, res) => {
   const college = regCollege(req, (req.body || {}).college);
   if (!college) return res.status(400).json({ error: 'Invalid Step 2 request.' });
   const subject = String((req.body || {}).subject || '');
@@ -3693,7 +3700,7 @@ app.post('/api/registrar/step2/:no/nstp', requireRegistrar, async (req, res) => 
   }
 });
 
-app.post('/api/registrar/step2/:no/:task', requireRegistrar, async (req, res) => {
+app.post('/api/registrar/step2/:no/:task', requireCollegeRegistrar, async (req, res) => {
   const col = STEP2_TASKS[req.params.task];
   if (!col) return res.status(400).json({ error: 'Invalid Step 2 request.' });
   const college = regCollege(req, (req.body || {}).college);
