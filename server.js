@@ -3848,7 +3848,13 @@ function normalizeCsvDate(raw) {
   if (!s) return null;
   if (/^\d{4}-\d{2}-\d{2}$/.test(s)) return s;
   const m = s.match(/^(\d{1,2})[\/-](\d{1,2})[\/-](\d{4})$/);
-  if (m) return `${m[3]}-${m[1].padStart(2, '0')}-${m[2].padStart(2, '0')}`;
+  if (m) {
+    // Dates like 17/03/2008 are day-first; 03/17/2008 is month-first. Only swap when the first number cannot be a month.
+    let mon = Number(m[1]), day = Number(m[2]);
+    if (mon > 12 && day <= 12) [mon, day] = [day, mon];
+    if (mon < 1 || mon > 12 || day < 1 || day > 31) return null;
+    return `${m[3]}-${String(mon).padStart(2, '0')}-${String(day).padStart(2, '0')}`;
+  }
   return null;
 }
 
