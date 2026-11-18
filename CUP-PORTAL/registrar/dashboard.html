@@ -321,7 +321,7 @@
           </h3>
           <p class="hint">Columns: <code>student_number, course_code, year_level, semester, final_grade</code>. Select one or multiple CSV files. Grades automatically align to each student by <code>student_number</code> for the active Academic Year and Semester. Duplicate subjects for the same student in the same Academic Year and Semester are strictly prevented.</p>
           <div class="bu-controls">
-            <select id="bu-grades-ay" aria-label="Academic year for these grades" style="margin-right:8px"><option value="">Choose academic year</option><option>2023-2024</option><option>2024-2025</option><option>2025-2026</option><option>2026-2027</option></select>
+            <select id="bu-grades-ay" aria-label="Academic year for these grades" style="margin-right:8px"><option value="">Choose academic year</option><option>2021-2022</option><option>2022-2023</option><option>2023-2024</option><option>2024-2025</option><option>2025-2026</option><option>2026-2027</option></select>
             <input type="file" class="bu-files" multiple accept=".csv,text/csv" aria-label="Select Grade CSV files">
             <button type="button" class="btn green bu-start-btn" style="margin-top:0">Upload &amp; Process Grade CSV(s)</button>
             <button type="button" class="btn red sm bu-interrupt-btn" hidden style="margin-top:0">Pause / Interrupt</button>
@@ -1743,7 +1743,7 @@
     });
     (function () {
       var y = new Date().getFullYear(), sel = $('#gp-ay'), opts = '';
-      for (var k = y - 2; k <= y + 4; k++) opts += '<option value="' + k + '-' + (k + 1) + '">A.Y. ' + k + '-' + (k + 1) + '</option>';
+      for (var k = 2021; k <= y + 4; k++) opts += '<option value="' + k + '-' + (k + 1) + '">A.Y. ' + k + '-' + (k + 1) + '</option>';
       sel.innerHTML = opts;
       fetch('/api/portal/settings', { credentials: 'same-origin' }).then(function (r) { return r.json(); }).then(function (j) {
         if (j.grading_ay) { if (!sel.querySelector('option[value="' + j.grading_ay + '"]')) sel.insertAdjacentHTML('afterbegin', '<option value="' + j.grading_ay + '">A.Y. ' + j.grading_ay + '</option>'); sel.value = j.grading_ay; }
