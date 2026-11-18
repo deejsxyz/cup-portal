@@ -3363,33 +3363,43 @@ app.post('/api/registrar/subject-assignments', requireRegistrar, async (req, res
   if (!college) return res.status(403).json({ error: 'Choose a college.' });
   const b = req.body || {};
   const userId = Number(b.faculty_id);
-  const code = String(b.course_code || '').trim();
+  // One or more subjects; a single course_code is still accepted.
+  const codes = [...new Set((Array.isArray(b.course_codes) ? b.course_codes : [b.course_code])
+    .map((c) => String(c || '').trim()).filter(Boolean))];
   const years = (Array.isArray(b.years) ? b.years : []).map(Number).filter((y) => [1, 2, 3, 4].includes(y));
   const sections = (Array.isArray(b.sections) ? b.sections : []).map((s) => String(s).trim()).filter((s) => ['A', 'B', 'C'].includes(s));
+  if (!codes.length) return res.status(400).json({ error: 'Choose at least one subject.' });
   if (!years.length || !sections.length) return res.status(400).json({ error: 'Choose at least one year level and one section.' });
+  const client = await pool.connect();
   try {
     const set = await pool.query("SELECT key, value FROM reg_settings WHERE key IN ('grading_semester','grading_ay')");
     const m = Object.fromEntries(set.rows.map((r) => [r.key, r.value]));
     if (!m.grading_semester || !m.grading_ay) return res.status(400).json({ error: 'Set the grading period first.' });
     const f = await pool.query("SELECT id FROM reg_users WHERE id = $1 AND role = 'faculty' AND college = $2 AND archived_at IS NULL", [userId, college]);
     if (!f.rows.length) return res.status(400).json({ error: 'Choose a faculty member from this college.' });
-    // A subject is not exclusively limited to one college or program: allow any subject from reg_courses.
-    const subjectCollege = String(b.subject_college || college);
-    if (!REG_COLLEGES.includes(subjectCollege)) return res.status(400).json({ error: 'Choose a valid college.' });
+    // Subjects are limited to this college's own curriculum.
+    const subjectCollege = college;
     const program = String(b.program || '');
     if (program && !(REG_PROGRAM_COLLEGES[subjectCollege] || []).includes(program) && !REG_PROGRAMS.includes(program)) {
       return res.status(400).json({ error: 'Choose a valid program.' });
     }
-    const c = await pool.query('SELECT course_code FROM reg_courses WHERE course_code = $1 LIMIT 1', [code]);
-    if (!c.rows.length) return res.status(400).json({ error: 'Choose a valid subject from the curriculum.' });
-    await pool.query(
-      'INSERT INTO reg_subject_assignments (user_id, college, course_code, term, academic_year, years, sections, subject_college, program) VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9)',
-      [userId, college, code, m.grading_semester, m.grading_ay, years, sections, subjectCollege, program]);
-    logAction(req, college + ' registrar', 'subject assigned', code + ' to ' + userId);
-    res.json({ ok: true });
+    const c = await pool.query('SELECT course_code FROM reg_courses WHERE college = $1 AND course_code = ANY($2::text[])', [subjectCollege, codes]);
+    if (c.rows.length !== codes.length) return res.status(400).json({ error: 'Choose subjects from this college only.' });
+    await client.query('BEGIN');
+    for (const code of codes) {
+      await client.query(
+        'INSERT INTO reg_subject_assignments (user_id, college, course_code, term, academic_year, years, sections, subject_college, program) VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9)',
+        [userId, college, code, m.grading_semester, m.grading_ay, years, sections, subjectCollege, program]);
+    }
+    await client.query('COMMIT');
+    logAction(req, college + ' registrar', 'subject assigned', codes.join(', ') + ' to ' + userId);
+    res.json({ ok: true, count: codes.length });
   } catch (err) {
+    await client.query('ROLLBACK').catch(() => {});
     console.error(err);
     res.status(500).json({ error: 'Could not save the assignment.' });
+  } finally {
+    client.release();
   }
 });
 

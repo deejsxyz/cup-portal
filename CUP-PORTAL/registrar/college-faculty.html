@@ -113,14 +113,12 @@
     <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
       <label class="text-xs font-bold text-slate-700">Faculty member
         <select id="asgFaculty" class="block mt-1 w-full px-2 py-1.5 rounded border border-slate-300 text-xs bg-white"></select></label>
-      <label class="text-xs font-bold text-slate-700">College
-        <select id="asgCollege" class="block mt-1 w-full px-2 py-1.5 rounded border border-slate-300 text-xs bg-white"></select></label>
       <label class="text-xs font-bold text-slate-700">Program
         <select id="asgProgram" class="block mt-1 w-full px-2 py-1.5 rounded border border-slate-300 text-xs bg-white"></select></label>
-      <label class="text-xs font-bold text-slate-700">Subject
-        <select id="asgSubject" class="block mt-1 w-full px-2 py-1.5 rounded border border-slate-300 text-xs bg-white"></select></label>
+      <div class="text-xs font-bold text-slate-700 md:col-span-2">Subjects <span class="font-normal text-slate-500">(select one or more)</span>
+        <div id="asgSubjects" class="mt-1 max-h-56 overflow-y-auto border border-slate-300 rounded bg-white p-2 grid grid-cols-1 md:grid-cols-2 gap-x-4 gap-y-1"></div></div>
     </div>
-    <p class="text-[11px] text-slate-500">Subjects are not limited to one college or program. Pick the college and program that the subject is taught under.</p>
+    <p class="text-[11px] text-slate-500">Only subjects of this college are listed. Pick the program, then tick one or more subjects.</p>
     <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
       <fieldset class="border border-slate-200 rounded-lg p-3">
         <legend class="text-xs font-bold text-slate-700 px-1">Year level</legend>
@@ -355,37 +353,22 @@
     });
   });
   var catalog = { colleges: [], programs: {}, courses: [] };
-  function fillCollegeSelect() {
-    $('asgCollege').innerHTML = catalog.colleges.map(function (c) {
-      return '<option value="' + esc(c) + '"' + (c === COLLEGE ? ' selected' : '') + '>' + esc(c) + '</option>';
-    }).join('');
-    fillProgramSelect();
-  }
   function fillProgramSelect() {
-    var col = $('asgCollege').value;
-    $('asgProgram').innerHTML = '<option value="">-- Program --</option>' + (catalog.programs[col] || []).map(function (p) {
+    $('asgProgram').innerHTML = '<option value="">-- Program --</option>' + (catalog.programs[COLLEGE] || []).map(function (p) {
       return '<option value="' + esc(p) + '">' + esc(p) + '</option>';
     }).join('');
     fillSubjectSelect();
   }
   function fillSubjectSelect() {
-    var col = $('asgCollege').value;
     var seen = {};
-    var allCourses = (catalog.courses || []).slice().sort(function (a, b) {
-      var aMatch = a.college === col ? 0 : 1;
-      var bMatch = b.college === col ? 0 : 1;
-      if (aMatch !== bMatch) return aMatch - bMatch;
-      return String(a.course_code).localeCompare(String(b.course_code));
-    }).filter(function (c) {
-      var k = c.course_code + '|' + c.descriptive_title;
-      if (seen[k]) return false;
-      seen[k] = true;
+    var mine = (catalog.courses || []).filter(function (c) {
+      if (c.college !== COLLEGE || seen[c.course_code]) return false;
+      seen[c.course_code] = true;
       return true;
-    });
-    $('asgSubject').innerHTML = '<option value="">-- Subject (All Colleges & Programs) --</option>' + allCourses.map(function (c) {
-      var tag = c.college ? ' [' + c.college + ']' : '';
-      return '<option value="' + esc(c.course_code) + '" data-college="' + esc(c.college || '') + '">' + esc(c.course_code + ' — ' + c.descriptive_title + tag) + '</option>';
-    }).join('');
+    }).sort(function (a, b) { return String(a.course_code).localeCompare(String(b.course_code)); });
+    $('asgSubjects').innerHTML = mine.length ? mine.map(function (c) {
+      return '<label class="flex items-center gap-1"><input type="checkbox" class="asg-subj" value="' + esc(c.course_code) + '"> ' + esc(c.course_code + ' — ' + c.descriptive_title) + '</label>';
+    }).join('') : '<p class="text-slate-500">No subjects for this college yet.</p>';
   }
   function loadSubjects() {
     return api('/api/registrar/subject-catalog').then(function (res) {
@@ -397,24 +380,23 @@
         seen[c.course_code] = true;
         return true;
       });
-      fillCollegeSelect();
+      fillProgramSelect();
     });
   }
-  $('asgCollege').addEventListener('change', function () { fillProgramSelect(); });
   $('asgSave').addEventListener('click', function () {
     var msg = $('asgMsg');
     var years = Array.prototype.slice.call(document.querySelectorAll('.asg-year:checked')).map(function (c) { return Number(c.value); });
     var secs = Array.prototype.slice.call(document.querySelectorAll('.asg-sec:checked')).map(function (c) { return c.value; });
-    var body = { faculty_id: $('asgFaculty').value, subject_college: $('asgCollege').value, program: $('asgProgram').value, course_code: $('asgSubject').value, years: years, sections: secs };
+    var codes = Array.prototype.slice.call(document.querySelectorAll('.asg-subj:checked')).map(function (c) { return c.value; });
+    var body = { faculty_id: $('asgFaculty').value, subject_college: COLLEGE, program: $('asgProgram').value, course_codes: codes, years: years, sections: secs };
     if (!body.faculty_id) { msg.textContent = 'Choose a faculty member.'; return; }
-    if (!body.subject_college) { msg.textContent = 'Choose a college.'; return; }
     if (!body.program) { msg.textContent = 'Choose a program.'; return; }
-    if (!body.course_code) { msg.textContent = 'Choose a subject.'; return; }
+    if (!body.course_codes.length) { msg.textContent = 'Choose at least one subject.'; return; }
     msg.textContent = 'Saving…';
     post('/api/registrar/subject-assignments', body).then(function (res) {
       if (!res.ok) { msg.textContent = res.j.error || 'Could not save.'; return; }
       msg.textContent = 'Saved.';
-      document.querySelectorAll('.asg-year, .asg-sec').forEach(function (c) { c.checked = false; });
+      document.querySelectorAll('.asg-year, .asg-sec, .asg-subj').forEach(function (c) { c.checked = false; });
       loadAssignments();
     });
   });
