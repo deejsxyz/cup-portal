@@ -175,11 +175,16 @@
     </div>
     <nav class="nav">
       <div class="tabs">
-        <button class="tab" type="button" data-panel="coacs-student">COACS</button>
-        <button class="tab" type="button" data-panel="cas-student">CAS</button>
-        <button class="tab" type="button" data-panel="conm-student">CONM</button>
-        <button class="tab" type="button" data-panel="coed-student">COEd</button>
-        <button class="tab" type="button" data-panel="cobm-student">CoBM</button>
+        <div class="menu" data-menu="colleges" id="collegesMenu">
+          <button class="tab" type="button" aria-expanded="false">Colleges</button>
+          <div class="dd">
+            <button type="button" data-panel="conm-student">CONM</button>
+            <button type="button" data-panel="cas-student">CAS</button>
+            <button type="button" data-panel="cobm-student">COBM</button>
+            <button type="button" data-panel="coed-student">COED</button>
+            <button type="button" data-panel="coacs-student">COACS</button>
+          </div>
+        </div>
         <button class="tab" type="button" data-panel="law-student">LAW</button>
         <button class="tab" type="button" data-panel="gs-student">Graduate School</button>
         <button class="tab" type="button" data-panel="tesda-student">TESDA</button>
@@ -267,8 +272,7 @@
           </h3>
           <p class="hint">Columns: <code>student_number, last_name, first_name, middle_name, extension, gender, status, birthday, contact_number, email, program, year_level, section, subjects</code>. Select one or multiple CSV files. Each processed file generates its own temporary credentials CSV file.</p>
           <div class="bu-enroll-mode" style="display:flex;gap:18px;flex-wrap:wrap;margin:8px 0;font-size:13px">
-            <label><input type="radio" name="bu-enroll-student" value="pre-registered" checked> Pre-registration <span class="hint">(accounts and emails are created; students are not yet Officially Enrolled)</span></label>
-            <label><input type="radio" name="bu-enroll-student" value="enrolled"> Officially Enrolled <span class="hint">(students are tagged Officially Enrolled for the active term)</span></label>
+            <label><input type="radio" name="bu-enroll-student" value="pre-registered" checked> Pre-registration <span class="hint">(accounts and emails are created; students become Officially Enrolled only after Step 6, Registrar Office)</span></label>
           </div>
           <div class="bu-controls">
             <input type="file" class="bu-files" multiple accept=".csv,text/csv" aria-label="Select Student CSV files">
@@ -1737,6 +1741,8 @@
         document.querySelectorAll('.tabs > .tab[data-panel$="-student"]').forEach(function (t) {
           t.hidden = t.getAttribute('data-panel') !== prefix + '-student';
         });
+        // College registrars work in their own college only, so the Colleges menu is hidden for them.
+        var collegesMenu = document.getElementById('collegesMenu'); if (collegesMenu) collegesMenu.hidden = true;
         if (me.role === 'records') { var bu = document.getElementById('batch-uploads-tab'); if (bu) bu.hidden = true; }
       }
       if (isSuper) { var gla = $('#gl-approve'); if (gla) gla.hidden = false; loadPortalUsers(); loadActivity(); }
