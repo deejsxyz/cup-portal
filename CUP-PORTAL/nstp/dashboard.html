@@ -1,0 +1,269 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>NSTP Portal</title>
+<link rel="icon" href="/images/favicon-cup.png">
+<script src="https://cdn.tailwindcss.com"></script>
+<style>
+  body { font-family: 'Libre Franklin', Arial, Helvetica, sans-serif; }
+  [hidden] { display: none !important; }
+  .xl th, .xl td { border: 1px solid #cbd5e1; padding: 6px 8px; font-size: 12px; text-align: left; white-space: nowrap; vertical-align: top; }
+  .xl th { background: #e2e8f0; font-weight: 700; position: sticky; top: 0; }
+  .xl tbody tr:nth-child(even) { background: #f8fafc; }
+  .xl tbody tr:hover { background: #eef6ff; }
+  .xl tr.sel { background: #fef9c3 !important; }
+  .xl tr.done, .xl tr.done td { background: #e2e8f0 !important; color: #64748b; }
+  .cbtn.on { background: #f2c200; color: #222; }
+</style>
+</head>
+<body class="bg-slate-50 text-slate-800 min-h-screen">
+<header class="bg-emerald-950 text-white px-4 py-3 flex flex-wrap items-center gap-3">
+  <div class="mr-auto">
+    <div class="font-extrabold tracking-wide">NSTP PORTAL</div>
+    <div class="text-xs text-emerald-200">NSTP Officer</div>
+  </div>
+  <span class="text-sm font-semibold" id="userName"></span>
+  <button type="button" id="logout" class="px-3 py-1.5 rounded bg-white/10 hover:bg-white/20 text-xs font-bold cursor-pointer">Log out</button>
+</header>
+
+<nav class="bg-emerald-900 text-white px-4 py-2 flex flex-wrap gap-2" aria-label="Colleges">
+  <button type="button" class="cbtn px-3 py-1.5 rounded text-xs font-bold bg-white/10 hover:bg-white/20 cursor-pointer" data-college="CONM">CONM</button>
+  <button type="button" class="cbtn px-3 py-1.5 rounded text-xs font-bold bg-white/10 hover:bg-white/20 cursor-pointer" data-college="COACS">COACS</button>
+  <button type="button" class="cbtn px-3 py-1.5 rounded text-xs font-bold bg-white/10 hover:bg-white/20 cursor-pointer" data-college="CAS">CAS</button>
+  <button type="button" class="cbtn px-3 py-1.5 rounded text-xs font-bold bg-white/10 hover:bg-white/20 cursor-pointer" data-college="COED">COED</button>
+  <button type="button" class="cbtn px-3 py-1.5 rounded text-xs font-bold bg-white/10 hover:bg-white/20 cursor-pointer" data-college="COBM">COBM</button>
+  <button type="button" class="cbtn px-3 py-1.5 rounded text-xs font-bold bg-white/10 hover:bg-white/20 cursor-pointer" data-college="LAW">LAW</button>
+</nav>
+
+<main class="p-4 max-w-7xl mx-auto">
+  <div class="bg-white rounded-xl shadow-sm border border-slate-200 p-5">
+    <h1 class="text-lg font-bold mb-1" id="title">NSTP Students</h1>
+    <p class="text-xs text-slate-500 mb-4" id="termLine"></p>
+
+    <div class="flex flex-wrap items-end gap-2 mb-4">
+      <label class="flex flex-col text-[11px] font-bold text-slate-500 uppercase">Year level
+        <select id="fYear" class="mt-1 px-3 py-2 rounded-lg border border-slate-300 text-sm bg-white cursor-pointer normal-case">
+          <option value="">All</option>
+          <option value="1">1st year</option>
+          <option value="2">2nd year</option>
+          <option value="3">3rd year</option>
+          <option value="4">4th year</option>
+        </select>
+      </label>
+      <label class="flex flex-col text-[11px] font-bold text-slate-500 uppercase">Section
+        <select id="fSection" class="mt-1 px-3 py-2 rounded-lg border border-slate-300 text-sm bg-white cursor-pointer normal-case">
+          <option value="">All</option>
+        </select>
+      </label>
+      <span id="liveCount" class="text-xs font-bold text-indigo-900 px-3 py-2 rounded-lg bg-indigo-50"></span>
+    </div>
+
+    <!-- Enrollment for the checked students (not yet enrolled) -->
+    <div id="actionBar" hidden class="mb-4 p-4 rounded-lg border border-amber-300 bg-amber-50">
+      <div class="text-xs font-bold text-slate-700 mb-3" id="selLine"></div>
+      <div class="flex flex-wrap items-end gap-3">
+        <label class="flex flex-col text-[11px] font-bold text-slate-500 uppercase">Subject
+          <select id="subjectSel" class="mt-1 px-3 py-2 rounded-lg border border-slate-300 text-sm bg-white cursor-pointer normal-case">
+            <option value="">Choose subject</option>
+            <option value="NSTP 1">CWTS (NSTP 1)</option>
+            <option value="ROTC 1">ROTC (ROTC 1)</option>
+          </select>
+        </label>
+        <label class="flex flex-col text-[11px] font-bold text-slate-500 uppercase flex-1 min-w-[240px]">Instructor
+          <input id="instructorIn" type="text" placeholder="Type the instructor's name" autocomplete="off" class="mt-1 px-3 py-2 rounded-lg border border-slate-300 text-sm normal-case">
+        </label>
+        <button type="button" id="enrollBtn" class="px-4 py-2 rounded-lg text-xs font-bold bg-indigo-700 hover:bg-indigo-800 text-white cursor-pointer">Save / Enroll students</button>
+        <button type="button" id="clearSel" class="px-3 py-2 rounded-lg border border-slate-300 text-xs font-bold bg-white cursor-pointer">Clear selection</button>
+      </div>
+      <p class="text-[11px] text-slate-600 mt-3">Each enrollment sets the subject and instructor for the checked students only. Enrolled students are greyed out. Another instructor can teach the same subject in the same section by enrolling a different group.</p>
+      <p id="actMsg" class="text-xs font-semibold mt-2"></p>
+    </div>
+
+    <div id="tableWrap" class="overflow-x-auto max-h-[60vh] border border-slate-300 rounded">
+      <p class="p-3 text-xs text-slate-500">Loading…</p>
+    </div>
+
+    <div class="flex flex-wrap items-center justify-between gap-3 mt-4">
+      <span id="pageInfo" class="text-xs font-bold text-slate-500"></span>
+      <div class="flex items-center gap-2">
+        <button type="button" id="prev" class="px-3 py-1.5 rounded-lg border border-slate-300 text-xs font-bold bg-white cursor-pointer disabled:opacity-40">◀ Prev</button>
+        <button type="button" id="next" class="px-3 py-1.5 rounded-lg border border-slate-300 text-xs font-bold bg-white cursor-pointer disabled:opacity-40">Next ▶</button>
+      </div>
+    </div>
+    <p id="msg" class="text-xs font-semibold text-rose-600 mt-3"></p>
+  </div>
+</main>
+
+<script>
+(function () {
+  var COLLEGES = ['CONM', 'COACS', 'CAS', 'COED', 'COBM', 'LAW'];
+  var NAMES = { CONM: 'CONM', COACS: 'COACS', CAS: 'CAS', COED: 'COED', COBM: 'COBM', LAW: 'SCHOOL OF LAW' };
+  var SUBJ = { 'NSTP 1': 'CWTS', 'ROTC 1': 'ROTC' };
+  var PAGE_SIZE = 10;
+  var college = (new URLSearchParams(location.search).get('college') || '').toUpperCase();
+  if (COLLEGES.indexOf(college) === -1) college = 'CONM';
+  var all = [], page = 1, selected = {};
+  var fYear = document.getElementById('fYear'), fSection = document.getElementById('fSection');
+  var tableWrap = document.getElementById('tableWrap'), pageInfo = document.getElementById('pageInfo'), liveCount = document.getElementById('liveCount');
+  var prevBtn = document.getElementById('prev'), nextBtn = document.getElementById('next');
+  var actionBar = document.getElementById('actionBar'), selLine = document.getElementById('selLine');
+  var actMsg = document.getElementById('actMsg'), instructorIn = document.getElementById('instructorIn'), subjectSel = document.getElementById('subjectSel');
+
+  function esc(v) { return String(v == null ? '' : v).replace(/[&<>"']/g, function (c) { return { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]; }); }
+
+  function gradeCell(r) {
+    var base;
+    if (r.final_grade) base = '<span class="font-bold">' + esc(r.final_grade) + '</span> <span class="text-slate-500">(' + esc(SUBJ[r.subject] || r.subject) + ')</span>';
+    else if (r.subject) base = '<span class="text-slate-400">Not yet approved</span> <span class="text-slate-500">(' + esc(SUBJ[r.subject] || r.subject) + ')</span>';
+    else base = '<span class="text-slate-400">Not enrolled in NSTP yet</span>';
+    if (r.enrolled && r.instructor) base += '<br><span class="text-slate-600">Instructor: ' + esc(r.instructor) + '</span>';
+    return base;
+  }
+
+  function filtered() {
+    var y = fYear.value, s = fSection.value;
+    return all.filter(function (r) {
+      if (y && String(r.year_level) !== y) return false;
+      if (s && String(r.section) !== s) return false;
+      return true;
+    });
+  }
+
+  // Only students not yet enrolled can be checked.
+  function selectedRows() { return all.filter(function (r) { return selected[r.student_no] && !r.enrolled; }); }
+
+  function updateBar() {
+    var n = selectedRows().length;
+    actionBar.hidden = n === 0;
+    selLine.textContent = n + ' not yet enrolled student(s) checked';
+  }
+
+  function render() {
+    var list = filtered();
+    var pages = Math.max(1, Math.ceil(list.length / PAGE_SIZE));
+    if (page > pages) page = pages;
+    if (page < 1) page = 1;
+    var slice = list.slice((page - 1) * PAGE_SIZE, page * PAGE_SIZE);
+    liveCount.textContent = list.length + ' of ' + all.length + ' students';
+
+    if (!all.length) {
+      tableWrap.innerHTML = '<p class="p-3 text-xs text-slate-500">No verified students in ' + esc(NAMES[college]) + ' yet.</p>';
+    } else if (!list.length) {
+      tableWrap.innerHTML = '<p class="p-3 text-xs text-slate-500">No students match the filters.</p>';
+    } else {
+      var open = list.filter(function (r) { return !r.enrolled; });
+      var allChecked = open.length > 0 && open.every(function (r) { return selected[r.student_no]; });
+      var head = '<tr><th><input type="checkbox" id="chkAll" aria-label="Select all not yet enrolled shown" ' + (allChecked ? 'checked' : '') + '></th><th>Student ID</th><th>Last Name</th><th>First Name</th><th>Middle Name</th><th>Extension</th><th>Email Address</th><th>Contact Number</th><th>Final Grade</th></tr>';
+      var body = slice.map(function (r) {
+        var on = !!selected[r.student_no] && !r.enrolled;
+        return '<tr class="' + (r.enrolled ? 'done' : (on ? 'sel' : '')) + '"><td><input type="checkbox" class="rowchk" data-no="' + esc(r.student_no) + '" ' + (on ? 'checked ' : '') + (r.enrolled ? 'disabled' : '') + '></td>' +
+          '<td>' + esc(r.student_no) + '</td><td>' + esc(r.last_name) + '</td><td>' + esc(r.first_name) + '</td><td>' + esc(r.middle_name) +
+          '</td><td>' + esc(r.extension) + '</td><td>' + esc(r.email) + '</td><td>' + esc(r.contact_number) + '</td><td>' + gradeCell(r) + '</td></tr>';
+      }).join('');
+      tableWrap.innerHTML = '<table class="xl w-full border-collapse"><thead>' + head + '</thead><tbody>' + body + '</tbody></table>';
+    }
+    var from = list.length ? (page - 1) * PAGE_SIZE + 1 : 0, to = (page - 1) * PAGE_SIZE + slice.length;
+    pageInfo.textContent = 'Showing ' + from + '–' + to + ' of ' + list.length + ' · Page ' + page + ' of ' + pages;
+    prevBtn.disabled = page <= 1;
+    nextBtn.disabled = page >= pages;
+    updateBar();
+  }
+
+  function fillSections() {
+    var secs = [];
+    all.forEach(function (r) { if (r.section && secs.indexOf(String(r.section)) === -1) secs.push(String(r.section)); });
+    secs.sort();
+    fSection.innerHTML = '<option value="">All</option>' + secs.map(function (s) { return '<option value="' + esc(s) + '">' + esc(s) + '</option>'; }).join('');
+  }
+
+  function toLogin() { window.location.href = '/CUP-PORTAL/nstp/'; }
+
+  function say(text, bad) { actMsg.className = 'text-xs font-semibold mt-2 ' + (bad ? 'text-rose-600' : 'text-emerald-700'); actMsg.textContent = text; }
+
+  function loadCollege() {
+    document.getElementById('title').textContent = 'NSTP Students · ' + NAMES[college];
+    document.querySelectorAll('.cbtn').forEach(function (b) { b.classList.toggle('on', b.getAttribute('data-college') === college); });
+    tableWrap.innerHTML = '<p class="p-3 text-xs text-slate-500">Loading…</p>';
+    history.replaceState(null, '', '?college=' + college);
+    fetch('/api/nstp/students?college=' + encodeURIComponent(college), { credentials: 'same-origin' })
+      .then(function (r) { return r.json().catch(function () { return {}; }).then(function (j) { return { status: r.status, ok: r.ok, j: j }; }); })
+      .then(function (res) {
+        if (res.status === 401) { toLogin(); return; }
+        if (!res.ok) { all = []; fillSections(); tableWrap.innerHTML = '<p class="p-3 text-xs text-rose-600">' + esc(res.j.error || 'Could not load the NSTP list.') + '</p>'; liveCount.textContent = ''; pageInfo.textContent = ''; return; }
+        all = res.j.students || [];
+        var keep = {}; all.forEach(function (r) { if (selected[r.student_no] && !r.enrolled) keep[r.student_no] = true; });
+        selected = keep;
+        document.getElementById('termLine').textContent = res.j.term ? 'Term: ' + res.j.term + ' · ' + res.j.academic_year + '. Final grades show after the University Registrar approves them.' : '';
+        fillSections();
+        render();
+      }).catch(function () { tableWrap.innerHTML = '<p class="p-3 text-xs text-rose-600">Could not load the NSTP list.</p>'; });
+  }
+
+  function load() {
+    fetch('/api/nstp/me', { credentials: 'same-origin' })
+      .then(function (r) { if (r.status === 401) { toLogin(); return null; } return r.json(); })
+      .then(function (me) { if (me) document.getElementById('userName').textContent = me.fullName || ''; })
+      .catch(function () {});
+    loadCollege();
+  }
+
+  // Row and select-all checkboxes (delegated, since the table is redrawn)
+  tableWrap.addEventListener('change', function (e) {
+    var t = e.target;
+    if (t.classList.contains('rowchk')) { if (t.checked) selected[t.getAttribute('data-no')] = true; else delete selected[t.getAttribute('data-no')]; }
+    else if (t.id === 'chkAll') {
+      filtered().slice((page - 1) * PAGE_SIZE, page * PAGE_SIZE).forEach(function (r) {
+        if (r.enrolled) return;
+        if (t.checked) selected[r.student_no] = true; else delete selected[r.student_no];
+      });
+    } else return;
+    render();
+  });
+
+  document.querySelectorAll('.cbtn').forEach(function (b) {
+    b.addEventListener('click', function () {
+      college = b.getAttribute('data-college');
+      fYear.value = ''; fSection.value = ''; selected = {}; actMsg.textContent = '';
+      loadCollege();
+    });
+  });
+  fYear.addEventListener('change', function () { page = 1; render(); });
+  fSection.addEventListener('change', function () { page = 1; render(); });
+
+  document.getElementById('enrollBtn').addEventListener('click', function () {
+    var nos = selectedRows().map(function (r) { return r.student_no; });
+    var subj = subjectSel.value, name = instructorIn.value.trim();
+    if (!nos.length) { say('Check at least one student who is not yet enrolled.', true); return; }
+    if (!subj) { say('Choose CWTS or ROTC.', true); return; }
+    if (!name) { say("Type the instructor's name.", true); return; }
+    if (!window.confirm('Enroll ' + nos.length + ' student(s) in ' + SUBJ[subj] + ' with ' + name + '?')) return;
+    var btn = document.getElementById('enrollBtn'); btn.disabled = true;
+    fetch('/api/nstp/students/enroll', { method: 'POST', credentials: 'same-origin', headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ college: college, student_nos: nos, subject: subj, instructor: name }) })
+      .then(function (r) { return r.json().catch(function () { return {}; }).then(function (j) { return { status: r.status, ok: r.ok, j: j }; }); })
+      .then(function (res) {
+        btn.disabled = false;
+        if (res.status === 401) { toLogin(); return; }
+        if (!res.ok) { say(res.j.error || 'Could not enroll the students.', true); return; }
+        var msg = 'Enrolled ' + res.j.enrolled + ' student(s) in ' + SUBJ[res.j.subject] + ' with ' + res.j.instructor + '.';
+        if (res.j.skipped) msg += ' ' + res.j.skipped + ' were already enrolled and skipped.';
+        say(msg);
+        selected = {};
+        subjectSel.value = ''; instructorIn.value = '';
+        loadCollege();
+      }).catch(function () { btn.disabled = false; say('Could not enroll the students.', true); });
+  });
+
+  document.getElementById('clearSel').addEventListener('click', function () { selected = {}; actMsg.textContent = ''; render(); });
+  prevBtn.addEventListener('click', function () { page--; render(); });
+  nextBtn.addEventListener('click', function () { page++; render(); });
+  document.getElementById('logout').addEventListener('click', function () {
+    fetch('/api/nstp/logout', { method: 'POST', credentials: 'same-origin' }).finally(toLogin);
+  });
+  load();
+})();
+</script>
+</body>
+</html>

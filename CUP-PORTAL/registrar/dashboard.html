@@ -363,6 +363,7 @@
           <button type="button" class="acct-tab" data-acct-tab="faculty">Faculty Accounts</button>
           <button type="button" class="acct-tab" data-acct-tab="university">Registrar Accounts</button>
           <button type="button" class="acct-tab" data-acct-tab="registrar">College Registrar Accounts</button>
+          <button type="button" class="acct-tab" data-acct-tab="nstp">NSTP Accounts</button>
           <button type="button" class="acct-tab" data-acct-tab="csc">CSC Accounts</button>
         </div>
         <div class="acct-pane" id="acct-pane-student">
@@ -425,6 +426,24 @@
           <div class="sub-body" data-role="registrar" data-sub="archive" hidden><div class="bulk" data-role="registrar" data-mode="archive"></div></div>
           <div class="sub-body" data-role="registrar" data-sub="restore" hidden><div class="bulk" data-role="registrar" data-mode="restore"></div></div>
           <div class="sub-body" data-role="registrar" data-sub="delete" hidden><div class="bulk" data-role="registrar" data-mode="delete"></div></div>
+        </div>
+        <div class="acct-pane" id="acct-pane-nstp" hidden>
+          <div class="sub-tabs"><button type="button" class="sub-tab on" data-role="nstp" data-sub="register">Register</button><button type="button" class="sub-tab" data-role="nstp" data-sub="manage">Manage Account</button><button type="button" class="sub-tab" data-role="nstp" data-sub="archive">Bulk Archive</button><button type="button" class="sub-tab" data-role="nstp" data-sub="restore">Bulk Restore</button><button type="button" class="sub-tab" data-role="nstp" data-sub="delete">Bulk Delete</button></div>
+          <div class="sub-body" data-role="nstp" data-sub="register">
+            <h3>Register one NSTP account</h3>
+            <form novalidate class="acct-form" onsubmit="return false">
+              <input id="nst-ln" placeholder="Last name" aria-label="Last name"><input id="nst-fn" placeholder="First name" aria-label="First name"><input id="nst-mn" placeholder="Middle name" aria-label="Middle name"><input id="nst-ext" placeholder="Extension (Jr., III)" aria-label="Extension">
+              <input id="nst-user" class="auto-user" readonly placeholder="Username (auto-generated)" aria-label="Username (auto-generated)">
+              <input id="nst-mail" type="email" placeholder="Email address (for OTP codes)" autocomplete="off" pattern="[A-Za-z0-9._%+\-]+@[A-Za-z0-9\-]+(\.[A-Za-z0-9\-]+)*\.[A-Za-z]{2,}" maxlength="254" title="Enter a valid email address, for example name@example.com">
+              
+              <button type="button" id="nst-create">Create NSTP account</button>
+              <p class="hint staff-msg" data-role="nstp"></p>
+            </form>
+          </div>
+          <div class="sub-body" data-role="nstp" data-sub="manage" hidden><div class="manage" data-role="nstp"></div></div>
+          <div class="sub-body" data-role="nstp" data-sub="archive" hidden><div class="bulk" data-role="nstp" data-mode="archive"></div></div>
+          <div class="sub-body" data-role="nstp" data-sub="restore" hidden><div class="bulk" data-role="nstp" data-mode="restore"></div></div>
+          <div class="sub-body" data-role="nstp" data-sub="delete" hidden><div class="bulk" data-role="nstp" data-mode="delete"></div></div>
         </div>
         <div class="acct-pane" id="acct-pane-university" hidden>
           <div class="sub-tabs"><button type="button" class="sub-tab on" data-role="university" data-sub="register">Register</button><button type="button" class="sub-tab" data-role="university" data-sub="manage">Manage Account</button><button type="button" class="sub-tab" data-role="university" data-sub="archive">Bulk Archive</button><button type="button" class="sub-tab" data-role="university" data-sub="restore">Bulk Restore</button><button type="button" class="sub-tab" data-role="university" data-sub="delete">Bulk Delete</button></div>
@@ -738,8 +757,8 @@
     var COLLEGE_LIST = ['COACS', 'CAS', 'CONM', 'COED', 'COBM', 'LAW', 'GS', 'TESDA-TVI'];
     var YEAR_LIST = [[1, 'First Year'], [2, 'Second Year'], [3, 'Third Year'], [4, 'Fourth Year']];
     var FOOT = '<div class="xl-foot"><span class="xl-info"></span><label>Rows per page <select class="xl-size"><option>10</option><option>25</option><option>50</option><option>100</option></select></label><span class="pg"></span></div>';
-    var ROLE_LABEL = { student: 'STUDENT', faculty: 'FACULTY', registrar: 'COLLEGE REGISTRAR', university: 'UNIVERSITY REGISTRAR STAFF', csc: 'CSC' };
-    var STAFF_ROLES = ['registrar', 'university', 'csc'];
+    var ROLE_LABEL = { student: 'STUDENT', faculty: 'FACULTY', registrar: 'COLLEGE REGISTRAR', university: 'UNIVERSITY REGISTRAR STAFF', nstp: 'NSTP', csc: 'CSC' };
+    var STAFF_ROLES = ['registrar', 'university', 'nstp', 'csc'];
     function keyOf(u) { return u.role === 'student' ? u.student_no : u.username; }
     function yearText(n) { for (var i = 0; i < YEAR_LIST.length; i++) { if (String(YEAR_LIST[i][0]) === String(n)) return YEAR_LIST[i][1]; } return ''; }
     function statusPill(u) {
@@ -923,7 +942,7 @@
         renderAllPanes();
       });
     }
-    buildManage('student'); buildManage('faculty'); buildManage('registrar'); buildManage('university'); buildManage('csc');
+    buildManage('student'); buildManage('faculty'); buildManage('registrar'); buildManage('university'); buildManage('nstp'); buildManage('csc');
     document.querySelectorAll('.bulk').forEach(buildBulk);
 
     document.addEventListener('click', function (e) {
@@ -1367,7 +1386,7 @@
         .then(function (res) { if (!res.ok) { staffMsg(kind, res.j.error || 'Could not complete the action.', false); return; } onOk(res.j); })
         .catch(function () { staffMsg(kind, 'Connection problem. Nothing was changed.', false); });
     }
-    document.addEventListener('acct-tab-open', function (e) { if (e.detail === 'university' || e.detail === 'registrar' || e.detail === 'csc') loadStaff(e.detail); });
+    document.addEventListener('acct-tab-open', function (e) { if (e.detail === 'university' || e.detail === 'registrar' || e.detail === 'nstp' || e.detail === 'csc') loadStaff(e.detail); });
     document.addEventListener('click', function (e) {
       var t = e.target && e.target.closest ? e.target.closest('[data-staff-act]') : null;
       if (!t) return;
@@ -1391,14 +1410,14 @@
       staffPost(kind, act, body, function (j) { staffMsg(kind, j.count + ' account(s) updated.', true); loadStaff(kind); });
     });
     function registerStaff(kind) {
-      var pre = kind === 'csc' ? 'csc' : kind === 'university' ? 'uni' : 'reg';
+      var pre = kind === 'csc' ? 'csc' : kind === 'university' ? 'uni' : kind === 'nstp' ? 'nst' : 'reg';
       var body = {
         last_name: $('#' + pre + '-ln').value.trim(), first_name: $('#' + pre + '-fn').value.trim(),
         middle_name: $('#' + pre + '-mn').value.trim(), extension: $('#' + pre + '-ext').value.trim(),
         email: $('#' + pre + '-mail').value.trim()
       };
       if (kind === 'csc') body.username = '';
-      if (kind === 'registrar' || kind === 'university') body.college = $('#' + (kind === 'university' ? 'uni' : 'reg') + '-college').value;
+      if (kind === 'registrar' || kind === 'university') body.college = $('#' + pre + '-college').value;
       else if (kind === 'csc') { body.position = $('#csc-position').value; }
       if (!body.last_name || !body.first_name) { staffMsg(kind, 'Last name and first name are required.', false); return; }
       fetch('/api/registrar/staff/' + kind, { method: 'POST', credentials: 'same-origin', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(body) })
@@ -1415,6 +1434,7 @@
     safeOn('#reg-create', 'click', function () { registerStaff('registrar'); });
     safeOn('#csc-create', 'click', function () { registerStaff('csc'); });
     safeOn('#uni-create', 'click', function () { registerStaff('university'); });
+    safeOn('#nst-create', 'click', function () { registerStaff('nstp'); });
     safeOn('#pu-save-student', 'click', function () { createOne('student'); });
     syncPrograms($('#pu-program-student'), $('#pu-college-student').value);
     safeOn('#pu-college-student', 'change', function () { syncPrograms($('#pu-program-student'), this.value); });
