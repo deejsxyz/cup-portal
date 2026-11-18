@@ -809,12 +809,13 @@
       var td = 'padding:6px;border-bottom:1px solid #d5e2d5;white-space:nowrap';
       var html = '<p class="hint">' + rows.length + ' grade(s)' + (q ? ' matching "' + esc(AG.q) + '"' : '') + '.</p>';
       if (!rows.length) return ($('#ag-list').innerHTML = html + '<p class="hint">No grades for this college yet.</p>');
+      html += '<p class="hint"><strong>Status legend:</strong> S = Submitted (waiting for approval) &nbsp;|&nbsp; A = Approved</p>';
       html += '<table style="width:100%;border-collapse:collapse;font-size:.9rem"><thead><tr>' +
         '<th style="' + th + '"><input type="checkbox" id="ag-all" title="Select all submitted on this page"></th>' +
         ['Student No', 'Student', 'A.Y', 'Term', 'Course', 'Grade', 'Status', 'Instructor'].map(function (t) { return '<th style="' + th + '">' + t + '</th>'; }).join('') +
         '</tr></thead><tbody>' + slice.map(function (g) {
           var name = (g.last_name || '') + ', ' + (g.first_name || '');
-          var status = g.status === 'approved' ? 'Approved' : 'Submitted';
+          var status = g.status === 'approved' ? 'A' : 'S';
           var k = agKey(g), locked = g.status === 'approved';
           var box = '<td style="' + td + '"><input type="checkbox" class="ag-row" data-key="' + esc(k) + '"' + (locked ? ' disabled' : '') + (AG.sel[k] ? ' checked' : '') + '></td>';
           return '<tr>' + box + [g.student_no, name, g.academic_year, g.term, g.course_code, g.final_grade, status, g.instructor || ''].map(function (v) {
