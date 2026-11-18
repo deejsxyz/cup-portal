@@ -349,6 +349,19 @@
     </div></div></section>
     <section class="panel" id="subjects-section"><div class="box"><h2>Subjects and Units</h2><div class="body">
         <p class="hint">Upload this college's subject list. The certificate of grades uses these units to compute the weighted average.</p>
+        <div id="sj-single" style="margin-bottom:14px;padding-bottom:12px;border-bottom:1px solid #d5e2d5">
+          <p class="hint"><strong>Add one subject</strong></p>
+          <div style="display:flex;gap:10px;flex-wrap:wrap;align-items:flex-end">
+            <label>Year level <select id="sj-year"><option value="">Select</option><option>1</option><option>2</option><option>3</option><option>4</option></select></label>
+            <label>Semester <select id="sj-sem"><option value="">Select</option><option>1st Semester</option><option>2nd Semester</option><option>Summer</option></select></label>
+            <label>Units <select id="sj-units"><option value="">Select</option></select></label>
+            <label>Subject code <input id="sj-code" type="text" placeholder="e.g. NCM 100" style="width:130px"></label>
+            <label>Descriptive title <input id="sj-title" type="text" style="min-width:280px"></label>
+          </div>
+          <button type="button" id="sj-add" style="margin-top:10px">Add subject</button>
+          <p class="hint" id="sj-add-msg"></p>
+        </div>
+        <p class="hint"><strong>Batch upload</strong></p>
         <p><span id="sj-college-wrap" hidden>College: <select id="sj-college"><option>COACS</option><option>CAS</option><option>CONM</option><option>COED</option><option>COBM</option><option>LAW</option><option>GS</option><option>TESDA-TVI</option></select> </span>
           <a href="#" id="sj-tpl">Download template</a></p>
         <input type="file" id="sj-file" accept=".csv,text/csv">
@@ -1501,6 +1514,29 @@
           });
       };
       reader.readAsText(f);
+    });
+    (function () {
+      var sel = $('#sj-units'); var html = '';
+      for (var u = 0.5; u <= 20; u += 0.5) html += '<option>' + u + '</option>';
+      sel.insertAdjacentHTML('beforeend', html);
+    })();
+    safeOn('#sj-add', 'click', function () {
+      var code = $('#sj-code').value.trim().toUpperCase();
+      var title = $('#sj-title').value.trim();
+      var yl = $('#sj-year').value, sem = $('#sj-sem').value, units = $('#sj-units').value;
+      $('#sj-add-msg').textContent = '';
+      if (!code || !title || !yl || !sem || !units) { $('#sj-add-msg').textContent = 'Fill in the year level, semester, units, subject code and descriptive title.'; return; }
+      var csv = 'course_code,descriptive_title,units,year_level,semester\r\n' +
+        [code, '"' + title.replace(/"/g, '""') + '"', units, yl, sem].join(',') + '\r\n';
+      fetch('/api/registrar/courses/batch', { method: 'POST', credentials: 'same-origin', headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ college: sjCollege(), csv: csv }) })
+        .then(function (r) { return r.json().then(function (j) { return { ok: r.ok, j: j }; }); })
+        .then(function (res) {
+          if (!res.ok) { $('#sj-add-msg').innerHTML = esc(res.j.error || 'Could not save.') + (res.j.errors ? '<br>' + res.j.errors.map(esc).join('<br>') : ''); return; }
+          $('#sj-add-msg').textContent = code + ' saved.';
+          $('#sj-code').value = ''; $('#sj-title').value = '';
+          loadSubjects();
+        });
     });
     (function () {
       var y = new Date().getFullYear(), sel = $('#gp-ay'), opts = '';
