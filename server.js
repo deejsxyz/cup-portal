@@ -3720,8 +3720,6 @@ const ENROLL_CHECKS = [
   { label: 'Step 4 · Official CUP ID', ok: (r) => !!String(r.student_no || '').trim() },
   { label: 'Step 5 · CSC payment', ok: (r) => !!r.csc_paid_at },
   { label: 'Step 6 · Advising slip submitted', ok: (r) => !!r.advising_slip_at },
-  { label: 'Step 6 · COE printed', ok: (r) => !!r.coe_printed_at },
-  { label: 'Step 6 · ID validated', ok: (r) => !!r.id_validated_at },
 ];
 function enrollMissing(r) { return ENROLL_CHECKS.filter((c) => !c.ok(r)).map((c) => c.label); }
 const ENROLL_ROW_SQL = `SELECT student_no, status, year_level, COALESCE(nstp_subject, '') AS nstp_subject, nstp_enrolled_at, step1_status, step2_evaluated_at, step2_advised_at, step2_sectioned_at, csc_paid_at, advising_slip_at, coe_printed_at, id_validated_at
