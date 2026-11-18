@@ -2954,11 +2954,12 @@ app.get('/api/registrar/enroll-context', requireRegistrar, async (req, res) => {
     let subjects = [];
     const section = String(req.query.section || '');
     if (Number.isInteger(year) && year >= 1 && year <= 4) {
-      // Return all curriculum subjects across all year levels, semesters, and colleges (prioritizing this college and active semester)
+      // Only this college's curriculum subjects, across all year levels and semesters.
       const r = await pool.query(
         `SELECT DISTINCT ON (course_code) college, course_code, descriptive_title, units, year_level, semester
          FROM reg_courses
-         ORDER BY course_code, (CASE WHEN college = $1 THEN 0 ELSE 1 END), (CASE WHEN semester = $2 THEN 0 ELSE 1 END), year_level NULLS LAST`,
+         WHERE college = $1
+         ORDER BY course_code, (CASE WHEN semester = $2 THEN 0 ELSE 1 END), year_level NULLS LAST`,
         [college, term]);
       const sorted = r.rows.sort((a, b) => {
         const aCol = a.college === college ? 0 : 1, bCol = b.college === college ? 0 : 1;
