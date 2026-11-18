@@ -79,7 +79,7 @@ app.get('/api/cat-stats', async (req, res) => {
 // Sends email through Brevo's web API (Render's free plan blocks SMTP ports).
 // opts: { html, sender } — sender defaults to the CUP Central Portal name.
 async function sendEmail(to, subject, text, opts) {
-  const { html, sender = 'CUP Central Portal' } = opts || {};
+  const { html, sender = 'CUP Central Portal', attachments } = opts || {};
   const res = await fetch('https://api.brevo.com/v3/smtp/email', {
     method: 'POST',
     headers: { 'api-key': process.env.BREVO_API_KEY, 'Content-Type': 'application/json', accept: 'application/json' },
@@ -89,6 +89,7 @@ async function sendEmail(to, subject, text, opts) {
       subject,
       textContent: text,
       ...(html ? { htmlContent: html } : {}),
+      ...(attachments ? { attachment: attachments } : {}),
     }),
   });
   if (!res.ok) {
@@ -3692,6 +3693,26 @@ app.get('/api/registrar/step2', requireCollegeRegistrar, async (req, res) => {
 
 const STEP2_TASKS = { evaluation: 'step2_evaluated_at', advising: 'step2_advised_at', section: 'step2_sectioned_at' };
 const STEP2_LABELS = { evaluation: 'Student evaluation', advising: 'Advising', section: 'Section assignment' };
+app.post('/api/registrar/step2/:no/:task', requireCollegeRegistrar, async (req, res, next) => {
+  const col = STEP2_TASKS[req.params.task];
+  if (!col) return next();
+  const college = regCollege(req, (req.body || {}).college);
+  if (!college) return res.status(400).json({ error: 'Invalid Step 2 request.' });
+  const no = String(req.params.no || '').trim();
+  const done = (req.body || {}).done === true;
+  try {
+    const r = await pool.query(
+      `UPDATE reg_students SET ${col} = CASE WHEN $3 THEN COALESCE(${col}, now()) ELSE NULL END
+       WHERE student_no = $1 AND college = $2 AND status IN ('enrolled','pre-registered') AND step1_status = 'verified' RETURNING student_no, ${col} AS done_at`, [no, college, done]);
+    if (!r.rows.length) return res.status(404).json({ error: 'Student not found.' });
+    logAction(req, 'College Registrar', (done ? 'Step 2 done: ' : 'Step 2 undone: ') + STEP2_LABELS[req.params.task], no + ' · ' + college);
+    res.json({ ok: true, student_no: no, done_at: r.rows[0].done_at });
+  } catch (err) {
+    console.error(err);
+    res.status(500).json({ error: 'Could not update Step 2.' });
+  }
+});
+
 // Step 2 advising: the NSTP subject the student is pre-registered for (NSTP 1 = CWTS, ROTC 1 = ROTC).
 app.post('/api/registrar/step2/:no/nstp', requireCollegeRegistrar, async (req, res) => {
   const college = regCollege(req, (req.body || {}).college);
@@ -3712,23 +3733,55 @@ app.post('/api/registrar/step2/:no/nstp', requireCollegeRegistrar, async (req, r
   }
 });
 
-app.post('/api/registrar/step2/:no/:task', requireCollegeRegistrar, async (req, res) => {
-  const col = STEP2_TASKS[req.params.task];
-  if (!col) return res.status(400).json({ error: 'Invalid Step 2 request.' });
-  const college = regCollege(req, (req.body || {}).college);
-  if (!college) return res.status(400).json({ error: 'Invalid Step 2 request.' });
-  const no = String(req.params.no || '').trim();
-  const done = (req.body || {}).done === true;
+// Section Assignment: live counts per program code, year level and section
+app.get('/api/registrar/step2/section-counts', requireCollegeRegistrar, async (req, res) => {
+  const college = regCollege(req, req.query.college);
+  const year = String(req.query.year || '').trim();
+  if (!college || !REG_COLLEGES.includes(college) || !/^[1-9]$/.test(year)) return res.status(400).json({ error: 'Choose a college and year level.' });
   try {
-    const r = await pool.query(
-      `UPDATE reg_students SET ${col} = CASE WHEN $3 THEN COALESCE(${col}, now()) ELSE NULL END
-       WHERE student_no = $1 AND college = $2 AND status IN ('enrolled','pre-registered') AND step1_status = 'verified' RETURNING student_no, ${col} AS done_at`, [no, college, done]);
-    if (!r.rows.length) return res.status(404).json({ error: 'Student not found.' });
-    logAction(req, 'College Registrar', (done ? 'Step 2 done: ' : 'Step 2 undone: ') + STEP2_LABELS[req.params.task], no + ' · ' + college);
-    res.json({ ok: true, student_no: no, done_at: r.rows[0].done_at });
+    const counts = await pool.query(
+      `SELECT program, section, COUNT(*)::int AS n
+       FROM reg_students WHERE college = $1 AND status IN ('enrolled','pre-registered') AND year_level::text = $2
+         AND section IS NOT NULL AND section <> ''
+       GROUP BY program, section`, [college, year]);
+    // Group by the program code in brackets, e.g. "Bachelor of Science in Nursing (BSN)" -> BSN
+    var byKey = {};
+    counts.rows.forEach(function (r) {
+      var m = String(r.program || '').match(/\(([^)]+)\)\s*$/);
+      var code = m ? m[1] : String(r.program || '');
+      var key = code + '|' + r.section;
+      byKey[key] = { code: code, section: r.section, n: (byKey[key] ? byKey[key].n : 0) + r.n };
+    });
+    var countRows = Object.keys(byKey).map(function (k) { return byKey[k]; });
+    const secs = await pool.query(
+      `SELECT DISTINCT section FROM reg_students WHERE college = $1 AND section IS NOT NULL AND section <> ''`, [college]);
+    const sections = Array.from(new Set(['A', 'B', 'C', 'D', 'E'].concat(secs.rows.map(function (r) { return String(r.section).trim(); }))))
+      .filter(Boolean).sort();
+    res.json({ year, sections, counts: countRows });
   } catch (err) {
     console.error(err);
-    res.status(500).json({ error: 'Could not update Step 2.' });
+    res.status(500).json({ error: 'Could not load section counts.' });
+  }
+});
+
+// Section Assignment: save year level and section for the student, and mark the task done
+app.post('/api/registrar/step2/:no/assign-section', requireCollegeRegistrar, async (req, res) => {
+  const body = req.body || {};
+  const college = regCollege(req, body.college);
+  const year = String(body.year_level || '').trim();
+  const section = String(body.section || '').trim().toUpperCase();
+  if (!college || !/^[1-9]$/.test(year) || !/^[A-Z]{1,2}$/.test(section)) return res.status(400).json({ error: 'Choose a year level and section.' });
+  const no = String(req.params.no || '').trim();
+  try {
+    const r = await pool.query(
+      `UPDATE reg_students SET year_level = $3, section = $4, step2_sectioned_at = now()
+       WHERE student_no = $1 AND college = $2 AND status IN ('enrolled','pre-registered') AND step1_status = 'verified' RETURNING student_no`, [no, college, year, section]);
+    if (!r.rows.length) return res.status(404).json({ error: 'Student not found.' });
+    logAction(req, 'College Registrar', 'Step 2 section assigned: ' + year + section, no + ' · ' + college);
+    res.json({ ok: true, student_no: no });
+  } catch (err) {
+    console.error(err);
+    res.status(500).json({ error: 'Could not save the section.' });
   }
 });
 
@@ -3848,8 +3901,8 @@ app.post('/api/registrar/batch-upload/:type', requireRegistrar, async (req, res)
   const dryRun = !!b.dryRun;
   const files = Array.isArray(b.files) ? b.files : [];
   if (!files.length) return res.status(400).json({ error: 'Select at least one CSV file.' });
-  // Students are pre-registered unless the registrar chose Officially Enrolled for this upload.
-  const enrollStatus = b.enrollment_status === 'enrolled' ? 'enrolled' : 'pre-registered';
+  // Batch uploads always pre-register students. Only the Registrar Office (Step 6) tags Officially Enrolled.
+  const enrollStatus = 'pre-registered';
   if (type === 'student' && await blockIfEnrollmentClosed(req, res)) return;
 
   const t = await activeTerm();
@@ -4638,6 +4691,49 @@ app.post('/api/cat/submit', async (req, res) => {
   }
 });
 
+// Emails the applicant a congratulations message with a Click to Login button. Sent once per applicant.
+app.post('/api/cat/submission-email', async (req, res) => {
+  const id = readSession(req);
+  if (!id) return res.status(401).json({ error: 'Not logged in.' });
+  let claimed = false;
+  try {
+    const claim = await pool.query(
+      'UPDATE cat_submissions SET emailed_at = now() WHERE account_id = $1 AND emailed_at IS NULL RETURNING account_id', [id]);
+    if (claim.rowCount === 0) return res.json({ ok: true, already: true });
+    claimed = true;
+    const { rows } = await pool.query(
+      'SELECT email, first_name, middle_name, last_name, applicant_id FROM accounts WHERE id = $1', [id]);
+    const acc = rows[0];
+    const mi = String(acc.middle_name || '').trim().charAt(0);
+    const fullName = acc.last_name + ', ' + acc.first_name + (mi ? ' ' + mi.toUpperCase() + '.' : '');
+    const loginUrl = portalBase(req) + '/CUP-CAT/login';
+    const subject = 'Congratulations! Your CUP College Admission Test application is complete';
+    const text = 'Dear ' + acc.first_name + ',\n\n' +
+      'Congratulations! You have successfully completed your application for the CUP College Admission Test.\n\n' +
+      'Applicant ID: ' + (acc.applicant_id || '') + '\n' +
+      'Applicant name: ' + fullName + '\n' +
+      'Username: ' + acc.email + '\n\n' +
+      'Log in to download your application form and test permit:\n' + loginUrl + '\n\n' +
+      'City University of Pasay\nOffice of Student Affairs, Admissions, and Scholarships';
+    const escHtml = (v) => String(v ?? '').replace(/[&<>"']/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
+    const html = '<div style="font-family:Arial,Helvetica,sans-serif;color:#111;line-height:1.5">' +
+      '<p>Dear ' + escHtml(acc.first_name) + ',</p>' +
+      '<p>Congratulations! You have successfully completed your application for the CUP College Admission Test.</p>' +
+      '<p style="margin:0 0 4px"><strong>Applicant ID:</strong> ' + escHtml(acc.applicant_id || '') + '</p>' +
+      '<p style="margin:0 0 4px"><strong>Applicant name:</strong> ' + escHtml(fullName) + '</p>' +
+      '<p style="margin:0 0 16px"><strong>Username:</strong> ' + escHtml(acc.email) + '</p>' +
+      '<p><a href="' + escHtml(loginUrl) + '" style="display:inline-block;background:#1f5d1f;color:#fff;text-decoration:none;font-weight:700;padding:12px 22px;border-radius:6px">Click to Login</a></p>' +
+      '<p>Log in to download your application form and test permit.</p>' +
+      '<p>City University of Pasay<br>Office of Student Affairs, Admissions, and Scholarships</p></div>';
+    await sendEmail(acc.email, subject, text, { sender: 'CUP College Admission Test', html });
+    res.json({ ok: true });
+  } catch (err) {
+    if (claimed) await pool.query('UPDATE cat_submissions SET emailed_at = NULL WHERE account_id = $1', [id]).catch(() => {});
+    console.error('Submission email failed:', err.message);
+    res.status(500).json({ error: 'Could not email the confirmation.' });
+  }
+});
+
 app.post('/api/cat/logout', (req, res) => {
   res.setHeader('Set-Cookie', 'cat_session=; Path=/; HttpOnly; SameSite=Lax; Max-Age=0');
   res.json({ ok: true });
@@ -4654,6 +4750,7 @@ pool.query(`CREATE TABLE IF NOT EXISTS cat_sections (
   .then(() => pool.query('ALTER TABLE cat_sections ADD COLUMN IF NOT EXISTS unlocked BOOLEAN NOT NULL DEFAULT false'))
   .then(() => pool.query('CREATE TABLE IF NOT EXISTS cat_submissions (account_id INT PRIMARY KEY REFERENCES accounts(id), submitted_at TIMESTAMPTZ NOT NULL DEFAULT now())'))
   .then(() => pool.query('ALTER TABLE cat_submissions ADD COLUMN IF NOT EXISTS exam_date DATE, ADD COLUMN IF NOT EXISTS exam_time TEXT, ADD COLUMN IF NOT EXISTS exam_building TEXT, ADD COLUMN IF NOT EXISTS exam_room INT, ADD COLUMN IF NOT EXISTS exam_seat INT'))
+  .then(() => pool.query('ALTER TABLE cat_submissions ADD COLUMN IF NOT EXISTS emailed_at TIMESTAMPTZ'))
   .then(() => pool.query('ALTER TABLE accounts ADD COLUMN IF NOT EXISTS dob_changed BOOLEAN NOT NULL DEFAULT false'))
   .then(() => pool.query("CREATE TABLE IF NOT EXISTS student_profiles (account_id INT PRIMARY KEY REFERENCES accounts(id), student_number TEXT UNIQUE NOT NULL, program TEXT NOT NULL, year_level INT NOT NULL)"))
   .then(() => pool.query("CREATE TABLE IF NOT EXISTS curriculum_subjects (id SERIAL PRIMARY KEY, program TEXT NOT NULL, year_level INT NOT NULL, term_no INT NOT NULL, code TEXT NOT NULL, title TEXT NOT NULL, units NUMERIC NOT NULL, UNIQUE (program, year_level, term_no, code))"))
@@ -4710,11 +4807,11 @@ pool.query(`CREATE TABLE IF NOT EXISTS cat_sections (
   .then(() => pool.query("ALTER TABLE reg_students ADD COLUMN IF NOT EXISTS step2_evaluated_at TIMESTAMPTZ"))
   .then(() => pool.query("ALTER TABLE reg_students ADD COLUMN IF NOT EXISTS step2_advised_at TIMESTAMPTZ"))
   .then(() => pool.query("ALTER TABLE reg_students ADD COLUMN IF NOT EXISTS step2_sectioned_at TIMESTAMPTZ"))
-  .then(() => pool.query("ALTER TABLE reg_students ADD COLUMN IF NOT EXISTS step1_status TEXT"))
-  .then(() => pool.query("ALTER TABLE reg_students ADD COLUMN IF NOT EXISTS step1_verified_at TIMESTAMPTZ"))
   .then(() => pool.query("ALTER TABLE reg_students ADD COLUMN IF NOT EXISTS nstp_subject TEXT"))
   .then(() => pool.query("ALTER TABLE reg_students ADD COLUMN IF NOT EXISTS nstp_instructor_id INTEGER"))
   .then(() => pool.query("ALTER TABLE reg_students ADD COLUMN IF NOT EXISTS nstp_enrolled_at TIMESTAMPTZ"))
+  .then(() => pool.query("ALTER TABLE reg_students ADD COLUMN IF NOT EXISTS step1_status TEXT"))
+  .then(() => pool.query("ALTER TABLE reg_students ADD COLUMN IF NOT EXISTS step1_verified_at TIMESTAMPTZ"))
   .then(() => pool.query("ALTER TABLE accounts ADD COLUMN IF NOT EXISTS archived_at TIMESTAMPTZ"))
   .then(() => pool.query('ALTER TABLE accounts ADD COLUMN IF NOT EXISTS username TEXT UNIQUE'))
   .then(() => pool.query("ALTER TABLE accounts ALTER COLUMN date_of_birth DROP NOT NULL"))

@@ -30,6 +30,7 @@
         <div id="evalBanner" class="mb-4 px-4 py-2.5 rounded-lg border text-xs font-semibold"></div>
         <div id="evalInfo" class="grid grid-cols-2 md:grid-cols-4 gap-x-6 gap-y-4 text-sm"></div>
         <div id="evalGrades" class="mt-5 pt-4"></div>
+        <div id="secCounts" hidden class="mt-5 pt-4"></div>
         <div id="advEnrollBox" hidden class="mt-2">
           <iframe id="advEnrollFrame" title="Standard Curriculum Subjects and Instructors" style="width:100%;min-height:640px;border:0;display:block"></iframe>
         </div>
@@ -92,6 +93,37 @@
   function fmtStatus(r) { return r.status === 'enrolled' ? 'Officially Enrolled' : 'Pre-registered'; }
 
   /* ----- Student Evaluation (Existing Student layout) ----- */
+  function showEvalStudent(no) {
+    evalMsg.textContent = '';
+    evalRecord.hidden = true;
+    if (!validId(no)) return;
+    var s = roster.filter(function (x) { return x.student_no === no; })[0];
+    if (!s) { evalMsg.textContent = 'Student not found. Please check the student number.'; return; }
+    current = s;
+    var ev = rows.filter(function (x) { return x.student_no === no; })[0];
+    if (cur === 'section') { showSectionStudent(s, ev); return; }
+    var done = !!(ev && ev[FIELDS[cur]]);
+    evalRecord.hidden = false;
+    evalInfo.innerHTML =
+      labelled('First Name', s.first_name) + labelled('Middle Name', s.middle_name) + labelled('Last Name', s.last_name) + labelled('Extension', s.name_extension) +
+      labelled('Gender', s.gender) + labelled('Birthday', s.birthday) + labelled('Email Address', s.email) + labelled('Contact Number', s.contact_number) +
+      labelled('Program', s.program) + labelled('Year & Section', (s.year_level || '') + (s.section || '')) + labelled('Student ID', s.student_no);
+    evalBanner.className = 'mb-4 px-4 py-2.5 rounded-lg border text-xs font-semibold ' + (done ? 'bg-emerald-50 border-emerald-200 text-emerald-800' : 'bg-amber-50 border-amber-200 text-amber-800');
+    evalBanner.textContent = TASK_NAME[cur] + (done ? ' is done.' : ' is not yet done.');
+    evalDone.className = 'px-4 py-2 rounded-lg text-xs font-bold shadow-md cursor-pointer ' + (done ? 'bg-emerald-600 text-white' : 'bg-indigo-700 hover:bg-indigo-800 text-white');
+    evalDone.textContent = done ? '✔ Done (undo)' : 'Mark ' + TASK_NAME[cur] + ' Done';
+    evalDone.setAttribute('data-done', done ? '1' : '0');
+    evalDone.disabled = !ev;
+    if (cur === 'evaluation') showLatestGrades(no); else if (cur === 'advising') renderNstpChoice(no, ev); else document.getElementById('evalGrades').innerHTML = '';
+    document.getElementById('secCounts').hidden = true;
+    var box = document.getElementById('advEnrollBox'), frame = document.getElementById('advEnrollFrame');
+    if (cur === 'advising') {
+      box.hidden = false;
+      var src = '/CUP-PORTAL/registrar/college-student.html?college=' + encodeURIComponent(COLLEGE) + '&view=enroll&student=' + encodeURIComponent(no);
+      if (frame.getAttribute('src') !== src) frame.setAttribute('src', src);
+    } else { box.hidden = true; frame.removeAttribute('src'); }
+  }
+
   /* ----- Advising: NSTP subject the student is pre-registered for (NSTP 1 = CWTS, ROTC 1 = ROTC) ----- */
   function renderNstpChoice(no, ev) {
     var box = document.getElementById('evalGrades');
@@ -120,33 +152,79 @@
     });
   }
 
-  function showEvalStudent(no) {
-    evalMsg.textContent = '';
-    evalRecord.hidden = true;
-    if (!validId(no)) return;
-    var s = roster.filter(function (x) { return x.student_no === no; })[0];
-    if (!s) { evalMsg.textContent = 'Student not found. Please check the student number.'; return; }
-    current = s;
-    var ev = rows.filter(function (x) { return x.student_no === no; })[0];
-    var done = !!(ev && ev[FIELDS[cur]]);
+  /* ----- Section Assignment: editable year and section, live counts ----- */
+  var YEARS = ['1', '2', '3', '4'];
+  var lastCounts = null;
+  function programCode(p) { var m = String(p || '').match(/\(([^)]+)\)\s*$/); return m ? m[1] : String(p || ''); }
+  function selOpts(list, val) { return list.map(function (v) { return '<option value="' + esc(v) + '"' + (String(v) === String(val) ? ' selected' : '') + '>' + esc(v) + '</option>'; }).join(''); }
+  function showSectionStudent(s, ev) {
     evalRecord.hidden = false;
+    var done = !!(ev && ev.step2_sectioned_at);
+    var yr = String(s.year_level || '1'), sec = String(s.section || '');
     evalInfo.innerHTML =
       labelled('First Name', s.first_name) + labelled('Middle Name', s.middle_name) + labelled('Last Name', s.last_name) + labelled('Extension', s.name_extension) +
       labelled('Gender', s.gender) + labelled('Birthday', s.birthday) + labelled('Email Address', s.email) + labelled('Contact Number', s.contact_number) +
-      labelled('Program', s.program) + labelled('Year & Section', (s.year_level || '') + (s.section || '')) + labelled('Student ID', s.student_no);
+      labelled('Program', s.program) +
+      '<div><div class="text-[10px] uppercase font-bold text-slate-500">Year Level</div><select id="secYear" class="mt-1 px-2 py-1.5 rounded-lg border border-slate-300 text-sm bg-white cursor-pointer">' + selOpts(YEARS, yr) + '</select></div>' +
+      '<div><div class="text-[10px] uppercase font-bold text-slate-500">Section</div><select id="secSection" class="mt-1 px-2 py-1.5 rounded-lg border border-slate-300 text-sm bg-white cursor-pointer"></select></div>' +
+      labelled('Student ID', s.student_no) + labelled('Status', ev ? fmtStatus(ev) : '—');
     evalBanner.className = 'mb-4 px-4 py-2.5 rounded-lg border text-xs font-semibold ' + (done ? 'bg-emerald-50 border-emerald-200 text-emerald-800' : 'bg-amber-50 border-amber-200 text-amber-800');
-    evalBanner.textContent = TASK_NAME[cur] + (done ? ' is done.' : ' is not yet done.');
-    evalDone.className = 'px-4 py-2 rounded-lg text-xs font-bold shadow-md cursor-pointer ' + (done ? 'bg-emerald-600 text-white' : 'bg-indigo-700 hover:bg-indigo-800 text-white');
-    evalDone.textContent = done ? '✔ Done (undo)' : 'Mark ' + TASK_NAME[cur] + ' Done';
-    evalDone.setAttribute('data-done', done ? '1' : '0');
+    evalBanner.textContent = done ? 'Section assigned: ' + programCode(s.program) + '-' + yr + sec : 'Section not yet assigned.';
+    evalDone.className = 'px-4 py-2 rounded-lg text-xs font-bold shadow-md cursor-pointer bg-indigo-700 hover:bg-indigo-800 text-white';
+    evalDone.textContent = 'Save Section Assignment';
     evalDone.disabled = !ev;
-    if (cur === 'evaluation') showLatestGrades(no); else if (cur === 'advising') renderNstpChoice(no, ev); else document.getElementById('evalGrades').innerHTML = '';
-    var box = document.getElementById('advEnrollBox'), frame = document.getElementById('advEnrollFrame');
-    if (cur === 'advising') {
-      box.hidden = false;
-      var src = '/CUP-PORTAL/registrar/college-student.html?college=' + encodeURIComponent(COLLEGE) + '&view=enroll&student=' + encodeURIComponent(no);
-      if (frame.getAttribute('src') !== src) frame.setAttribute('src', src);
-    } else { box.hidden = true; frame.removeAttribute('src'); }
+    document.getElementById('evalGrades').innerHTML = '';
+    document.getElementById('advEnrollBox').hidden = true;
+    document.getElementById('advEnrollFrame').removeAttribute('src');
+    document.getElementById('secYear').addEventListener('change', function () { loadCounts(s); });
+    document.getElementById('secSection').addEventListener('change', function () { renderCounts(s); });
+    loadCounts(s);
+  }
+  function loadCounts(s) {
+    var yearEl2 = document.getElementById('secYear');
+    if (!yearEl2) return;
+    fetch('/api/registrar/step2/section-counts?college=' + encodeURIComponent(COLLEGE) + '&year=' + encodeURIComponent(yearEl2.value), { credentials: 'same-origin' })
+      .then(function (r) { return r.json().then(function (j) { return { ok: r.ok, j: j }; }); })
+      .then(function (res) {
+        if (!res.ok) { msgEl.textContent = res.j.error || 'Could not load section counts.'; return; }
+        lastCounts = res.j;
+        var secSel = document.getElementById('secSection');
+        if (!secSel) return;
+        var list = (res.j.sections || []).slice();
+        if (s.section && list.indexOf(String(s.section)) === -1) list.push(String(s.section));
+        var keep = secSel.value || String(s.section || '');
+        secSel.innerHTML = selOpts(list, keep);
+        renderCounts(s);
+      });
+  }
+  function renderCounts(s) {
+    var box = document.getElementById('secCounts');
+    var yearSel = document.getElementById('secYear'), secSel = document.getElementById('secSection');
+    if (!box || !lastCounts || !yearSel || !secSel) return;
+    var year = yearSel.value, sec = secSel.value, code = programCode(s.program);
+    var by = {};
+    lastCounts.counts.forEach(function (c) { by[c.code + '|' + c.section] = c.n; });
+    var cells = (secSel.options.length ? Array.prototype.map.call(secSel.options, function (o) { return o.value; }) : lastCounts.sections).map(function (x) {
+      var n = by[code + '|' + x] || 0, on = x === sec;
+      return '<div class="flex items-center justify-between px-3 py-2 rounded-lg ' + (on ? 'bg-emerald-50 border border-emerald-200 font-bold' : 'border border-slate-200') + '"><span>' + esc(code + '-' + year + x) + '</span><span>' + n + '</span></div>';
+    }).join('');
+    box.hidden = false;
+    box.innerHTML = '<h4 class="text-xs font-bold uppercase tracking-wider text-indigo-900 mb-3">Live count · ' + esc(code + '-' + year) + '</h4><div class="grid grid-cols-2 md:grid-cols-4 gap-2 text-sm">' + cells + '</div>';
+  }
+  function saveSection() {
+    if (!current) return;
+    var yearSel = document.getElementById('secYear'), secSel = document.getElementById('secSection');
+    if (!yearSel || !secSel) return;
+    evalDone.disabled = true;
+    fetch('/api/registrar/step2/' + encodeURIComponent(current.student_no) + '/assign-section', {
+      method: 'POST', credentials: 'same-origin', headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ year_level: yearSel.value, section: secSel.value, college: COLLEGE })
+    }).then(function (r) { return r.json().then(function (j) { return { ok: r.ok, j: j }; }); })
+      .then(function (res) {
+        if (!res.ok) { msgEl.textContent = res.j.error || 'Could not save the section.'; evalDone.disabled = false; return; }
+        msgEl.textContent = '';
+        load();
+      }).catch(function () { msgEl.textContent = 'Could not save the section.'; evalDone.disabled = false; });
   }
 
   /* ----- Latest grades on file (read-only) ----- */
@@ -240,11 +318,11 @@
       b.setAttribute('aria-selected', on ? 'true' : 'false');
       b.className = 's2-btn px-4 py-2 rounded-lg text-xs font-bold cursor-pointer ' + (on ? 'bg-white text-indigo-900 shadow border border-indigo-400' : 'text-slate-600 hover:text-slate-900');
     });
-    var usePane = cur === 'evaluation' || cur === 'advising';
+    var usePane = cur === 'evaluation' || cur === 'advising' || cur === 'section';
     document.getElementById('evalPane').hidden = !usePane;
     document.getElementById('listPane').hidden = usePane;
     if (usePane) {
-      countEl.textContent = rows.filter(function (r) { return !!r[FIELDS[cur]]; }).length + ' of ' + rows.length + (cur === 'evaluation' ? ' evaluated' : ' advised');
+      countEl.textContent = rows.filter(function (r) { return !!r[FIELDS[cur]]; }).length + ' of ' + rows.length + (cur === 'evaluation' ? ' evaluated' : cur === 'advising' ? ' advised' : ' assigned');
       if (current) showEvalStudent(current.student_no);
     } else {
       renderList();
@@ -282,6 +360,7 @@
     if (validId(v)) showEvalStudent(v); else { evalRecord.hidden = true; evalMsg.textContent = ''; current = null; }
   });
   evalDone.addEventListener('click', function () {
+    if (cur === 'section') { saveSection(); return; }
     if (!current) return;
     evalDone.disabled = true;
     post(current.student_no, cur, evalDone.getAttribute('data-done') !== '1')
