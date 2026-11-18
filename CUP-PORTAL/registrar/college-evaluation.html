@@ -1,0 +1,112 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Evaluation · Step 1</title>
+<script src="https://cdn.tailwindcss.com"></script>
+</head>
+<body class="bg-slate-50 p-4 text-slate-800">
+<div class="space-y-4">
+
+  <div class="bg-white rounded-xl shadow-sm border border-slate-200 p-5">
+    <p class="text-xs text-slate-500 mb-4">Automated cross-check of each student's grades on file. When the University Registrar approves all of a student's grades, the student is Verified and proceeds to Step 2. Grades that Failed, are Conditional, Incomplete, Dropped, Absent, No Grade, or mismatched are listed for review through the College Registrar.</p>
+    <div class="flex flex-wrap items-center gap-2 mb-4">
+      <input id="evSearch" type="text" placeholder="Search student number or name" autocomplete="off" class="flex-1 min-w-[200px] px-3 py-2 rounded-lg border border-slate-300 text-sm">
+      <select id="evFilter" aria-label="Evaluation status" class="px-3 py-2 rounded-lg border border-slate-300 text-sm bg-white cursor-pointer">
+        <option value="">All Statuses</option>
+        <option value="awaiting">Awaiting Approval</option>
+        <option value="verified">Verified</option>
+        <option value="no-grades">No Grades Yet</option>
+      </select>
+    </div>
+    <div id="evList"><p class="text-xs text-slate-500">Loading…</p></div>
+    <div class="flex flex-wrap items-center justify-between gap-3 mt-4">
+      <span id="evInfo" class="text-xs font-bold text-slate-500"></span>
+      <div class="flex items-center gap-2">
+        <button type="button" id="evPrev" class="px-3 py-1.5 rounded-lg border border-slate-300 text-xs font-bold bg-white cursor-pointer disabled:opacity-40">◀ Prev</button>
+        <button type="button" id="evNext" class="px-3 py-1.5 rounded-lg border border-slate-300 text-xs font-bold bg-white cursor-pointer disabled:opacity-40">Next ▶</button>
+      </div>
+    </div>
+    <p id="evMsg" class="text-xs font-semibold text-rose-600 mt-3"></p>
+  </div>
+</div>
+
+<script>
+(function () {
+  var COLLEGE = (new URLSearchParams(location.search).get('college') || '').toUpperCase();
+  var PAGE_SIZE = 15;
+  var rows = [], page = 1;
+  var listEl = document.getElementById('evList'), infoEl = document.getElementById('evInfo'), msgEl = document.getElementById('evMsg');
+  var searchEl = document.getElementById('evSearch'), filterEl = document.getElementById('evFilter');
+  var prevEl = document.getElementById('evPrev'), nextEl = document.getElementById('evNext');
+
+  function esc(v) { return String(v == null ? '' : v).replace(/[&<>"']/g, function (c) { return { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]; }); }
+  function fullName(r) { return r.last_name + ', ' + r.first_name + (r.middle_name ? ' ' + r.middle_name.charAt(0) + '.' : ''); }
+  var LABEL = { awaiting: 'Awaiting approval', verified: 'Verified', 'no-grades': 'No grades yet' };
+  var PILL = {
+    awaiting: 'bg-sky-100 text-sky-800',
+    verified: 'bg-emerald-100 text-emerald-800',
+    'no-grades': 'bg-slate-200 text-slate-700'
+  };
+
+  function filtered() {
+    var q = searchEl.value.trim().toLowerCase(), f = filterEl.value;
+    return rows.filter(function (r) {
+      if (f && r.step1_status !== f) return false;
+      if (q && String(r.student_no).toLowerCase().indexOf(q) === -1 && fullName(r).toLowerCase().indexOf(q) === -1) return false;
+      return true;
+    });
+  }
+
+  function render() {
+    var counts = { awaiting: 0, verified: 0, 'no-grades': 0 };
+    rows.forEach(function (r) { counts[r.step1_status] = (counts[r.step1_status] || 0) + 1; });
+    var summary = counts.verified + ' verified · ' + counts.awaiting + ' awaiting approval · ' + counts['no-grades'] + ' no grades yet';
+    try { parent.postMessage({ evalCount: summary }, '*'); } catch (e) {}
+
+    var list = filtered();
+    var pages = Math.max(1, Math.ceil(list.length / PAGE_SIZE));
+    if (page > pages) page = pages;
+    if (page < 1) page = 1;
+    var slice = list.slice((page - 1) * PAGE_SIZE, page * PAGE_SIZE);
+
+    if (!rows.length) { listEl.innerHTML = '<p class="text-xs text-slate-500">No enrolled or pre-registered students yet.</p>'; infoEl.textContent = ''; prevEl.disabled = nextEl.disabled = true; return; }
+    if (!list.length) { listEl.innerHTML = '<p class="text-xs text-slate-500">No students match the search or filter.</p>'; }
+    else {
+      var head = '<tr><th class="text-left p-2">Student No.</th><th class="text-left p-2">Name</th><th class="text-left p-2">Program</th><th class="text-left p-2">Year / Section</th><th class="text-left p-2">Evaluation</th><th class="text-left p-2">Grades to review (College Registrar)</th></tr>';
+      var body = slice.map(function (r) {
+        var issues = (r.issues || []).map(function (i) {
+          return esc(i.course_code) + ' <span class="text-slate-500">(' + esc(i.final_grade || '—') + ' · ' + esc(i.remark || '—') + ')</span>';
+        }).join('<br>') || '<span class="text-slate-400">—</span>';
+        return '<tr class="border-t border-slate-200"><td class="p-2 font-mono">' + esc(r.student_no) + '</td><td class="p-2">' + esc(fullName(r)) + '</td><td class="p-2">' + esc(r.program) + '</td><td class="p-2">' + esc((r.year_level || '') + (r.section ? ' / ' + r.section : '')) + '</td>' +
+          '<td class="p-2"><span class="px-2 py-1 rounded text-[11px] font-bold ' + (PILL[r.step1_status] || PILL['no-grades']) + '">' + esc(LABEL[r.step1_status] || 'No grades yet') + '</span></td>' +
+          '<td class="p-2">' + issues + '</td></tr>';
+      }).join('');
+      listEl.innerHTML = '<div style="overflow-x:auto"><table class="w-full text-xs"><thead class="bg-slate-100">' + head + '</thead><tbody>' + body + '</tbody></table></div>';
+    }
+    var from = list.length ? (page - 1) * PAGE_SIZE + 1 : 0, to = (page - 1) * PAGE_SIZE + slice.length;
+    infoEl.textContent = 'Showing ' + from + '–' + to + ' of ' + list.length + ' · Page ' + page + ' of ' + pages;
+    prevEl.disabled = page <= 1;
+    nextEl.disabled = page >= pages;
+  }
+
+  function load() {
+    msgEl.textContent = '';
+    fetch('/api/registrar/step1?college=' + encodeURIComponent(COLLEGE), { credentials: 'same-origin' })
+      .then(function (r) { return r.json().then(function (j) { return { ok: r.ok, j: j }; }); })
+      .then(function (res) {
+        if (!res.ok) { listEl.innerHTML = '<p class="text-xs text-rose-600">' + esc(res.j.error || 'Could not load Step 1.') + '</p>'; return; }
+        rows = res.j.students || []; render();
+      }).catch(function () { listEl.innerHTML = '<p class="text-xs text-rose-600">Could not load Step 1.</p>'; });
+  }
+
+  searchEl.addEventListener('input', function () { page = 1; render(); });
+  filterEl.addEventListener('change', function () { page = 1; render(); });
+  prevEl.addEventListener('click', function () { page--; render(); });
+  nextEl.addEventListener('click', function () { page++; render(); });
+  load();
+})();
+</script>
+</body>
+</html>

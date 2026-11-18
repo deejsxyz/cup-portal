@@ -954,88 +954,6 @@ async function requireNstp(req, res, next) {
   req.nstp = s;
   next();
 }
-// Bulk NSTP actions on selected students. CWTS (NSTP 1) and ROTC (ROTC 1) are separate subjects with their own instructors.
-async function nstpSelected(client, college, nos) {
-  const { rows } = await client.query(
-    `SELECT student_no, year_level, section, nstp_subject FROM reg_students
-      WHERE college = $1 AND student_no = ANY($2::text[]) AND status IN ('enrolled','pre-registered') AND step1_status = 'verified'`, [college, nos]);
-  return rows;
-}
-app.post('/api/nstp/students/subject', requireNstp, async (req, res) => {
-  if (await blockIfEnrollmentClosed(req, res)) return;
-  const b = req.body || {};
-  const college = String(b.college || '').toUpperCase();
-  const nos = Array.isArray(b.student_nos) ? [...new Set(b.student_nos.map(String))] : [];
-  const subject = String(b.subject || '');
-  if (!NSTP_COLLEGES.includes(college) || !nos.length) return res.status(400).json({ error: 'Select at least one student.' });
-  if (!NSTP_CODES.includes(subject)) return res.status(400).json({ error: 'Choose CWTS (NSTP 1) or ROTC (ROTC 1).' });
-  try {
-    const r = await pool.query(
-      `UPDATE reg_students SET nstp_subject = $1 WHERE college = $2 AND student_no = ANY($3::text[])
-          AND status IN ('enrolled','pre-registered') AND step1_status = 'verified' RETURNING student_no`, [subject, college, nos]);
-    logAction(req, 'NSTP Officer', 'NSTP subject set in bulk', college + ' · ' + subject + ' · ' + r.rowCount + ' student(s)');
-    res.json({ ok: true, updated: r.rowCount });
-  } catch (err) {
-    console.error(err);
-    res.status(500).json({ error: 'Could not set the subject.' });
-  }
-});
-app.post('/api/nstp/students/instructor', requireNstp, async (req, res) => {
-  if (await blockIfEnrollmentClosed(req, res)) return;
-  const b = req.body || {};
-  const college = String(b.college || '').toUpperCase();
-  const nos = Array.isArray(b.student_nos) ? [...new Set(b.student_nos.map(String))] : [];
-  const name = String(b.instructor || '').trim().replace(/\s+/g, ' ');
-  if (!NSTP_COLLEGES.includes(college) || !nos.length) return res.status(400).json({ error: 'Select at least one student.' });
-  if (!name) return res.status(400).json({ error: "Type the new instructor's name." });
-  const client = await pool.connect();
-  try {
-    await client.query('BEGIN');
-    const set = await client.query("SELECT key, value FROM reg_settings WHERE key IN ('grading_semester','grading_ay')");
-    const m = Object.fromEntries(set.rows.map((r) => [r.key, r.value]));
-    if (!m.grading_semester || !m.grading_ay) throw Object.assign(new Error('term'), { user: 'The grading term is not set yet.' });
-    const picked = await nstpSelected(client, college, nos);
-    if (picked.length !== nos.length) throw Object.assign(new Error('missing'), { user: 'Some selected students were not found in this college.' });
-    if (picked.some((r) => !r.nstp_subject)) throw Object.assign(new Error('nosubject'), { user: 'Some selected students have no NSTP subject yet. Set CWTS or ROTC for them first.' });
-    const subjects = [...new Set(picked.map((r) => r.nstp_subject))];
-    if (subjects.length > 1) throw Object.assign(new Error('mixed'), { user: 'The selection has both CWTS (NSTP 1) and ROTC (ROTC 1). Assign each group separately.' });
-    const subject = subjects[0];
-    // A subject assignment covers a whole section, so every student of that subject in the section must be selected.
-    const secs = [...new Map(picked.map((r) => [r.year_level + '|' + r.section, { year: Number(r.year_level), section: r.section }])).values()];
-    for (const sec of secs) {
-      const group = await client.query(
-        `SELECT student_no FROM reg_students WHERE college = $1 AND year_level = $2 AND section = $3 AND nstp_subject = $4
-            AND status IN ('enrolled','pre-registered') AND step1_status = 'verified'`, [college, sec.year, sec.section, subject]);
-      if (group.rows.some((r) => !nos.includes(r.student_no))) {
-        throw Object.assign(new Error('partial'), { user: 'Select every ' + subject + ' student in ' + sec.year + sec.section + '. The instructor is assigned to the whole ' + subject + ' group of a section.' });
-      }
-    }
-    const fac = await client.query('SELECT id, name FROM reg_users WHERE LOWER(name) = LOWER($1)', [name]);
-    if (!fac.rows.length) throw Object.assign(new Error('nofac'), { user: 'No faculty account has that name. Type the name exactly as it appears in Faculty Accounts.' });
-    if (fac.rows.length > 1) throw Object.assign(new Error('dupfac'), { user: 'More than one faculty account has that name. Ask the University Registrar to fix the duplicate.' });
-    const userId = fac.rows[0].id;
-    for (const sec of secs) {
-      const upd = await client.query(
-        'UPDATE reg_subject_assignments SET user_id = $1 WHERE college = $2 AND course_code = $3 AND term = $4 AND academic_year = $5 AND $6 = ANY(years) AND $7 = ANY(sections)',
-        [userId, college, subject, m.grading_semester, m.grading_ay, sec.year, sec.section]);
-      if (!upd.rowCount) {
-        await client.query(
-          'INSERT INTO reg_subject_assignments (user_id, college, course_code, term, academic_year, years, sections) VALUES ($1,$2,$3,$4,$5,$6,$7)',
-          [userId, college, subject, m.grading_semester, m.grading_ay, [sec.year], [sec.section]]);
-      }
-    }
-    await client.query('COMMIT');
-    logAction(req, 'NSTP Officer', 'NSTP instructor assigned', college + ' · ' + subject + ' · ' + secs.map((x) => x.year + x.section).join(', ') + ' · ' + fac.rows[0].name);
-    res.json({ ok: true, instructor: fac.rows[0].name, subject, sections: secs.map((x) => x.year + x.section) });
-  } catch (err) {
-    await client.query('ROLLBACK').catch(() => {});
-    if (err.user) return res.status(400).json({ error: err.user });
-    console.error(err);
-    res.status(500).json({ error: 'Could not assign the instructor.' });
-  } finally {
-    client.release();
-  }
-});
 app.post('/api/nstp/logout', (req, res) => {
   res.setHeader('Set-Cookie', 'reg_session=; Path=/; HttpOnly; SameSite=Lax; Max-Age=0');
   res.json({ ok: true });
@@ -1121,63 +1039,6 @@ app.post('/api/nstp/students/enroll', requireNstp, async (req, res) => {
     res.status(500).json({ error: 'Could not enroll the students.' });
   } finally {
     client.release();
-  }
-});
-
-app.post('/api/nstp/logout', (req, res) => {
-  res.setHeader('Set-Cookie', 'reg_session=; Path=/; HttpOnly; SameSite=Lax; Max-Age=0');
-  res.json({ ok: true });
-});
-app.get('/api/nstp/me', requireNstp, async (req, res) => {
-  try {
-    const { rows } = await pool.query('SELECT first_name, middle_name, last_name, name_extension FROM accounts WHERE id = $1', [req.nstp.id]);
-    const r = rows[0] || {};
-    const mi = String(r.middle_name || '').trim().charAt(0);
-    const fullName = [String(r.first_name || '').trim(), mi ? mi.toUpperCase() + '.' : '', String(r.last_name || '').trim(), String(r.name_extension || '').trim()].filter(Boolean).join(' ');
-    res.json({ ok: true, fullName });
-  } catch (err) {
-    console.error(err);
-    res.status(500).json({ error: 'Could not load your account.' });
-  }
-});
-// Verified students of the college. Final grade shows only once the University Registrar has approved it.
-// Instructor is the one assigned to the student's NSTP subject for the current grading term (year and section must match).
-app.get('/api/nstp/students', requireNstp, async (req, res) => {
-  if (await blockIfEnrollmentClosed(req, res)) return;
-  const college = String(req.query.college || '').toUpperCase();
-  if (!NSTP_COLLEGES.includes(college)) return res.status(400).json({ error: 'Choose a college.' });
-  try {
-    const set = await pool.query("SELECT key, value FROM reg_settings WHERE key IN ('grading_semester','grading_ay')");
-    const m = Object.fromEntries(set.rows.map((r) => [r.key, r.value]));
-    const [students, grades, assigns] = await Promise.all([
-      pool.query(`SELECT student_no, last_name, first_name, COALESCE(middle_name, '') AS middle_name, COALESCE(name_extension, '') AS extension,
-                         COALESCE(email, '') AS email, COALESCE(contact_number, '') AS contact_number, year_level, section, program, COALESCE(nstp_subject, '') AS nstp_subject
-                    FROM reg_students WHERE college = $1 AND status IN ('enrolled','pre-registered') AND step1_status = 'verified'
-                   ORDER BY year_level, section, last_name, first_name`, [college]),
-      pool.query("SELECT student_no, course_code, final_grade FROM reg_grades WHERE college = $1 AND course_code = ANY($2::text[]) AND status = 'approved'", [college, NSTP_CODES]),
-      m.grading_semester && m.grading_ay
-        ? pool.query(`SELECT sa.course_code, sa.years, sa.sections, u.name AS instructor
-                        FROM reg_subject_assignments sa JOIN reg_users u ON u.id = sa.user_id
-                       WHERE sa.college = $1 AND sa.course_code = ANY($2::text[]) AND sa.term = $3 AND sa.academic_year = $4`, [college, NSTP_CODES, m.grading_semester, m.grading_ay])
-        : Promise.resolve({ rows: [] }),
-    ]);
-    const gradesBy = new Map();
-    for (const g of grades.rows) gradesBy.set(g.student_no, [...(gradesBy.get(g.student_no) || []), g]);
-    const out = students.rows.map((s) => {
-      const mine = gradesBy.get(s.student_no) || [];
-      const g = (s.nstp_subject ? mine.find((x) => x.course_code === s.nstp_subject) : mine[0]) || null;
-      const code = s.nstp_subject || (g ? g.course_code : '');
-      const a = code ? assigns.rows.find((x) => x.course_code === code && x.years.includes(Number(s.year_level)) && x.sections.includes(s.section)) : null;
-      return {
-        student_no: s.student_no, last_name: s.last_name, first_name: s.first_name, middle_name: s.middle_name, extension: s.extension,
-        email: s.email, contact_number: s.contact_number, year_level: s.year_level, section: s.section, program: s.program,
-        subject: code, final_grade: g ? g.final_grade : '', instructor: a ? a.instructor : '',
-      };
-    });
-    res.json({ students: out, term: m.grading_semester || '', academic_year: m.grading_ay || '' });
-  } catch (err) {
-    console.error(err);
-    res.status(500).json({ error: 'Could not load the NSTP list.' });
   }
 });
 
@@ -1567,6 +1428,8 @@ app.post('/api/registrar/grades/approve', (req, res, next) => {
       ? await pool.query("UPDATE reg_grades SET status = 'approved', approved_at = now() WHERE college = $1 AND status = 'submitted' AND academic_year = $2", [college, ay])
       : await pool.query("UPDATE reg_grades SET status = 'approved', approved_at = now() WHERE college = $1 AND status = 'submitted'", [college]);
     logAction(req, 'University Registrar', 'grades approved', college + (ay ? ' ' + ay : '') + ': ' + r.rowCount);
+    const affected = await pool.query('SELECT DISTINCT student_no FROM reg_grades WHERE college = $1', [college]);
+    await runStep1(affected.rows.map((x) => x.student_no)).catch((err) => console.error(err));
     res.json({ ok: true, approved: r.rowCount });
   } catch (err) {
     console.error(err);
@@ -2719,6 +2582,7 @@ app.post('/api/faculty/grades/batch', requirePortal('faculty'), async (req, res)
     const me = await client.query('SELECT name FROM reg_users WHERE id = $1', [req.portal.id]);
     const instructor = (me.rows[0] && me.rows[0].name) || '';
     let saved = 0;
+    const touchedNos = new Set();
     for (const g of grades) {
       const no = String(g.student_no || '').trim();
       const grade = String(g.final_grade || '').trim();
@@ -2730,8 +2594,10 @@ app.post('/api/faculty/grades/batch', requirePortal('faculty'), async (req, res)
          DO UPDATE SET final_grade = EXCLUDED.final_grade, instructor = EXCLUDED.instructor, remarks = EXCLUDED.remarks, updated_at = now(), status = 'submitted', approved_at = NULL`,
         [no, college, code, grade, instructor, t.term, t.ay, registrarRemark(grade)]);
       saved += 1;
+      touchedNos.add(no);
     }
     await client.query('COMMIT');
+    await runStep1([...touchedNos]).catch((err) => console.error(err));
     logAction(req, req.portal.name || 'faculty', 'grades saved', college + ' ' + code + ' BSN' + year + section + ': ' + saved);
     res.json({ ok: true, saved });
   } catch (err) {
@@ -2962,6 +2828,7 @@ app.post('/api/registrar/grades', requireRegistrar, async (req, res) => {
        ON CONFLICT (student_no, course_code, term, academic_year)
        DO UPDATE SET final_grade = EXCLUDED.final_grade, instructor = EXCLUDED.instructor, remarks = EXCLUDED.remarks, updated_at = now(), status = 'submitted', approved_at = NULL`,
       [studentNo, college, course, grade, instructor, term, ay, registrarRemark(grade)]);
+    await runStep1([studentNo]).catch((err) => console.error(err));
     res.json({ ok: true });
   } catch (err) {
     console.error(err);
@@ -3795,7 +3662,7 @@ app.get('/api/registrar/step2', requireRegistrar, async (req, res) => {
     const { rows } = await pool.query(
       `SELECT student_no, last_name, first_name, middle_name, program, year_level, section, status,
               step2_evaluated_at, step2_advised_at, step2_sectioned_at, COALESCE(nstp_subject, '') AS nstp_subject
-       FROM reg_students WHERE college = $1 AND status IN ('enrolled','pre-registered')
+       FROM reg_students WHERE college = $1 AND status IN ('enrolled','pre-registered') AND step1_status = 'verified'
        ORDER BY last_name, first_name`, [college]);
     res.json({ students: rows });
   } catch (err) {
@@ -3815,7 +3682,7 @@ app.post('/api/registrar/step2/:no/nstp', requireRegistrar, async (req, res) => 
   const no = String(req.params.no || '').trim();
   try {
     const r = await pool.query(
-      `UPDATE reg_students SET nstp_subject = NULLIF($3, '') WHERE student_no = $1 AND college = $2 AND status IN ('enrolled','pre-registered') RETURNING student_no, nstp_subject`,
+      `UPDATE reg_students SET nstp_subject = NULLIF($3, '') WHERE student_no = $1 AND college = $2 AND status IN ('enrolled','pre-registered') AND step1_status = 'verified' RETURNING student_no, nstp_subject`,
       [no, college, subject]);
     if (!r.rows.length) return res.status(404).json({ error: 'Student not found.' });
     logAction(req, 'College Registrar', 'NSTP subject set', no + ' · ' + (subject || 'none') + ' · ' + college);
@@ -3836,13 +3703,71 @@ app.post('/api/registrar/step2/:no/:task', requireRegistrar, async (req, res) =>
   try {
     const r = await pool.query(
       `UPDATE reg_students SET ${col} = CASE WHEN $3 THEN COALESCE(${col}, now()) ELSE NULL END
-       WHERE student_no = $1 AND college = $2 AND status IN ('enrolled','pre-registered') RETURNING student_no, ${col} AS done_at`, [no, college, done]);
+       WHERE student_no = $1 AND college = $2 AND status IN ('enrolled','pre-registered') AND step1_status = 'verified' RETURNING student_no, ${col} AS done_at`, [no, college, done]);
     if (!r.rows.length) return res.status(404).json({ error: 'Student not found.' });
     logAction(req, 'College Registrar', (done ? 'Step 2 done: ' : 'Step 2 undone: ') + STEP2_LABELS[req.params.task], no + ' · ' + college);
     res.json({ ok: true, student_no: no, done_at: r.rows[0].done_at });
   } catch (err) {
     console.error(err);
     res.status(500).json({ error: 'Could not update Step 2.' });
+  }
+});
+
+// Step 1 (Evaluation): a student is verified once every grade on file has been approved by the University Registrar,
+// regardless of the grades, and then proceeds to Step 2. Failed, Conditional, Incomplete, Dropped, Absent, No Grade or
+// mismatched remarks are listed for review; those are handled through the College Registrar.
+// awaiting = some grades not yet approved; no-grades = nothing on file yet.
+async function runStep1(studentNos) {
+  const nos = Array.from(new Set((studentNos || []).map(String).filter(Boolean)));
+  const result = {};
+  if (!nos.length) return result;
+  const { rows } = await pool.query('SELECT student_no, status FROM reg_grades WHERE student_no = ANY($1)', [nos]);
+  const byNo = {};
+  rows.forEach((r) => { (byNo[r.student_no] = byNo[r.student_no] || []).push(r); });
+  const outNos = [], outStatus = [];
+  nos.forEach((no) => {
+    const list = byNo[no] || [];
+    let st = 'no-grades';
+    if (list.length) st = list.every((g) => g.status === 'approved') ? 'verified' : 'awaiting';
+    result[no] = st; outNos.push(no); outStatus.push(st);
+  });
+  await pool.query(
+    `UPDATE reg_students s SET step1_status = v.st,
+            step1_verified_at = CASE WHEN v.st = 'verified' THEN COALESCE(s.step1_verified_at, now()) ELSE NULL END
+     FROM (SELECT unnest($1::text[]) AS no, unnest($2::text[]) AS st) v
+     WHERE s.student_no = v.no`, [outNos, outStatus]);
+  return result;
+}
+
+function step1College(req, given) {
+  if (req.reg && (req.reg.role === 'registrar' || req.reg.role === 'records')) return req.reg.college;
+  if (req.reg && req.reg.role === 'superadmin') { const c = String(given || ''); return REG_COLLEGES.includes(c) ? c : null; }
+  return null;
+}
+
+app.get('/api/registrar/step1', requireRegistrar, async (req, res) => {
+  const college = step1College(req, req.query.college);
+  if (!college || !REG_COLLEGES.includes(college)) return res.status(400).json({ error: 'Choose a college.' });
+  try {
+    const students = await pool.query(
+      `SELECT student_no, last_name, first_name, middle_name, program, year_level, section, status
+       FROM reg_students WHERE college = $1 AND status IN ('enrolled','pre-registered') ORDER BY last_name, first_name`, [college]);
+    const statuses = await runStep1(students.rows.map((r) => r.student_no));
+    const grades = await pool.query(
+      'SELECT student_no, course_code, final_grade, remarks FROM reg_grades WHERE college = $1', [college]);
+    const issues = {};
+    grades.rows.forEach((g) => {
+      const computed = computeServerRemark(g.final_grade);
+      if (computed !== 'PASSED' || (g.remarks && g.remarks !== computed)) {
+        (issues[g.student_no] = issues[g.student_no] || []).push({ course_code: g.course_code, final_grade: g.final_grade, remark: computed || g.remarks || '' });
+      }
+    });
+    res.json({
+      students: students.rows.map((r) => ({ ...r, step1_status: statuses[r.student_no] || 'no-grades', issues: issues[r.student_no] || [] }))
+    });
+  } catch (err) {
+    console.error(err);
+    res.status(500).json({ error: 'Could not load Step 1.' });
   }
 });
 
@@ -4769,6 +4694,8 @@ pool.query(`CREATE TABLE IF NOT EXISTS cat_sections (
   .then(() => pool.query("ALTER TABLE reg_students ADD COLUMN IF NOT EXISTS step2_evaluated_at TIMESTAMPTZ"))
   .then(() => pool.query("ALTER TABLE reg_students ADD COLUMN IF NOT EXISTS step2_advised_at TIMESTAMPTZ"))
   .then(() => pool.query("ALTER TABLE reg_students ADD COLUMN IF NOT EXISTS step2_sectioned_at TIMESTAMPTZ"))
+  .then(() => pool.query("ALTER TABLE reg_students ADD COLUMN IF NOT EXISTS step1_status TEXT"))
+  .then(() => pool.query("ALTER TABLE reg_students ADD COLUMN IF NOT EXISTS step1_verified_at TIMESTAMPTZ"))
   .then(() => pool.query("ALTER TABLE reg_students ADD COLUMN IF NOT EXISTS nstp_subject TEXT"))
   .then(() => pool.query("ALTER TABLE reg_students ADD COLUMN IF NOT EXISTS nstp_instructor_id INTEGER"))
   .then(() => pool.query("ALTER TABLE reg_students ADD COLUMN IF NOT EXISTS nstp_enrolled_at TIMESTAMPTZ"))
