@@ -371,6 +371,7 @@
         if (!res.ok) { err = res.j.error || 'Could not update.'; return; }
         // Marking Student Evaluation done moves the registrar straight to Advising.
         if (finishing && task === 'evaluation') { cur = 'advising'; page = 1; }
+        else if (finishing && task === 'advising') { cur = 'section'; page = 1; }
       })
       .then(function () { return load(); })
       .then(function () { if (current) showEvalStudent(no); render(); if (err) msgEl.textContent = err; })
