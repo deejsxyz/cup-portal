@@ -355,7 +355,7 @@
           <div style="display:flex;gap:10px;flex-wrap:wrap;align-items:flex-end">
             <label>Year level <select id="sj-year"><option value="">Select</option><option>1</option><option>2</option><option>3</option><option>4</option></select></label>
             <label>Semester <select id="sj-sem"><option value="">Select</option><option>1st Semester</option><option>2nd Semester</option><option>Summer</option></select></label>
-            <label>Units <select id="sj-units"><option value="">Select</option></select></label>
+            <label>Units <input id="sj-units" type="text" inputmode="decimal" placeholder="e.g. 3" maxlength="5" style="width:80px"></label>
             <label>Subject code <input id="sj-code" type="text" placeholder="e.g. NCM 100" style="width:130px"></label>
             <label>Descriptive title <input id="sj-title" type="text" style="min-width:280px"></label>
           </div>
@@ -1584,17 +1584,17 @@
       };
       reader.readAsText(f);
     });
-    (function () {
-      var sel = $('#sj-units'); var html = '';
-      for (var u = 0.5; u <= 20; u += 0.5) html += '<option>' + u + '</option>';
-      sel.insertAdjacentHTML('beforeend', html);
-    })();
+    // Units: numbers only (digits, optional one decimal point), e.g. 3 or 2.5
+    safeOn('#sj-units', 'input', function () {
+      this.value = this.value.replace(/[^0-9.]/g, '').replace(/^(\d*)\.(.*)$/, function (m, a, b) { return a + '.' + b.replace(/\./g, ''); }).slice(0, 5);
+    });
     safeOn('#sj-add', 'click', function () {
       var code = $('#sj-code').value.trim().toUpperCase();
       var title = $('#sj-title').value.trim();
       var yl = $('#sj-year').value, sem = $('#sj-sem').value, units = $('#sj-units').value;
       $('#sj-add-msg').textContent = '';
       if (!code || !title || !yl || !sem || !units) { $('#sj-add-msg').textContent = 'Fill in the year level, semester, units, subject code and descriptive title.'; return; }
+      if (!/^\d{1,2}(\.\d{1,2})?$/.test(units) || Number(units) > 99) { $('#sj-add-msg').textContent = 'Units must be a number, for example 3 or 2.5.'; return; }
       var csv = 'course_code,descriptive_title,units,year_level,semester\r\n' +
         [code, '"' + title.replace(/"/g, '""') + '"', units, yl, sem].join(',') + '\r\n';
       fetch('/api/registrar/courses/batch', { method: 'POST', credentials: 'same-origin', headers: { 'Content-Type': 'application/json' },
