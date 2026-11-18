@@ -334,7 +334,7 @@
     msgEl.textContent = '';
     gradesCache = null;
     var q = 'college=' + encodeURIComponent(COLLEGE);
-    Promise.all([
+    return Promise.all([
       fetch('/api/registrar/step2?' + q, { credentials: 'same-origin' }).then(function (r) { return r.json().then(function (j) { return { ok: r.ok, j: j }; }); }),
       fetch('/api/registrar/students?' + q, { credentials: 'same-origin' }).then(function (r) { return r.json().then(function (j) { return { ok: r.ok, j: j }; }); })
     ]).then(function (res) {
@@ -363,8 +363,16 @@
     if (cur === 'section') { saveSection(); return; }
     if (!current) return;
     evalDone.disabled = true;
-    post(current.student_no, cur, evalDone.getAttribute('data-done') !== '1')
-      .then(function (res) { if (!res.ok) { msgEl.textContent = res.j.error || 'Could not update.'; } load(); });
+    var finishing = evalDone.getAttribute('data-done') !== '1', task = cur, no = current.student_no;
+    post(no, task, finishing)
+      .then(function (res) {
+        if (!res.ok) { msgEl.textContent = res.j.error || 'Could not update.'; return; }
+        // Marking Student Evaluation done moves the registrar straight to Advising.
+        if (finishing && task === 'evaluation') { cur = 'advising'; page = 1; }
+      })
+      .then(function () { return load(); })
+      .then(function () { if (current) showEvalStudent(no); render(); })
+      .catch(function () { msgEl.textContent = 'Could not update.'; evalDone.disabled = false; });
   });
   searchEl.addEventListener('input', function () { page = 1; renderList(); });
   yearEl.addEventListener('change', function () { page = 1; renderList(); });
