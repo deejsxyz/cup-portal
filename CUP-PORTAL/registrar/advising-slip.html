@@ -1,0 +1,139 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Submission of Advising Slip</title>
+<style>
+  body { margin: 0; background: #f8fafc; color: #0f172a; font: 14px/1.5 system-ui, -apple-system, "Segoe UI", Roboto, Arial, sans-serif; }
+  .wrap { padding: 16px; max-width: 980px; margin: 0 auto; }
+  .card { background: #fff; border: 1px solid #e2e8f0; border-radius: 12px; padding: 16px; margin-bottom: 14px; }
+  h2 { font-size: 12px; letter-spacing: .08em; text-transform: uppercase; color: #312e81; margin: 0 0 10px; }
+  input { padding: 9px 12px; border: 1px solid #cbd5e1; border-radius: 8px; font: inherit; width: 100%; max-width: 420px; box-sizing: border-box; }
+  .grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(170px, 1fr)); gap: 10px 16px; }
+  .lbl { font-size: 10px; text-transform: uppercase; font-weight: 700; color: #64748b; }
+  .val { font-weight: 600; word-break: break-word; }
+  table { width: 100%; border-collapse: collapse; font-size: 13px; }
+  th, td { text-align: left; padding: 8px; border-top: 1px solid #e2e8f0; }
+  th { background: #f1f5f9; font-size: 11px; text-transform: uppercase; color: #475569; }
+  .hint { color: #64748b; font-size: 12px; }
+  .btn { background: #3730a3; color: #fff; border: 0; border-radius: 8px; padding: 10px 18px; font-weight: 700; font-size: 12px; cursor: pointer; }
+  .btn:disabled { background: #94a3b8; cursor: default; }
+  .msg { font-weight: 700; font-size: 13px; }
+  .ok { color: #047857; } .bad { color: #be123c; }
+  .list { max-height: 200px; overflow-y: auto; border: 1px solid #e2e8f0; border-radius: 8px; margin-top: 6px; }
+  .list button { display: block; width: 100%; text-align: left; background: #fff; border: 0; border-bottom: 1px solid #f1f5f9; padding: 8px 10px; cursor: pointer; font: inherit; }
+  .list button:hover { background: #eef2ff; }
+</style>
+</head>
+<body>
+<div class="wrap">
+  <div class="card">
+    <h2 id="title">Submission of Advising Slip</h2>
+    <p class="hint">Read only. Search by student number or name. The subjects below are the ones the College Registrar pre-enrolled in the Advising section.</p>
+    <input id="q" type="search" placeholder="Student number or name" autocomplete="off">
+    <div id="suggest" class="list" hidden></div>
+    <p id="qMsg" class="msg bad"></p>
+  </div>
+
+  <div id="record" class="card" hidden>
+    <h2>Student information</h2>
+    <div class="grid" id="info"></div>
+    <div style="margin-top:14px;display:flex;gap:12px;align-items:center;flex-wrap:wrap">
+      <button type="button" class="btn" id="enrollBtn">ENROLL STUDENT</button>
+      <span id="enrollMsg" class="msg"></span>
+    </div>
+    <p class="hint" style="margin:6px 0 0">ENROLL STUDENT marks this student as Officially Enrolled in the active term.</p>
+  </div>
+
+  <div id="subjects" class="card" hidden>
+    <h2>Pre-enrolled subjects <span id="term" class="hint" style="text-transform:none;letter-spacing:0"></span></h2>
+    <div id="subjList"></div>
+  </div>
+</div>
+<script>
+(function () {
+  var COLLEGE = (new URLSearchParams(location.search).get('college') || '').toUpperCase();
+  var students = [], term = '', ay = '', current = null;
+  var q = document.getElementById('q'), sug = document.getElementById('suggest'), qMsg = document.getElementById('qMsg');
+  var record = document.getElementById('record'), info = document.getElementById('info'), enrollBtn = document.getElementById('enrollBtn'), enrollMsg = document.getElementById('enrollMsg');
+  var subjects = document.getElementById('subjects'), subjList = document.getElementById('subjList'), termEl = document.getElementById('term');
+  document.getElementById('title').textContent = 'Submission of Advising Slip' + (COLLEGE ? ' · ' + COLLEGE : '');
+
+  function esc(v) { return String(v == null ? '' : v).replace(/[&<>"']/g, function (c) { return { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]; }); }
+  function getJson(url) { return fetch(url, { credentials: 'same-origin' }).then(function (r) { return r.json().then(function (j) { return { ok: r.ok, j: j }; }); }); }
+  function fullName(s) { return (s.last_name || '') + ', ' + (s.first_name || '') + (s.middle_name ? ' ' + s.middle_name.charAt(0) + '.' : ''); }
+  function label(l, v) { return '<div><div class="lbl">' + esc(l) + '</div><div class="val">' + esc(v == null || v === '' ? '—' : v) + '</div></div>'; }
+
+  function loadAll() {
+    getJson('/api/registrar/students?college=' + encodeURIComponent(COLLEGE)).then(function (res) {
+      students = res.ok ? (res.j.students || []) : [];
+      if (!res.ok) qMsg.textContent = res.j.error || 'Could not load students.';
+    });
+    getJson('/api/registrar/enroll-context?year_level=1&college=' + encodeURIComponent(COLLEGE)).then(function (res) {
+      if (res.ok) { term = res.j.term || ''; ay = res.j.academic_year || ''; termEl.textContent = (term ? term : '') + (ay ? ' · A.Y. ' + ay : ''); }
+    });
+  }
+
+  q.addEventListener('input', function () {
+    var v = q.value.trim().toLowerCase();
+    qMsg.textContent = '';
+    if (!v) { sug.hidden = true; return; }
+    var hits = students.filter(function (s) {
+      return String(s.student_no).toLowerCase().indexOf(v) !== -1 || fullName(s).toLowerCase().indexOf(v) !== -1;
+    }).slice(0, 30);
+    sug.innerHTML = hits.map(function (s) {
+      return '<button type="button" data-no="' + esc(s.student_no) + '">' + esc(s.student_no) + ' · ' + esc(fullName(s)) + '</button>';
+    }).join('') || '<p class="hint" style="padding:8px 10px;margin:0">No match.</p>';
+    sug.hidden = false;
+  });
+  sug.addEventListener('click', function (e) {
+    var b = e.target.closest('button[data-no]'); if (!b) return;
+    q.value = b.getAttribute('data-no'); sug.hidden = true; open(b.getAttribute('data-no'));
+  });
+  q.addEventListener('change', function () {
+    var v = q.value.trim().toLowerCase();
+    var hit = students.filter(function (s) { return String(s.student_no).toLowerCase() === v; })[0];
+    if (hit) open(hit.student_no);
+  });
+
+  function open(no) {
+    var s = students.filter(function (x) { return x.student_no === no; })[0];
+    if (!s) { qMsg.textContent = 'Student not found in ' + COLLEGE + '.'; record.hidden = true; subjects.hidden = true; return; }
+    current = s; qMsg.textContent = '';
+    info.innerHTML = label('Student No.', s.student_no) + label('Name', fullName(s)) + label('Program', s.program) +
+      label('Year & Section', (s.year_level || '') + (s.section || '')) + label('Status', s.status === 'enrolled' ? 'Officially Enrolled' : 'Pre-enrolled');
+    enrollBtn.disabled = s.status === 'enrolled';
+    enrollMsg.textContent = s.status === 'enrolled' ? 'Already officially enrolled.' : '';
+    enrollMsg.className = 'msg' + (s.status === 'enrolled' ? ' ok' : '');
+    record.hidden = false;
+    getJson('/api/registrar/enrollments?student_no=' + encodeURIComponent(no) + '&college=' + encodeURIComponent(COLLEGE)).then(function (res) {
+      var all = (res.ok && res.j.enrollments) || [];
+      var cur = all.filter(function (h) { return h.term === term && h.academic_year === ay; })[0];
+      var list = cur ? (cur.subjects || []) : [];
+      subjects.hidden = false;
+      subjList.innerHTML = list.length ? '<table><thead><tr><th>Code</th><th>Descriptive title</th><th>Units</th><th>Section</th></tr></thead><tbody>' +
+        list.map(function (x) { return '<tr><td>' + esc(x.course_code) + '</td><td>' + esc(x.descriptive_title || '') + '</td><td>' + esc(x.units == null ? '' : x.units) + '</td><td>' + esc(x.section || (cur && cur.section) || '') + '</td></tr>'; }).join('') + '</tbody></table>'
+        : '<p class="hint">No pre-enrolled subjects for the active term yet.</p>';
+    });
+  }
+
+  enrollBtn.addEventListener('click', function () {
+    if (!current || enrollBtn.disabled) return;
+    enrollBtn.disabled = true; enrollMsg.textContent = 'Saving…'; enrollMsg.className = 'msg';
+    fetch('/api/registrar/enroll-official/' + encodeURIComponent(current.student_no), { method: 'POST', credentials: 'same-origin', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ college: COLLEGE }) })
+      .then(function (r) { return r.json().then(function (j) { return { ok: r.ok, j: j }; }); })
+      .then(function (res) {
+        if (!res.ok) { enrollMsg.textContent = res.j.error || 'Could not enroll the student.'; enrollMsg.className = 'msg bad'; enrollBtn.disabled = false; return; }
+        current.status = 'enrolled';
+        enrollMsg.textContent = 'Officially enrolled for the active term.'; enrollMsg.className = 'msg ok';
+        open(current.student_no);
+      })
+      .catch(function () { enrollMsg.textContent = 'Could not enroll the student.'; enrollMsg.className = 'msg bad'; enrollBtn.disabled = false; });
+  });
+
+  loadAll();
+})();
+</script>
+</body>
+</html>

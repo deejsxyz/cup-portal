@@ -3708,6 +3708,25 @@ app.post('/api/registrar/step6/:no/:task', requireRegistrar, async (req, res, ne
   }
 });
 
+// University Registrar: mark a pre-registered student Officially Enrolled from the Submission of Advising Slip page.
+app.post('/api/registrar/enroll-official/:no', requireSuperAdmin, async (req, res) => {
+  const college = regCollege(req, (req.body || {}).college);
+  if (!college) return res.status(400).json({ error: 'Choose a college.' });
+  const no = String(req.params.no || '').trim();
+  try {
+    const r = await pool.query(
+      `UPDATE reg_students SET status = 'enrolled'
+       WHERE student_no = $1 AND college = $2 AND status = 'pre-registered'
+       RETURNING student_no`, [no, college]);
+    if (!r.rows.length) return res.status(400).json({ error: 'This student is not pre-registered in this college, or is already enrolled.' });
+    logAction(req, 'University Registrar', 'Officially Enrolled (Submission of Advising Slip)', no + ' · ' + college);
+    res.json({ ok: true, student_no: no });
+  } catch (err) {
+    console.error(err);
+    res.status(500).json({ error: 'Could not enroll the student.' });
+  }
+});
+
 // Registrar tags the student Officially Enrolled, only after all Step 6 tasks are complete
 app.post('/api/registrar/step6/:no/official', requireRegistrar, async (req, res) => {
   const college = regCollege(req, (req.body || {}).college);
