@@ -1448,6 +1448,38 @@ app.post('/api/registrar/grades/approve', (req, res, next) => {
   }
 });
 
+// Approve only the grades ticked in the Grades Approval table (University Registrar only).
+app.post('/api/registrar/grades/approve-selected', (req, res, next) => {
+  const s = readRegSession(req);
+  if (!s || !(s.role === 'superadmin' || s.records)) return res.status(403).json({ error: 'University Registrar only.' });
+  req.reg = s;
+  next();
+}, async (req, res) => {
+  const college = req.reg.records ? req.reg.college : String((req.body || {}).college || '');
+  if (!REG_COLLEGES.includes(college)) return res.status(400).json({ error: 'Choose a valid college.' });
+  const items = Array.isArray((req.body || {}).items) ? req.body.items.slice(0, 2000) : [];
+  const clean = items.map((x) => ({
+    no: String((x && x.student_no) || '').trim(), code: String((x && x.course_code) || '').trim(),
+    ay: String((x && x.academic_year) || '').trim(), term: String((x && x.term) || '').trim()
+  })).filter((x) => x.no && x.code && x.ay && x.term);
+  if (!clean.length) return res.status(400).json({ error: 'Tick at least one grade.' });
+  try {
+    const r = await pool.query(
+      `UPDATE reg_grades g SET status = 'approved', approved_at = now()
+         FROM unnest($2::text[], $3::text[], $4::text[], $5::text[]) AS k(no, code, ay, term)
+        WHERE g.college = $1 AND g.status = 'submitted'
+          AND g.student_no = k.no AND g.course_code = k.code AND g.academic_year = k.ay AND g.term = k.term`,
+      [college, clean.map((x) => x.no), clean.map((x) => x.code), clean.map((x) => x.ay), clean.map((x) => x.term)]);
+    logAction(req, 'University Registrar', 'grades approved (selected)', college + ': ' + r.rowCount);
+    const affected = [...new Set(clean.map((x) => x.no))];
+    await runStep1(affected).catch((err) => console.error(err));
+    res.json({ ok: true, approved: r.rowCount });
+  } catch (err) {
+    console.error(err);
+    res.status(500).json({ error: 'Could not approve the selected grades.' });
+  }
+});
+
 // Activity log: sign-ins, password changes, account creation, grade saves and approvals.
 function logAction(req, actor, action, detail) {
   const ip = String(req && req.ip || '').slice(0, 64);

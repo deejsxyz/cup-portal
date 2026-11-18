@@ -502,6 +502,7 @@
         <div style="display:flex;gap:8px;flex-wrap:wrap;align-items:center;margin-bottom:10px">
           <select id="ag-college" aria-label="College"><option value="">Choose a college</option><option>COACS</option><option>CAS</option><option>CONM</option><option>COED</option><option>COBM</option><option>LAW</option><option>GS</option><option>TESDA-TVI</option></select>
           <button type="button" id="ag-approve">Approve submitted grades</button>
+          <button type="button" id="ag-approve-sel" disabled>Approve selected (0)</button>
         </div>
         <p class="hint" id="ag-msg"></p>
         <div id="ag-list" style="margin-top:12px;overflow-x:auto"></div>
@@ -782,7 +783,10 @@
 
     safeOn('#gl-college', 'change', loadGrades);
     safeOn('#gl-status', 'change', loadGrades);
-    var AG = { rows: [], page: 1, size: 20 };
+    var AG = { rows: [], page: 1, size: 20, sel: {} };
+    function agKey(g) { return [g.student_no, g.course_code, g.academic_year, g.term].join('|'); }
+    function agSelCount() { return Object.keys(AG.sel).length; }
+    function agUpdateSel() { var b = $('#ag-approve-sel'); if (b) { b.textContent = 'Approve selected (' + agSelCount() + ')'; b.disabled = agSelCount() === 0; } }
     var AG_SEM = { '1st Semester': 1, '2nd Semester': 2, 'Summer': 3 };
     function loadAG() {
       var c = $('#ag-college').value;
@@ -791,7 +795,7 @@
         .then(function (r) { return r.json().then(function (j) { return { ok: r.ok, j: j }; }); })
         .then(function (res) {
           if (!res.ok) { $('#ag-list').innerHTML = '<p class="hint">' + esc(res.j.error || 'Could not load grades.') + '</p>'; return; }
-          AG.rows = res.j.grades || []; AG.page = 1; drawAG();
+          AG.rows = res.j.grades || []; AG.page = 1; AG.sel = {}; agUpdateSel(); drawAG();
         }).catch(function () { $('#ag-list').innerHTML = '<p class="hint">Could not load grades.</p>'; });
     }
     function drawAG() {
@@ -803,11 +807,14 @@
       var html = '<p class="hint">' + rows.length + ' grade(s).</p>';
       if (!rows.length) return ($('#ag-list').innerHTML = html + '<p class="hint">No grades for this college yet.</p>');
       html += '<table style="width:100%;border-collapse:collapse;font-size:.9rem"><thead><tr>' +
+        '<th style="' + th + '"><input type="checkbox" id="ag-all" title="Select all submitted on this page"></th>' +
         ['Student No', 'Student', 'A.Y', 'Term', 'Grade', 'Status', 'Instructor'].map(function (t) { return '<th style="' + th + '">' + t + '</th>'; }).join('') +
         '</tr></thead><tbody>' + slice.map(function (g) {
           var name = (g.last_name || '') + ', ' + (g.first_name || '');
           var status = g.status === 'approved' ? 'Approved' : 'Submitted';
-          return '<tr>' + [g.student_no, name, g.academic_year, g.term, g.final_grade, status, g.instructor || ''].map(function (v) {
+          var k = agKey(g), locked = g.status === 'approved';
+          var box = '<td style="' + td + '"><input type="checkbox" class="ag-row" data-key="' + esc(k) + '"' + (locked ? ' disabled' : '') + (AG.sel[k] ? ' checked' : '') + '></td>';
+          return '<tr>' + box + [g.student_no, name, g.academic_year, g.term, g.final_grade, status, g.instructor || ''].map(function (v) {
             return '<td style="' + td + '">' + esc(v) + '</td>';
           }).join('') + '</tr>';
         }).join('') + '</tbody></table>' +
@@ -816,10 +823,31 @@
         '<span class="hint">Page ' + AG.page + ' of ' + pages + '</span>' +
         '<button type="button" id="ag-next"' + (AG.page >= pages ? ' disabled' : '') + '>Next</button></div>';
       $('#ag-list').innerHTML = html;
+      $('#ag-list').onchange = function (e) {
+        var t = e.target;
+        if (t.id === 'ag-all') {
+          $$('#ag-list .ag-row').forEach(function (cb) { if (!cb.disabled) { if (t.checked) AG.sel[cb.getAttribute('data-key')] = true; else delete AG.sel[cb.getAttribute('data-key')]; cb.checked = t.checked; } });
+        } else if (t.classList && t.classList.contains('ag-row')) {
+          if (t.checked) AG.sel[t.getAttribute('data-key')] = true; else delete AG.sel[t.getAttribute('data-key')];
+        }
+        agUpdateSel();
+      };
       if ($('#ag-prev')) $('#ag-prev').onclick = function () { AG.page--; drawAG(); };
       if ($('#ag-next')) $('#ag-next').onclick = function () { AG.page++; drawAG(); };
     }
-    safeOn('#ag-college', 'change', loadAG);
+    safeOn('#ag-college', 'change', function () { AG.sel = {}; agUpdateSel(); loadAG(); });
+    safeOn('#ag-approve-sel', 'click', function () {
+      var c = $('#ag-college').value;
+      var items = Object.keys(AG.sel).map(function (k) { var p = k.split('|'); return { student_no: p[0], course_code: p[1], academic_year: p[2], term: p[3] }; });
+      $('#ag-msg').textContent = '';
+      if (!c || !items.length) { $('#ag-msg').textContent = 'Tick at least one grade.'; return; }
+      fetch('/api/registrar/grades/approve-selected', { method: 'POST', credentials: 'same-origin', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ college: c, items: items }) })
+        .then(function (r) { return r.json().then(function (j) { return { ok: r.ok, j: j }; }); })
+        .then(function (res) {
+          $('#ag-msg').textContent = res.ok ? res.j.approved + ' selected grade(s) approved.' : (res.j.error || 'Could not approve.');
+          AG.sel = {}; agUpdateSel(); loadAG();
+        });
+    });
     safeOn('#ag-approve', 'click', function () {
       var c = $('#ag-college').value;
       $('#ag-msg').textContent = '';
