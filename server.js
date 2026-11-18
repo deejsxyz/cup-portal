@@ -849,7 +849,14 @@ app.post('/api/registrar/login', async (req, res) => {
     return res.status(403).json({ error: 'University Registrar accounts sign in on the University Registrar Portal.' });
   }
   try {
-    const { rows } = await pool.query("SELECT id, role, password_hash, college, must_change_password, username FROM accounts WHERE role IN ('registrar', 'university') AND archived_at IS NULL AND (username = $1 OR email = $1)", [username.toLowerCase()]);
+    const { rows } = await pool.query("SELECT id, role, password_hash, college, must_change_password, username FROM accounts WHERE role IN ('registrar', 'university', 'uniregistrar') AND archived_at IS NULL AND (username = $1 OR email = $1)", [username.toLowerCase()]);
+    if (rows.length && rows[0].role === 'uniregistrar' && verifyPassword(password, rows[0].password_hash)) {
+      if (portal !== 'university') return res.status(403).json({ error: 'University Registrar accounts sign in on the University Registrar Portal.' });
+      if (rows[0].must_change_password) return res.json({ ok: true, must_change: true, token: staffSetupTokenFor('uniregistrar', rows[0].username) });
+      regAttempts.delete(ip);
+      setRegCookie(req, res, { role: 'superadmin' });
+      return res.json({ ok: true, role: 'superadmin' });
+    }
     if (rows.length && rows[0].college && rows[0].must_change_password && verifyPassword(password, rows[0].password_hash)) return res.json({ ok: true, must_change: true, token: staffSetupTokenFor(rows[0].role === 'university' ? 'university' : 'registrar', rows[0].username) });
     if (rows.length && rows[0].college && verifyPassword(password, rows[0].password_hash)) {
       const isRecords = rows[0].role === 'university';
@@ -3430,12 +3437,12 @@ async function autoStaffUsername(first, last) {
     candidate = base + n++;
   }
 }
-const STAFF_KINDS = { registrar: 'accounts', university: 'accounts', nstp: 'accounts', csc: 'csc_accounts' };
+const STAFF_KINDS = { registrar: 'accounts', university: 'accounts', uniregistrar: 'accounts', nstp: 'accounts', csc: 'csc_accounts' };
 const CSC_POSITIONS = ['President', 'Vice President', 'Secretary', 'Assistant Secretary', 'Treasurer', 'Auditor', 'Public Information Officer', 'Business Manager', 'Representative'];
 function staffTable(kind) { return STAFF_KINDS[kind] || null; }
-function staffRole(kind) { return kind === 'nstp' ? 'nstp' : kind === 'university' ? 'university' : 'registrar'; }
-function staffWhere(kind) { return kind === 'registrar' || kind === 'university' || kind === 'nstp' ? " WHERE role = '" + staffRole(kind) + "'" : ''; }
-function staffAnd(kind) { return kind === 'registrar' || kind === 'university' || kind === 'nstp' ? " AND role = '" + staffRole(kind) + "'" : ''; }
+function staffRole(kind) { return kind === 'nstp' ? 'nstp' : kind === 'university' ? 'university' : kind === 'uniregistrar' ? 'uniregistrar' : 'registrar'; }
+function staffWhere(kind) { return kind === 'registrar' || kind === 'university' || kind === 'uniregistrar' || kind === 'nstp' ? " WHERE role = '" + staffRole(kind) + "'" : ''; }
+function staffAnd(kind) { return kind === 'registrar' || kind === 'university' || kind === 'uniregistrar' || kind === 'nstp' ? " AND role = '" + staffRole(kind) + "'" : ''; }
 app.get('/api/registrar/staff/:kind', requireSuperAdmin, async (req, res) => {
   const kind = req.params.kind;
   if (!staffTable(kind)) return res.status(404).json({ error: 'Unknown account type.' });
@@ -3464,6 +3471,14 @@ app.post('/api/registrar/staff/:kind', requireSuperAdmin, async (req, res) => {
   const temp = generateTempPassword();
   try {
     const username = await autoStaffUsername(first, last);
+    if (kind === 'university' && String(b.college || '') === 'REGISTRAR') {
+      await pool.query(
+        "INSERT INTO accounts (category, first_name, middle_name, last_name, name_extension, email, password_hash, role, college, username, must_change_password) VALUES ('REGISTRAR',$1,$2,$3,$4,$5,$6,'uniregistrar','',$7,TRUE)",
+        [first, middle, last, ext, email, hashPassword(temp), username]);
+      logAction(req, 'University Registrar', 'University Registrar account created', email);
+      const emailed = await sendStaffWelcome(req, { kind: 'uniregistrar', to: email, name: first + ' ' + last, username, temp });
+      return res.json({ ok: true, username, temp_password: temp, email_sent: emailed });
+    }
     if (kind === 'university') {
       const college = String(b.college || '');
       if (!REG_COLLEGES.includes(college)) return res.status(400).json({ error: 'Choose a college.' });
