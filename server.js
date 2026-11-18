@@ -3005,7 +3005,36 @@ app.get('/api/registrar/enrollments', requireRegistrar, async (req, res) => {
       if (x.units == null) x.units = t.units == null ? null : Number(t.units);
     });
   });
-  res.json({ enrollments: r.rows });
+  // Schedule and instructor of each subject, from the enrollment's own term and section.
+  for (const e of r.rows) {
+    const subs = Array.isArray(e.subjects) ? e.subjects : [];
+    if (!subs.length) continue;
+    const codes = subs.map((x) => x.course_code);
+    const sc = await pool.query(
+      'SELECT course_code, days, start_time, end_time, room FROM reg_schedules WHERE college = $1 AND term = $2 AND academic_year = $3 AND year_level = $4 AND section = $5 AND course_code = ANY($6)',
+      [college, e.term, e.academic_year, e.year_level, e.section, codes]);
+    const ic = await pool.query(
+      `SELECT sa.course_code, string_agg(DISTINCT u.name, ', ') AS instructor FROM reg_subject_assignments sa JOIN reg_users u ON u.id = sa.user_id
+        WHERE sa.college = $1 AND sa.term = $2 AND sa.academic_year = $3 AND $4 = ANY(sa.years) AND $5 = ANY(sa.sections) AND sa.course_code = ANY($6)
+        GROUP BY sa.course_code`,
+      [college, e.term, e.academic_year, e.year_level, e.section, codes]);
+    const sm = new Map(sc.rows.map((x) => [x.course_code, x]));
+    const im = new Map(ic.rows.map((x) => [x.course_code, x.instructor]));
+    subs.forEach((x) => {
+      const q = sm.get(x.course_code) || {};
+      x.days = q.days || '';
+      x.start_time = q.start_time || '';
+      x.end_time = q.end_time || '';
+      x.room = q.room || '';
+      x.instructor = im.get(x.course_code) || '';
+    });
+  }
+  // Old: has enrollment history in an earlier term. New: none.
+  const t = await gradingTerm();
+  const prior = await pool.query(
+    'SELECT 1 FROM reg_enrollments WHERE student_no = $1 AND college = $2 AND NOT (term = $3 AND academic_year = $4) LIMIT 1',
+    [no, college, t.term, t.ay]);
+  res.json({ enrollments: r.rows, student_type: prior.rows.length ? 'Old' : 'New' });
 });
 
 // Enroll a University-issued student for the active term with the chosen subjects and instructors.
@@ -3246,6 +3275,79 @@ app.get('/api/registrar/subject-assignments', requireRegistrar, async (req, res)
       ORDER BY sa.course_code, u.name`,
     [college, m.grading_semester, m.grading_ay]);
   res.json({ term: m.grading_semester, academic_year: m.grading_ay, assignments: r.rows.filter((a) => !isHiddenUserRow(a)) });
+});
+
+// Subject schedule (days, time, room) per subject per year level and section, for the grading term.
+const SCHED_TIME_RE = /^([01]\d|2[0-3]):[0-5]\d$/;
+async function gradingTerm() {
+  const set = await pool.query("SELECT key, value FROM reg_settings WHERE key IN ('grading_semester','grading_ay')");
+  const m = Object.fromEntries(set.rows.map((r) => [r.key, r.value]));
+  return { term: m.grading_semester || '', ay: m.grading_ay || '' };
+}
+app.get('/api/registrar/schedules', requireRegistrar, async (req, res) => {
+  const college = regCollege(req, req.query.college);
+  if (!college) return res.status(403).json({ error: 'Choose a college.' });
+  const year = Number(req.query.year_level);
+  const section = String(req.query.section || '').trim().toUpperCase();
+  const t = await gradingTerm();
+  if (!t.term || !t.ay || !(year >= 1 && year <= 4) || !section) return res.json({ term: t.term, academic_year: t.ay, rows: [] });
+  const r = await pool.query(
+    `SELECT c.course_code, c.descriptive_title, c.units,
+            COALESCE(s.days, '') AS days, COALESCE(s.start_time, '') AS start_time, COALESCE(s.end_time, '') AS end_time, COALESCE(s.room, '') AS room,
+            COALESCE((SELECT string_agg(DISTINCT u.name, ', ') FROM reg_subject_assignments sa JOIN reg_users u ON u.id = sa.user_id
+                       WHERE sa.college = $1 AND sa.course_code = c.course_code AND sa.term = $2 AND sa.academic_year = $3
+                         AND $4 = ANY(sa.years) AND $5 = ANY(sa.sections)), '') AS instructor
+       FROM reg_courses c
+       LEFT JOIN reg_schedules s ON s.college = c.college AND s.course_code = c.course_code AND s.term = $2 AND s.academic_year = $3 AND s.year_level = $4 AND s.section = $5
+      WHERE c.college = $1 AND c.year_level = $4
+      ORDER BY c.course_code`,
+    [college, t.term, t.ay, year, section]);
+  res.json({ term: t.term, academic_year: t.ay, rows: r.rows });
+});
+
+app.post('/api/registrar/schedules', requireRegistrar, async (req, res) => {
+  const b = req.body || {};
+  const college = regCollege(req, b.college || req.query.college);
+  if (!college) return res.status(403).json({ error: 'Choose a college.' });
+  const year = Number(b.year_level);
+  const section = String(b.section || '').trim().toUpperCase().slice(0, 20);
+  if (!(year >= 1 && year <= 4) || !section) return res.status(400).json({ error: 'Choose year level and section.' });
+  const t = await gradingTerm();
+  if (!t.term || !t.ay) return res.status(400).json({ error: 'The grading term is not set yet.' });
+  const items = Array.isArray(b.items) ? b.items : [];
+  const client = await pool.connect();
+  try {
+    await client.query('BEGIN');
+    for (const it of items) {
+      const code = String(it.course_code || '').trim().slice(0, 40);
+      if (!code) continue;
+      const days = String(it.days || '').trim().toUpperCase().slice(0, 20);
+      const st = String(it.start_time || '').trim();
+      const et = String(it.end_time || '').trim();
+      const room = String(it.room || '').trim().slice(0, 40);
+      if (!days && !st && !et && !room) {
+        await client.query('DELETE FROM reg_schedules WHERE college=$1 AND course_code=$2 AND term=$3 AND academic_year=$4 AND year_level=$5 AND section=$6',
+          [college, code, t.term, t.ay, year, section]);
+        continue;
+      }
+      if ((st && !SCHED_TIME_RE.test(st)) || (et && !SCHED_TIME_RE.test(et))) throw new Error('Time must be set for ' + code + '.');
+      if (st && et && et <= st) throw new Error('End time must be after start time for ' + code + '.');
+      await client.query(
+        `INSERT INTO reg_schedules (college, course_code, term, academic_year, year_level, section, days, start_time, end_time, room)
+         VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10)
+         ON CONFLICT (college, course_code, term, academic_year, year_level, section)
+         DO UPDATE SET days = EXCLUDED.days, start_time = EXCLUDED.start_time, end_time = EXCLUDED.end_time, room = EXCLUDED.room`,
+        [college, code, t.term, t.ay, year, section, days, st, et, room]);
+    }
+    await client.query('COMMIT');
+  } catch (err) {
+    await client.query('ROLLBACK').catch(() => {});
+    return res.status(400).json({ error: err.message || 'Could not save the schedule.' });
+  } finally {
+    client.release();
+  }
+  logAction(req, (req.session && req.session.name) || 'Registrar', 'schedule saved', college + ' · year ' + year + ' · section ' + section + ' · ' + items.length + ' subject(s)');
+  res.json({ ok: true });
 });
 
 // Subjects of every college and the programs of each, for Subject Assignments (college and program are chosen per assignment).
@@ -4978,6 +5080,7 @@ pool.query(`CREATE TABLE IF NOT EXISTS cat_sections (
   .then(() => pool.query("ALTER TABLE reg_grades ADD COLUMN IF NOT EXISTS remarks TEXT NOT NULL DEFAULT ''"))
   .then(() => pool.query("ALTER TABLE reg_subject_assignments ADD COLUMN IF NOT EXISTS subject_college TEXT NOT NULL DEFAULT ''"))
   .then(() => pool.query("ALTER TABLE reg_subject_assignments ADD COLUMN IF NOT EXISTS program TEXT NOT NULL DEFAULT ''"))
+  .then(() => pool.query(`CREATE TABLE IF NOT EXISTS reg_schedules (college TEXT NOT NULL, course_code TEXT NOT NULL, term TEXT NOT NULL, academic_year TEXT NOT NULL, year_level INT NOT NULL, section TEXT NOT NULL, days TEXT NOT NULL DEFAULT '', start_time TEXT NOT NULL DEFAULT '', end_time TEXT NOT NULL DEFAULT '', room TEXT NOT NULL DEFAULT '', PRIMARY KEY (college, course_code, term, academic_year, year_level, section))`))
   .then(() => pool.query('CREATE TABLE IF NOT EXISTS reg_settings (key TEXT PRIMARY KEY, value TEXT NOT NULL)'))
   .then(() => pool.query(`CREATE TABLE IF NOT EXISTS reg_courses (college TEXT NOT NULL, course_code TEXT NOT NULL, descriptive_title TEXT NOT NULL DEFAULT '', units NUMERIC(4,1) NOT NULL DEFAULT 0, PRIMARY KEY (college, course_code))`))
   .then(() => pool.query('ALTER TABLE reg_courses ADD COLUMN IF NOT EXISTS year_level INT'))

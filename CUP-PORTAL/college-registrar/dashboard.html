@@ -372,6 +372,17 @@
         <button type="button" id="sj-upload">Upload subjects CSV</button>
         <p class="hint" id="sj-msg"></p>
         <div id="sj-list" style="margin-top:10px;overflow-x:auto"></div>
+        <div id="sch-box" style="margin-top:22px;padding-top:14px;border-top:1px solid #d5e2d5">
+          <h3 style="margin:0 0 6px">Subject schedule</h3>
+          <p class="hint">Set the days, time and room of each subject per section. The instructor comes from Subject Assignments. This shows on the student's advising slip and Certificate of Enrollment.</p>
+          <div style="display:flex;gap:10px;flex-wrap:wrap;align-items:flex-end">
+            <label>Year level <select id="sch-year"><option value="">Select</option><option>1</option><option>2</option><option>3</option><option>4</option></select></label>
+            <label>Section <input id="sch-section" type="text" maxlength="20" placeholder="e.g. A" style="width:110px;text-transform:uppercase"></label>
+            <button type="button" id="sch-load">Load subjects</button>
+          </div>
+          <div id="sch-list" style="margin-top:10px;overflow-x:auto"></div>
+          <p class="hint" id="sch-msg"></p>
+        </div>
     </div></div></section>
     <section class="panel" id="portal-accounts"><div class="box"><h2>Accounts</h2><div class="body">
         <p class="hint">Register, manage, archive, and restore the student and faculty portal accounts. New accounts get a temporary password, and the holder must change it at the first login.</p>
@@ -1481,6 +1492,59 @@
     }
     safeOn('#al-load', 'click', loadActivity);
     // Subjects and units (college registrar: own college; University Registrar: any college)
+    // Subject schedule (days, time and room per subject per section; instructor from Subject Assignments)
+    var schRows = [];
+    function schCollectParams() {
+      var p = 'year_level=' + encodeURIComponent($('#sch-year').value) + '&section=' + encodeURIComponent($('#sch-section').value.trim().toUpperCase());
+      if (me.role === 'superadmin') p += '&college=' + encodeURIComponent(sjCollege());
+      return p;
+    }
+    function schLoad(keepMsg) {
+      var msg = $('#sch-msg'); if (!keepMsg) msg.textContent = '';
+      if (!$('#sch-year').value || !$('#sch-section').value.trim()) { msg.textContent = 'Choose year level and section first.'; return; }
+      fetch('/api/registrar/schedules?' + schCollectParams(), { credentials: 'same-origin' }).then(function (r) { return r.json(); }).then(function (j) {
+        schRows = j.rows || [];
+        var th = 'text-align:left;border-bottom:1px solid #7fa37f;padding:6px';
+        var td = 'padding:6px;border-bottom:1px solid #d5e2d5';
+        var inp = 'style="width:100%;box-sizing:border-box"';
+        if (!schRows.length) { $('#sch-list').innerHTML = '<p class="hint">No subjects for this year level yet. Add subjects first.</p>'; return; }
+        $('#sch-list').innerHTML = '<table style="width:100%;border-collapse:collapse;font-size:.9rem"><thead><tr>' +
+          ['Code', 'Descriptive title', 'Instructor', 'Days', 'Start', 'End', 'Room'].map(function (t) { return '<th style="' + th + '">' + t + '</th>'; }).join('') +
+          '</tr></thead><tbody>' + schRows.map(function (r, i) {
+            return '<tr>' +
+              '<td style="' + td + '">' + esc(r.course_code) + '</td>' +
+              '<td style="' + td + '">' + esc(r.descriptive_title) + '</td>' +
+              '<td style="' + td + '">' + esc(r.instructor || '—') + '</td>' +
+              '<td style="' + td + '"><input data-i="' + i + '" data-f="days" value="' + esc(r.days) + '" placeholder="e.g. MWF" maxlength="20" ' + inp + '></td>' +
+              '<td style="' + td + '"><input type="time" data-i="' + i + '" data-f="start_time" value="' + esc(r.start_time) + '" ' + inp + '></td>' +
+              '<td style="' + td + '"><input type="time" data-i="' + i + '" data-f="end_time" value="' + esc(r.end_time) + '" ' + inp + '></td>' +
+              '<td style="' + td + '"><input data-i="' + i + '" data-f="room" value="' + esc(r.room) + '" maxlength="40" ' + inp + '></td>' +
+              '</tr>';
+          }).join('') + '</tbody></table>' +
+          '<button type="button" id="sch-save" style="margin-top:10px">Save schedule</button>';
+        $('#sch-save').onclick = schSave;
+      }).catch(function () { msg.textContent = 'Could not load the schedule.'; });
+    }
+    function schSave() {
+      var msg = $('#sch-msg'); msg.textContent = '';
+      var items = schRows.map(function (r, i) {
+        var g = function (f) { var el = document.querySelector('#sch-list [data-i="' + i + '"][data-f="' + f + '"]'); return el ? el.value : ''; };
+        return { course_code: r.course_code, days: g('days'), start_time: g('start_time'), end_time: g('end_time'), room: g('room') };
+      });
+      var bad = items.filter(function (x) { return (x.start_time && !x.end_time) || (!x.start_time && x.end_time); });
+      if (bad.length) { msg.textContent = 'Set both start and end time for ' + bad[0].course_code + '.'; return; }
+      var body = { year_level: $('#sch-year').value, section: $('#sch-section').value.trim().toUpperCase(), items: items };
+      if (me.role === 'superadmin') body.college = sjCollege();
+      fetch('/api/registrar/schedules', { method: 'POST', credentials: 'same-origin', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(body) })
+        .then(function (r) { return r.json().then(function (j) { return { ok: r.ok, j: j }; }); })
+        .then(function (x) {
+          if (!x.ok) { msg.textContent = x.j.error || 'Could not save.'; return; }
+          schLoad(true);
+          msg.textContent = 'Schedule saved.';
+          setTimeout(function () { msg.textContent = ''; }, 2500);
+        });
+    }
+    $('#sch-load').onclick = schLoad;
     function sjCollege() { return me.role === 'superadmin' ? $('#sj-college').value : me.college; }
     var sjRows = [], sjYear = '', sjPage = 1, sjSize = 10;
     var SJ_SEM_ORDER = { '1st Semester': 1, '2nd Semester': 2, 'Summer': 3 };
