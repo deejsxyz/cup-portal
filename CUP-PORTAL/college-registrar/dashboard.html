@@ -246,6 +246,11 @@
     </div></div></section>
     <section class="panel" id="batch-uploads"><div class="box"><h2>Batch Uploads <span id="bu-active-college-label">| COACS</span></h2><div class="body">
       <p class="hint">Select a college tab below to batch upload multiple CSV files for Students, Faculty, or Grades. If an upload is interrupted, you can Retry or Cancel (canceling ensures no partial data is saved).</p>
+      <div class="bu-stop-row" style="display:flex;gap:8px;align-items:center;flex-wrap:wrap;margin:8px 0 12px">
+        <button type="button" class="btn red sm" id="bu-stop-emails" style="margin-top:0">Stop sending credential emails</button>
+        <button type="button" class="btn light sm" id="bu-resume-emails" style="margin-top:0">Resume sending</button>
+        <span id="bu-stop-msg" class="hint"></span>
+      </div>
       <div class="bu-college-tabs" id="bu-college-tabs" role="tablist">
         <button type="button" class="bu-col-tab on" data-bu-college="COACS" data-bu-label="COACS">COACS</button>
         <button type="button" class="bu-col-tab" data-bu-college="CAS" data-bu-label="CAS">CAS</button>
@@ -2298,6 +2303,20 @@
   })();
 </script>
 <script src="/CUP-PORTAL/portal-search.js">
+</script>
+<script>
+(function () {
+  function send(action) {
+    var msg = document.getElementById('bu-stop-msg');
+    fetch('/api/registrar/welcome-emails/' + action, { method: 'POST', credentials: 'same-origin' })
+      .then(function (r) { return r.json(); })
+      .then(function (j) { msg.textContent = j.stopped ? 'Credential emails are stopped. Emails not yet sent will be skipped.' : 'Credential emails will be sent again.'; })
+      .catch(function () { msg.textContent = 'Could not change the email setting.'; });
+  }
+  var s = document.getElementById('bu-stop-emails'), r = document.getElementById('bu-resume-emails');
+  if (s) s.addEventListener('click', function () { send('stop'); });
+  if (r) r.addEventListener('click', function () { send('resume'); });
+})();
 </script>
 </body>
 </html>

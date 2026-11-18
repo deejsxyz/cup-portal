@@ -103,9 +103,12 @@ async function sendEmail(to, subject, text, opts) {
 function emailEscape(v) {
   return String(v == null ? '' : v).replace(/[&<>"']/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
 }
+// Stop switch for credential emails from batch uploads: emails not yet sent are skipped while this is on.
+let welcomeEmailsStopped = false;
 async function sendPortalWelcomeEmails(req, items) {
   const origin = process.env.PORTAL_BASE_URL || `https://${req.get('host')}`;
   for (let i = 0; i < items.length; i += 10) {
+    if (welcomeEmailsStopped) { console.log('Welcome emails stopped; skipped ' + (items.length - i)); return; }
     await Promise.all(items.slice(i, i + 10).map(async (it) => {
       const link = origin + '/api/portal/setup?token=' + encodeURIComponent(setupTokenFor(String(it.student_no).toLowerCase()));
       const greet = it.name ? ' ' + it.name : '';
@@ -3898,6 +3901,15 @@ function parseSubjectsCell(raw) {
 }
 
 // Multi-file Batch Upload Endpoint for Student, Faculty, and Grades (under the 8 college tabs)
+// Stop or resume sending the credential emails from batch uploads (University and College Registrar).
+app.post('/api/registrar/welcome-emails/:action', requireRegistrar, (req, res) => {
+  const action = req.params.action;
+  if (action !== 'stop' && action !== 'resume') return res.status(404).json({ error: 'Unknown action.' });
+  welcomeEmailsStopped = action === 'stop';
+  logAction(req, req.reg.role === 'registrar' ? (req.reg.college || '') + ' registrar' : 'University Registrar', welcomeEmailsStopped ? 'credential emails stopped' : 'credential emails resumed', '');
+  res.json({ ok: true, stopped: welcomeEmailsStopped });
+});
+
 app.post('/api/registrar/batch-upload/:type', requireRegistrar, async (req, res) => {
   const type = String(req.params.type || '').toLowerCase();
   if (!['student', 'faculty', 'grades'].includes(type)) return res.status(400).json({ error: 'Invalid batch upload type.' });
