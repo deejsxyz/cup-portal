@@ -24,6 +24,8 @@
   .list { max-height: 200px; overflow-y: auto; border: 1px solid #e2e8f0; border-radius: 8px; margin-top: 6px; }
   .list button { display: block; width: 100%; text-align: left; background: #fff; border: 0; border-bottom: 1px solid #f1f5f9; padding: 8px 10px; cursor: pointer; font: inherit; }
   .list button:hover { background: #eef2ff; }
+  .banner { margin-top: 12px; padding: 10px 14px; border-radius: 8px; font-weight: 700; font-size: 13px; background: #fffbeb; border: 1px solid #fcd34d; color: #92400e; }
+  .banner.good { background: #ecfdf5; border-color: #6ee7b7; color: #065f46; }
 </style>
 </head>
 <body>
@@ -39,6 +41,7 @@
   <div id="record" class="card" hidden>
     <h2>Student information</h2>
     <div class="grid" id="info"></div>
+    <div id="stepBanner" class="banner" hidden></div>
     <div style="margin-top:14px;display:flex;gap:12px;align-items:center;flex-wrap:wrap">
       <button type="button" class="btn" id="enrollBtn">ENROLL STUDENT</button>
       <span id="enrollMsg" class="msg"></span>
@@ -56,6 +59,7 @@
   var COLLEGE = (new URLSearchParams(location.search).get('college') || '').toUpperCase();
   var students = [], term = '', ay = '', current = null;
   var q = document.getElementById('q'), sug = document.getElementById('suggest'), qMsg = document.getElementById('qMsg');
+  var banner = document.getElementById('stepBanner');
   var record = document.getElementById('record'), info = document.getElementById('info'), enrollBtn = document.getElementById('enrollBtn'), enrollMsg = document.getElementById('enrollMsg');
   var subjects = document.getElementById('subjects'), subjList = document.getElementById('subjList'), termEl = document.getElementById('term');
   document.getElementById('title').textContent = 'Submission of Advising Slip' + (COLLEGE ? ' · ' + COLLEGE : '');
@@ -103,10 +107,26 @@
     current = s; qMsg.textContent = '';
     info.innerHTML = label('Student No.', s.student_no) + label('Name', fullName(s)) + label('Program', s.program) +
       label('Year & Section', (s.year_level || '') + (s.section || '')) + label('Status', s.status === 'enrolled' ? 'Officially Enrolled' : 'Pre-enrolled');
-    enrollBtn.disabled = s.status === 'enrolled';
+    enrollBtn.disabled = true;
     enrollMsg.textContent = s.status === 'enrolled' ? 'Already officially enrolled.' : '';
     enrollMsg.className = 'msg' + (s.status === 'enrolled' ? ' ok' : '');
+    banner.hidden = true;
     record.hidden = false;
+    getJson('/api/registrar/enroll-readiness/' + encodeURIComponent(no) + '?college=' + encodeURIComponent(COLLEGE)).then(function (res) {
+      if (!res.ok) { enrollMsg.textContent = res.j.error || 'Could not check the steps.'; enrollMsg.className = 'msg bad'; return; }
+      if (res.j.status === 'enrolled') return;
+      if (res.j.missing.length) {
+        banner.className = 'banner';
+        banner.textContent = 'Not yet done: ' + res.j.missing.join(' · ') + '. ENROLL STUDENT is disabled until all steps are done.';
+        banner.hidden = false;
+        enrollBtn.disabled = true;
+      } else {
+        banner.className = 'banner good';
+        banner.textContent = 'All steps are done. Ready to enroll.';
+        banner.hidden = false;
+        enrollBtn.disabled = false;
+      }
+    });
     getJson('/api/registrar/enrollments?student_no=' + encodeURIComponent(no) + '&college=' + encodeURIComponent(COLLEGE)).then(function (res) {
       var all = (res.ok && res.j.enrollments) || [];
       var cur = all.filter(function (h) { return h.term === term && h.academic_year === ay; })[0];

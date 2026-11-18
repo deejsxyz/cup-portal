@@ -3708,17 +3708,46 @@ app.post('/api/registrar/step6/:no/:task', requireRegistrar, async (req, res, ne
   }
 });
 
-// University Registrar: mark a pre-registered student Officially Enrolled from the Submission of Advising Slip page.
+// Steps that must be done before the University Registrar can enroll a student.
+const ENROLL_CHECKS = [
+  { label: 'Step 1 (Grades verified)', ok: (r) => r.step1_status === 'verified' },
+  { label: 'Step 2 · Evaluation', ok: (r) => !!r.step2_evaluated_at },
+  { label: 'Step 2 · Advising', ok: (r) => !!r.step2_advised_at },
+  { label: 'Step 2 · Section Assignment', ok: (r) => !!r.step2_sectioned_at },
+  { label: 'Step 6 · CSC payment', ok: (r) => !!r.csc_paid_at },
+  { label: 'Step 6 · Advising slip submitted', ok: (r) => !!r.advising_slip_at },
+  { label: 'Step 6 · COE printed', ok: (r) => !!r.coe_printed_at },
+  { label: 'Step 6 · ID validated', ok: (r) => !!r.id_validated_at },
+];
+function enrollMissing(r) { return ENROLL_CHECKS.filter((c) => !c.ok(r)).map((c) => c.label); }
+const ENROLL_ROW_SQL = `SELECT student_no, status, step1_status, step2_evaluated_at, step2_advised_at, step2_sectioned_at, csc_paid_at, advising_slip_at, coe_printed_at, id_validated_at
+  FROM reg_students WHERE student_no = $1 AND college = $2`;
+// Readiness for the Submission of Advising Slip page: which steps are still not done.
+app.get('/api/registrar/enroll-readiness/:no', requireSuperAdmin, async (req, res) => {
+  const college = regCollege(req, req.query.college);
+  if (!college) return res.status(400).json({ error: 'Choose a college.' });
+  try {
+    const r = await pool.query(ENROLL_ROW_SQL, [String(req.params.no || '').trim(), college]);
+    if (!r.rows.length) return res.status(404).json({ error: 'Student not found.' });
+    const missing = enrollMissing(r.rows[0]);
+    res.json({ ready: missing.length === 0 && r.rows[0].status === 'pre-registered', missing, status: r.rows[0].status });
+  } catch (err) {
+    console.error(err);
+    res.status(500).json({ error: 'Could not check the steps.' });
+  }
+});
+// University Registrar: mark a pre-registered student Officially Enrolled, only when every step is done.
 app.post('/api/registrar/enroll-official/:no', requireSuperAdmin, async (req, res) => {
   const college = regCollege(req, (req.body || {}).college);
   if (!college) return res.status(400).json({ error: 'Choose a college.' });
   const no = String(req.params.no || '').trim();
   try {
-    const r = await pool.query(
-      `UPDATE reg_students SET status = 'enrolled'
-       WHERE student_no = $1 AND college = $2 AND status = 'pre-registered'
-       RETURNING student_no`, [no, college]);
-    if (!r.rows.length) return res.status(400).json({ error: 'This student is not pre-registered in this college, or is already enrolled.' });
+    const cur = await pool.query(ENROLL_ROW_SQL, [no, college]);
+    if (!cur.rows.length) return res.status(404).json({ error: 'Student not found.' });
+    if (cur.rows[0].status !== 'pre-registered') return res.status(400).json({ error: 'This student is already officially enrolled.' });
+    const missing = enrollMissing(cur.rows[0]);
+    if (missing.length) return res.status(400).json({ error: 'Not yet done: ' + missing.join(', ') + '.' });
+    await pool.query("UPDATE reg_students SET status = 'enrolled' WHERE student_no = $1 AND college = $2 AND status = 'pre-registered'", [no, college]);
     logAction(req, 'University Registrar', 'Officially Enrolled (Submission of Advising Slip)', no + ' · ' + college);
     res.json({ ok: true, student_no: no });
   } catch (err) {
