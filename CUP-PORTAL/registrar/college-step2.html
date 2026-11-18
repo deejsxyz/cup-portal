@@ -363,15 +363,15 @@
     if (cur === 'section') { saveSection(); return; }
     if (!current) return;
     evalDone.disabled = true;
-    var finishing = evalDone.getAttribute('data-done') !== '1', task = cur, no = current.student_no;
+    var finishing = evalDone.getAttribute('data-done') !== '1', task = cur, no = current.student_no, err = '';
     post(no, task, finishing)
       .then(function (res) {
-        if (!res.ok) { msgEl.textContent = res.j.error || 'Could not update.'; return; }
+        if (!res.ok) { err = res.j.error || 'Could not update.'; return; }
         // Marking Student Evaluation done moves the registrar straight to Advising.
         if (finishing && task === 'evaluation') { cur = 'advising'; page = 1; }
       })
       .then(function () { return load(); })
-      .then(function () { if (current) showEvalStudent(no); render(); })
+      .then(function () { if (current) showEvalStudent(no); render(); if (err) msgEl.textContent = err; })
       .catch(function () { msgEl.textContent = 'Could not update.'; evalDone.disabled = false; });
   });
   searchEl.addEventListener('input', function () { page = 1; renderList(); });
