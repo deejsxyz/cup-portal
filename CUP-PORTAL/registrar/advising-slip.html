@@ -120,18 +120,14 @@
     current = s; qMsg.textContent = '';
     info.innerHTML = label('Student No.', s.student_no) + label('Name', fullName(s)) + label('Program', s.program) +
       label('Year & Section', (s.year_level || '') + (s.section || '')) + label('Status', s.status === 'enrolled' ? 'Officially Enrolled' : 'Pre-enrolled');
-    var isEnrolled = s.status === 'enrolled';
-    enrollBtn.textContent = isEnrolled ? 'ENROLLED ✔' : 'ENROLL STUDENT';
-    enrollBtn.classList.toggle('enrolled', isEnrolled);
-    document.getElementById('subjTitle').textContent = isEnrolled ? 'Enrolled subjects' : 'Pre-enrolled subjects';
-    enrollBtn.disabled = !isEnrolled;
-    enrollMsg.textContent = isEnrolled ? 'Officially enrolled for the active term.' : '';
+    paintEnroll(s.status);
     enrollMsg.className = 'msg' + (s.status === 'enrolled' ? ' ok' : '');
     banner.hidden = true;
     record.hidden = false;
     getJson('/api/registrar/enroll-readiness/' + encodeURIComponent(no) + '?college=' + encodeURIComponent(COLLEGE)).then(function (res) {
       if (!res.ok) { enrollMsg.textContent = res.j.error || 'Could not check the steps.'; enrollMsg.className = 'msg bad'; return; }
       curStatus = res.j.status || '';
+      if (current && current.student_no === no && curStatus) { current.status = curStatus; paintEnroll(curStatus); }
       renderTasks(no, res.j.tasks || {});
       if (res.j.status === 'enrolled') return;
       if (res.j.missing.length) {
@@ -159,6 +155,16 @@
     });
   }
 
+  // Shows ENROLLED (green) or ENROLL STUDENT (blue/grey) and the matching subjects heading.
+  function paintEnroll(status) {
+    var isEnrolled = status === 'enrolled';
+    enrollBtn.textContent = isEnrolled ? 'ENROLLED ✔' : 'ENROLL STUDENT';
+    enrollBtn.classList.toggle('enrolled', isEnrolled);
+    document.getElementById('subjTitle').textContent = isEnrolled ? 'Enrolled subjects' : 'Pre-enrolled subjects';
+    enrollBtn.disabled = !isEnrolled;
+    enrollMsg.textContent = isEnrolled ? 'Officially enrolled for the active term.' : '';
+    enrollMsg.className = 'msg' + (isEnrolled ? ' ok' : '');
+  }
   // Reload the student list, then reopen the student with fresh status.
   function refreshAndOpen(no) {
     getJson('/api/registrar/students?college=' + encodeURIComponent(COLLEGE)).then(function (res) {
