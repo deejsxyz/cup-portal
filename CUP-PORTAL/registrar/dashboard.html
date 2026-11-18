@@ -784,6 +784,13 @@
 
     safeOn('#gl-college', 'change', loadGrades);
     safeOn('#gl-status', 'change', loadGrades);
+    // Program abbreviation: the code in brackets, plus the major (e.g. BSEd - English)
+    function agProgram(p) {
+      p = String(p || '');
+      var code = (p.match(/\(([^)]+)\)\s*$/) || [])[1] || p;
+      var m = p.match(/ Major in (.+?) \(/);
+      return m ? code + ' - ' + m[1] : code;
+    }
     var AG = { rows: [], page: 1, size: 20, sel: {}, q: '' };
     function agKey(g) { return [g.student_no, g.course_code, g.academic_year, g.term].join('|'); }
     function agSelCount() { return Object.keys(AG.sel).length; }
@@ -812,13 +819,13 @@
       html += '<p class="hint"><strong>Status legend:</strong> S = Submitted (waiting for approval) &nbsp;|&nbsp; A = Approved</p>';
       html += '<table style="width:100%;border-collapse:collapse;font-size:.9rem"><thead><tr>' +
         '<th style="' + th + '"><input type="checkbox" id="ag-all" title="Select all submitted on this page"></th>' +
-        ['Student No', 'Student', 'A.Y', 'Term', 'Course', 'Grade', 'Status', 'Instructor'].map(function (t) { return '<th style="' + th + '">' + t + '</th>'; }).join('') +
+        ['Student No', 'Student', 'Program', 'A.Y', 'Term', 'Course', 'Grade', 'Status', 'Instructor'].map(function (t) { return '<th style="' + th + '">' + t + '</th>'; }).join('') +
         '</tr></thead><tbody>' + slice.map(function (g) {
           var name = (g.last_name || '') + ', ' + (g.first_name || '');
           var status = g.status === 'approved' ? 'A' : 'S';
           var k = agKey(g), locked = g.status === 'approved';
           var box = '<td style="' + td + '"><input type="checkbox" class="ag-row" data-key="' + esc(k) + '"' + (locked ? ' disabled' : '') + (AG.sel[k] ? ' checked' : '') + '></td>';
-          return '<tr>' + box + [g.student_no, name, g.academic_year, g.term, g.course_code, g.final_grade, status, g.instructor || ''].map(function (v) {
+          return '<tr>' + box + [g.student_no, name, agProgram(g.program), g.academic_year, g.term, g.course_code, g.final_grade, status, g.instructor || ''].map(function (v) {
             return '<td style="' + td + '">' + esc(v) + '</td>';
           }).join('') + '</tr>';
         }).join('') + '</tbody></table>' +
