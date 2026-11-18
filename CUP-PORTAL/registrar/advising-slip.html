@@ -120,6 +120,7 @@
     current = s; qMsg.textContent = '';
     info.innerHTML = label('Student No.', s.student_no) + label('Name', fullName(s)) + label('Program', s.program) +
       label('Year & Section', (s.year_level || '') + (s.section || '')) + label('Status', s.status === 'enrolled' ? 'Officially Enrolled' : 'Pre-enrolled');
+    info.innerHTML += '<div><div class="lbl">CSC Fee</div><div class="val" style="color:' + (s.csc_paid ? '#047857' : '#b45309') + '">' + (s.csc_paid ? 'CSC FEE PAID' : 'NOT YET PAID') + '</div></div>';
     paintEnroll(s.status);
     enrollMsg.className = 'msg' + (s.status === 'enrolled' ? ' ok' : '');
     banner.hidden = true;
