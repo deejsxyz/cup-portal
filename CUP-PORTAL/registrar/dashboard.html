@@ -321,6 +321,7 @@
           </h3>
           <p class="hint">Columns: <code>student_number, course_code, year_level, semester, final_grade</code>. Select one or multiple CSV files. Grades automatically align to each student by <code>student_number</code> for the active Academic Year and Semester. Duplicate subjects for the same student in the same Academic Year and Semester are strictly prevented.</p>
           <div class="bu-controls">
+            <select id="bu-grades-ay" aria-label="Academic year for these grades" style="margin-right:8px"><option value="">Choose academic year</option><option>2023-2024</option><option>2024-2025</option><option>2025-2026</option><option>2026-2027</option></select>
             <input type="file" class="bu-files" multiple accept=".csv,text/csv" aria-label="Select Grade CSV files">
             <button type="button" class="btn green bu-start-btn" style="margin-top:0">Upload &amp; Process Grade CSV(s)</button>
             <button type="button" class="btn red sm bu-interrupt-btn" hidden style="margin-top:0">Pause / Interrupt</button>
@@ -2308,6 +2309,7 @@
             college: task.college,
             dryRun: false,
             enrollment_status: task.enrollStatus,
+            academic_year: task.academicYear || '',
             files: task.payloads
           })
         }).then(function (r) {
@@ -2363,6 +2365,7 @@
           college: buCollege,
           card: card,
           enrollStatus: type === 'student' ? (modeRadio ? modeRadio.value : 'pre-registered') : null,
+          academicYear: type === 'grades' ? ((document.getElementById('bu-grades-ay') || {}).value || '') : '',
           files: files,
           payloads: new Array(files.length),
           index: 0,

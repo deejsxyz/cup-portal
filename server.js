@@ -3956,7 +3956,8 @@ app.post('/api/registrar/batch-upload/:type', requireRegistrar, async (req, res)
   if (type === 'student' && await blockIfEnrollmentClosed(req, res)) return;
 
   const t = await activeTerm();
-  const activeAy = t.ay || `${new Date().getFullYear()}-${new Date().getFullYear() + 1}`;
+  const chosenAy = type === 'grades' && /^\d{4}-\d{4}$/.test(String(b.academic_year || '')) ? String(b.academic_year) : '';
+  const activeAy = chosenAy || t.ay || `${new Date().getFullYear()}-${new Date().getFullYear() + 1}`;
   const activeSem = t.term || '1st Semester';
 
   // Load course catalog for subject lookups
