@@ -113,7 +113,9 @@
     evalDone.className = 'px-4 py-2 rounded-lg text-xs font-bold shadow-md cursor-pointer ' + (done ? 'bg-emerald-600 text-white' : 'bg-indigo-700 hover:bg-indigo-800 text-white');
     evalDone.textContent = done ? '✔ Done (undo)' : 'Mark ' + TASK_NAME[cur] + ' Done';
     evalDone.setAttribute('data-done', done ? '1' : '0');
-    evalDone.disabled = !ev;
+    var notVerified = !!(ev && ev.step1_status !== 'verified');
+    evalDone.disabled = !ev || (notVerified && !done);
+    if (notVerified && !done) evalBanner.textContent += ' Grades are not yet fully approved, so this step cannot be marked done yet.';
     if (cur === 'evaluation') showLatestGrades(no); else if (cur === 'advising') renderNstpChoice(no, ev); else document.getElementById('evalGrades').innerHTML = '';
     document.getElementById('secCounts').hidden = true;
     var box = document.getElementById('advEnrollBox'), frame = document.getElementById('advEnrollFrame');

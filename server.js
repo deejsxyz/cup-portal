@@ -3729,14 +3729,21 @@ app.post('/api/registrar/step6/:no/official', requireRegistrar, async (req, res)
 });
 
 // Step 2 (Dean's Office, College Registrar): student evaluation, advising and section assignment
+// Marking a step done requires the student's grades to be fully approved (Step 1 verified).
+async function step2Blocked(no, college) {
+  const r = await pool.query("SELECT step1_status FROM reg_students WHERE student_no = $1 AND college = $2 AND status IN ('enrolled','pre-registered')", [no, college]);
+  if (!r.rows.length) return 'Student not found.';
+  if (r.rows[0].step1_status !== 'verified') return 'Grades are not yet fully approved for this student, so this step cannot be marked done yet.';
+  return null;
+}
 app.get('/api/registrar/step2', requireCollegeRegistrar, async (req, res) => {
   const college = regCollege(req, req.query.college);
   if (!college || !REG_COLLEGES.includes(college)) return res.status(400).json({ error: 'Choose a college.' });
   try {
     const { rows } = await pool.query(
-      `SELECT student_no, last_name, first_name, middle_name, program, year_level, section, status,
+      `SELECT student_no, last_name, first_name, middle_name, program, year_level, section, status, COALESCE(step1_status, '') AS step1_status,
               step2_evaluated_at, step2_advised_at, step2_sectioned_at, COALESCE(nstp_subject, '') AS nstp_subject
-       FROM reg_students WHERE college = $1 AND status IN ('enrolled','pre-registered') AND step1_status = 'verified'
+       FROM reg_students WHERE college = $1 AND status IN ('enrolled','pre-registered')
        ORDER BY last_name, first_name`, [college]);
     res.json({ students: rows });
   } catch (err) {
@@ -3754,10 +3761,12 @@ app.post('/api/registrar/step2/:no/:task', requireCollegeRegistrar, async (req, 
   if (!college) return res.status(400).json({ error: 'Invalid Step 2 request.' });
   const no = String(req.params.no || '').trim();
   const done = (req.body || {}).done === true;
+  const blockedT = done ? await step2Blocked(no, college) : null;
+  if (blockedT) return res.status(400).json({ error: blockedT });
   try {
     const r = await pool.query(
       `UPDATE reg_students SET ${col} = CASE WHEN $3 THEN COALESCE(${col}, now()) ELSE NULL END
-       WHERE student_no = $1 AND college = $2 AND status IN ('enrolled','pre-registered') AND step1_status = 'verified' RETURNING student_no, ${col} AS done_at`, [no, college, done]);
+       WHERE student_no = $1 AND college = $2 AND status IN ('enrolled','pre-registered') RETURNING student_no, ${col} AS done_at`, [no, college, done]);
     if (!r.rows.length) return res.status(404).json({ error: 'Student not found.' });
     logAction(req, 'College Registrar', (done ? 'Step 2 done: ' : 'Step 2 undone: ') + STEP2_LABELS[req.params.task], no + ' · ' + college);
     res.json({ ok: true, student_no: no, done_at: r.rows[0].done_at });
@@ -3774,9 +3783,11 @@ app.post('/api/registrar/step2/:no/nstp', requireCollegeRegistrar, async (req, r
   const subject = String((req.body || {}).subject || '');
   if (subject && !NSTP_CODES.includes(subject)) return res.status(400).json({ error: 'Choose NSTP 1 (CWTS) or ROTC 1.' });
   const no = String(req.params.no || '').trim();
+  const blockedN = await step2Blocked(no, college);
+  if (blockedN) return res.status(400).json({ error: blockedN });
   try {
     const r = await pool.query(
-      `UPDATE reg_students SET nstp_subject = NULLIF($3, '') WHERE student_no = $1 AND college = $2 AND status IN ('enrolled','pre-registered') AND step1_status = 'verified' RETURNING student_no, nstp_subject`,
+      `UPDATE reg_students SET nstp_subject = NULLIF($3, '') WHERE student_no = $1 AND college = $2 AND status IN ('enrolled','pre-registered') RETURNING student_no, nstp_subject`,
       [no, college, subject]);
     if (!r.rows.length) return res.status(404).json({ error: 'Student not found.' });
     logAction(req, 'College Registrar', 'NSTP subject set', no + ' · ' + (subject || 'none') + ' · ' + college);
@@ -3826,10 +3837,12 @@ app.post('/api/registrar/step2/:no/assign-section', requireCollegeRegistrar, asy
   const section = String(body.section || '').trim().toUpperCase();
   if (!college || !/^[1-9]$/.test(year) || !/^[A-Z]{1,2}$/.test(section)) return res.status(400).json({ error: 'Choose a year level and section.' });
   const no = String(req.params.no || '').trim();
+  const blockedS = await step2Blocked(no, college);
+  if (blockedS) return res.status(400).json({ error: blockedS });
   try {
     const r = await pool.query(
       `UPDATE reg_students SET year_level = $3, section = $4, step2_sectioned_at = now()
-       WHERE student_no = $1 AND college = $2 AND status IN ('enrolled','pre-registered') AND step1_status = 'verified' RETURNING student_no`, [no, college, year, section]);
+       WHERE student_no = $1 AND college = $2 AND status IN ('enrolled','pre-registered') RETURNING student_no`, [no, college, year, section]);
     if (!r.rows.length) return res.status(404).json({ error: 'Student not found.' });
     logAction(req, 'College Registrar', 'Step 2 section assigned: ' + year + section, no + ' · ' + college);
     res.json({ ok: true, student_no: no });
