@@ -4307,7 +4307,7 @@ app.post('/api/registrar/batch-upload/:type', requireRegistrar, async (req, res)
     // Load existing students and existing grades for uniqueness validation
     const stuRes = await pool.query('SELECT student_no, college, year_level, section FROM reg_students');
     const stuMap = new Map(stuRes.rows.map((s) => [s.student_no.toLowerCase(), s]));
-    const existingGradesRes = await pool.query('SELECT student_no, course_code, term, academic_year FROM reg_grades WHERE academic_year = $1', [activeAy]);
+    const existingGradesRes = await pool.query('SELECT student_no, course_code, term, academic_year FROM reg_grades');
     const existingGradeKeys = new Set(existingGradesRes.rows.map((g) => `${g.student_no.toLowerCase()}|${g.course_code.toUpperCase()}|${g.term}|${g.academic_year}`));
     const batchGradeKeys = new Set();
 
@@ -4343,6 +4343,15 @@ app.post('/api/registrar/batch-upload/:type', requireRegistrar, async (req, res)
           errors.push(`${pf.filename} (Row ${line}): semester '${r.semester}' must be 1st Semester, 2nd Semester, or Summer.`);
           continue;
         }
+                const rowAy = String(r.academic_year || '').trim() || chosenAy;
+        if (!rowAy) {
+          errors.push(`${pf.filename} (Row ${line}): choose an academic year on the upload form, or add an academic_year column (for example 2025-2026).`);
+          continue;
+        }
+        if (!/^\d{4}-\d{4}$/.test(rowAy)) {
+          errors.push(`${pf.filename} (Row ${line}): academic_year '${rowAy}' must look like 2025-2026.`);
+          continue;
+        }
         let grade = '';
         try {
           grade = normalizeGrade(r.final_grade);
@@ -4354,14 +4363,13 @@ app.post('/api/registrar/batch-upload/:type', requireRegistrar, async (req, res)
           errors.push(`${pf.filename} (Row ${line}): final_grade is required.`);
           continue;
         }
-
-        const uniqKey = `${stu.student_no.toLowerCase()}|${courseCode}|${sem}|${activeAy}`;
+        const uniqKey = `${stu.student_no.toLowerCase()}|${courseCode}|${sem}|${rowAy}`;
         if (batchGradeKeys.has(uniqKey)) {
-          errors.push(`${pf.filename} (Row ${line}): Student ${stu.student_no} has duplicate subject '${courseCode}' in the same Academic Year (${activeAy}) and Semester (${sem}) within the upload batch.`);
+          errors.push(`${pf.filename} (Row ${line}): Student ${stu.student_no} has duplicate subject '${courseCode}' in the same Academic Year (${rowAy}) and Semester (${sem}) within the upload batch.`);
           continue;
         }
         if (existingGradeKeys.has(uniqKey)) {
-          errors.push(`${pf.filename} (Row ${line}): Student ${stu.student_no} already has a recorded grade for subject '${courseCode}' in ${activeAy} (${sem}). A student cannot have two of the same subject in the same academic year and semester.`);
+          errors.push(`${pf.filename} (Row ${line}): Student ${stu.student_no} already has a recorded grade for subject '${courseCode}' in ${rowAy} (${sem}). A student cannot have two of the same subject in the same academic year and semester.`);
           continue;
         }
         batchGradeKeys.add(uniqKey);
@@ -4373,7 +4381,7 @@ app.post('/api/registrar/batch-upload/:type', requireRegistrar, async (req, res)
           course_code: courseCode,
           year_level: yearLevel,
           term: sem,
-          academic_year: activeAy,
+          academic_year: rowAy,
           final_grade: grade,
           remarks: registrarRemark(grade)
         });
