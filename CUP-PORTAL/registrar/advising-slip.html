@@ -70,7 +70,7 @@
 <script>
 (function () {
   var COLLEGE = (new URLSearchParams(location.search).get('college') || '').toUpperCase();
-  var students = [], term = '', ay = '', current = null;
+  var students = [], term = '', ay = '', current = null, curSubjects = [], curStatus = '';
   var q = document.getElementById('q'), sug = document.getElementById('suggest'), qMsg = document.getElementById('qMsg');
   var banner = document.getElementById('stepBanner');
   var record = document.getElementById('record'), info = document.getElementById('info'), enrollBtn = document.getElementById('enrollBtn'), enrollMsg = document.getElementById('enrollMsg');
@@ -131,6 +131,7 @@
     record.hidden = false;
     getJson('/api/registrar/enroll-readiness/' + encodeURIComponent(no) + '?college=' + encodeURIComponent(COLLEGE)).then(function (res) {
       if (!res.ok) { enrollMsg.textContent = res.j.error || 'Could not check the steps.'; enrollMsg.className = 'msg bad'; return; }
+      curStatus = res.j.status || '';
       renderTasks(no, res.j.tasks || {});
       if (res.j.status === 'enrolled') return;
       if (res.j.missing.length) {
@@ -149,6 +150,7 @@
       var all = (res.ok && res.j.enrollments) || [];
       var cur = all.filter(function (h) { return h.term === term && h.academic_year === ay; })[0];
       var list = cur ? (cur.subjects || []) : [];
+      curSubjects = list;
       document.getElementById('subjTitle').textContent = s.status === 'enrolled' ? 'Enrolled subjects' : 'Pre-enrolled subjects';
       subjects.hidden = false;
       subjList.innerHTML = list.length ? '<table><thead><tr><th>Code</th><th>Descriptive title</th><th>Units</th><th>Section</th></tr></thead><tbody>' +
@@ -174,14 +176,39 @@
       var idle = { advising: 'Advising slip submitted', id: 'Validate ID', coe: 'PRINT COE' }[k];
       var doneText = { advising: 'Advising slip submitted ✔', id: 'ID VALIDATED ✔', coe: 'COE PRINTED ✔' }[k];
       b.textContent = done ? doneText : idle;
-      b.disabled = !tasks.csc;
+      b.disabled = !tasks.csc || (k === 'coe' && curStatus !== 'enrolled');
       b.setAttribute('data-done', done ? '1' : '0');
       b.setAttribute('data-no', no);
     });
-    document.getElementById('s6Msg').textContent = tasks.csc ? '' : 'CSC payment is not yet recorded, so these tasks are not available.';
+    document.getElementById('s6Msg').textContent = !tasks.csc ? 'CSC payment is not yet recorded, so these tasks are not available.'
+      : (curStatus !== 'enrolled' ? 'PRINT COE is available once the student is officially enrolled.' : '');
+  }
+  // Certificate of Enrollment: auto-filled from the student's record. Layout is a placeholder until the template is provided.
+  function printCoe() {
+    var s = current, w = window.open('', '_blank');
+    if (!w) { document.getElementById('s6Msg').textContent = 'Allow pop-ups for this site to print the COE.'; return false; }
+    var rowsHtml = curSubjects.length ? curSubjects.map(function (x) {
+      return '<tr><td>' + esc(x.course_code) + '</td><td>' + esc(x.descriptive_title || '') + '</td><td>' + esc(x.units == null ? '' : x.units) + '</td></tr>';
+    }).join('') : '<tr><td colspan="3">No subjects</td></tr>';
+    var units = curSubjects.reduce(function (a, x) { return a + (parseFloat(x.units) || 0); }, 0);
+    w.document.write('<!doctype html><html><head><title>Certificate of Enrollment</title><style>body{font-family:Arial,sans-serif;padding:40px;color:#000}h1{text-align:center;font-size:18px;margin:0}h2{text-align:center;font-size:14px;margin:4px 0 24px}table{width:100%;border-collapse:collapse;font-size:12px;margin-top:12px}td,th{border:1px solid #444;padding:6px;text-align:left}.f{margin:6px 0;font-size:13px}@media print{button{display:none}}</style></head><body>' +
+      '<h1>CERTIFICATE OF ENROLLMENT</h1><h2>' + esc(COLLEGE) + ' · ' + esc(term) + ' · A.Y. ' + esc(ay) + '</h2>' +
+      '<div class="f"><b>Student No.:</b> ' + esc(s.student_no) + '</div>' +
+      '<div class="f"><b>Name:</b> ' + esc(fullName(s)) + '</div>' +
+      '<div class="f"><b>Program:</b> ' + esc(s.program) + '</div>' +
+      '<div class="f"><b>Year &amp; Section:</b> ' + esc((s.year_level || '') + (s.section || '')) + '</div>' +
+      '<table><thead><tr><th>Code</th><th>Descriptive title</th><th>Units</th></tr></thead><tbody>' + rowsHtml + '</tbody></table>' +
+      '<div class="f" style="margin-top:10px"><b>Total units:</b> ' + units + '</div>' +
+      '<script>window.onload=function(){window.print();}<\/script></body></html>');
+    w.document.close();
+    return true;
   }
   document.getElementById('step6').addEventListener('click', function (e) {
     var b = e.target.closest('.btn.s6'); if (!b || b.disabled || !current) return;
+    if (b.getAttribute('data-task') === 'coe') {
+      if (!printCoe()) return;
+      if (b.getAttribute('data-done') === '1') return; // already printed: reprint only
+    }
     var msg = document.getElementById('s6Msg'); b.disabled = true; msg.textContent = 'Saving…';
     fetch('/api/registrar/step6/' + encodeURIComponent(current.student_no) + '/' + b.getAttribute('data-task'), {
       method: 'POST', credentials: 'same-origin', headers: { 'Content-Type': 'application/json' },
