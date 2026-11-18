@@ -4007,7 +4007,7 @@ app.post('/api/registrar/batch-upload/:type', requireRegistrar, async (req, res)
         }
         const rawProg = String(r.program || '').trim();
         if (rawProg) {
-          const canonProg = canonicalProgram(rawProg);
+          const canonProg = canonicalProgram(rawProg) || (resolveProgramChoice(college, rawProg) || {}).program || null;
           if (!canonProg) {
             errors.push(`${pf.filename} (Row ${line}): program '${rawProg}' is not recognized.`);
             continue;
@@ -4018,7 +4018,7 @@ app.post('/api/registrar/batch-upload/:type', requireRegistrar, async (req, res)
             continue;
           }
         }
-        const program = canonicalProgram(rawProg) || rawProg || (REG_PROGRAM_COLLEGES[college] && REG_PROGRAM_COLLEGES[college][0]) || college;
+        const program = canonicalProgram(rawProg) || (resolveProgramChoice(college, rawProg) || {}).program || rawProg || (REG_PROGRAM_COLLEGES[college] && REG_PROGRAM_COLLEGES[college][0]) || college;
         const yearLevel = normalizeCsvYearLevel(r.year_level);
         if (!yearLevel) {
           errors.push(`${pf.filename} (Row ${line}): year_level '${r.year_level}' must be 1 to 4.`);
