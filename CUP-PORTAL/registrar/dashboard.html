@@ -500,6 +500,7 @@
     <section class="panel" id="approve-grades"><div class="box"><h2>Grades Approval</h2><div class="body">
         <p class="hint">Approve all submitted grades for one college. Students can see grades only after approval.</p>
         <div style="display:flex;gap:8px;flex-wrap:wrap;align-items:center;margin-bottom:10px">
+          <input id="ag-search" type="search" placeholder="Search student no. or name" aria-label="Search" style="min-width:240px">
           <select id="ag-college" aria-label="College"><option value="">Choose a college</option><option>COACS</option><option>CAS</option><option>CONM</option><option>COED</option><option>COBM</option><option>LAW</option><option>GS</option><option>TESDA-TVI</option></select>
           <button type="button" id="ag-approve">Approve submitted grades</button>
           <button type="button" id="ag-approve-sel" disabled>Approve selected (0)</button>
@@ -783,7 +784,7 @@
 
     safeOn('#gl-college', 'change', loadGrades);
     safeOn('#gl-status', 'change', loadGrades);
-    var AG = { rows: [], page: 1, size: 20, sel: {} };
+    var AG = { rows: [], page: 1, size: 20, sel: {}, q: '' };
     function agKey(g) { return [g.student_no, g.course_code, g.academic_year, g.term].join('|'); }
     function agSelCount() { return Object.keys(AG.sel).length; }
     function agUpdateSel() { var b = $('#ag-approve-sel'); if (b) { b.textContent = 'Approve selected (' + agSelCount() + ')'; b.disabled = agSelCount() === 0; } }
@@ -799,12 +800,14 @@
         }).catch(function () { $('#ag-list').innerHTML = '<p class="hint">Could not load grades.</p>'; });
     }
     function drawAG() {
-      var rows = AG.rows, pages = Math.max(1, Math.ceil(rows.length / AG.size));
+      var q = AG.q.trim().toLowerCase();
+      var rows = !q ? AG.rows : AG.rows.filter(function (g) { return (String(g.student_no) + ' ' + (g.last_name || '') + ' ' + (g.first_name || '') + ' ' + (g.last_name || '') + ', ' + (g.first_name || '')).toLowerCase().indexOf(q) !== -1; });
+      var pages = Math.max(1, Math.ceil(rows.length / AG.size));
       if (AG.page > pages) AG.page = pages;
       var slice = rows.slice((AG.page - 1) * AG.size, AG.page * AG.size);
       var th = 'text-align:left;border-bottom:1px solid #7fa37f;padding:6px;white-space:nowrap';
       var td = 'padding:6px;border-bottom:1px solid #d5e2d5;white-space:nowrap';
-      var html = '<p class="hint">' + rows.length + ' grade(s).</p>';
+      var html = '<p class="hint">' + rows.length + ' grade(s)' + (q ? ' matching "' + esc(AG.q) + '"' : '') + '.</p>';
       if (!rows.length) return ($('#ag-list').innerHTML = html + '<p class="hint">No grades for this college yet.</p>');
       html += '<table style="width:100%;border-collapse:collapse;font-size:.9rem"><thead><tr>' +
         '<th style="' + th + '"><input type="checkbox" id="ag-all" title="Select all submitted on this page"></th>' +
@@ -835,7 +838,8 @@
       if ($('#ag-prev')) $('#ag-prev').onclick = function () { AG.page--; drawAG(); };
       if ($('#ag-next')) $('#ag-next').onclick = function () { AG.page++; drawAG(); };
     }
-    safeOn('#ag-college', 'change', function () { AG.sel = {}; agUpdateSel(); loadAG(); });
+    safeOn('#ag-college', 'change', function () { AG.sel = {}; AG.q = ''; $('#ag-search').value = ''; agUpdateSel(); loadAG(); });
+    safeOn('#ag-search', 'input', function () { AG.q = this.value; AG.page = 1; drawAG(); });
     safeOn('#ag-approve-sel', 'click', function () {
       var c = $('#ag-college').value;
       var items = Object.keys(AG.sel).map(function (k) { var p = k.split('|'); return { student_no: p[0], course_code: p[1], academic_year: p[2], term: p[3] }; });
