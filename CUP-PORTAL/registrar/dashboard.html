@@ -190,6 +190,7 @@
         <button class="tab" type="button" data-panel="tesda-student">TESDA</button>
         <button class="tab" type="button" data-panel="portal-accounts" id="accounts-tab" hidden>Accounts</button>
         <button class="tab" type="button" data-panel="subjects-section">Subjects</button>
+        <button class="tab" type="button" data-panel="approve-grades" id="approve-tab" hidden>Approve Grades</button>
         <button class="tab" type="button" data-panel="settings" id="settings-tab">Settings</button>
         <button class="tab" type="button" data-panel="batch-uploads" id="batch-uploads-tab">BATCH UPLOADS</button>
         <div class="menu" data-menu="logs">
@@ -496,11 +497,18 @@
         </div>
 
     </div></div></section>
+    <section class="panel" id="approve-grades"><div class="box"><h2>Approve Grades</h2><div class="body">
+        <p class="hint">Approve all submitted grades for one college. Students can see grades only after approval.</p>
+        <div style="display:flex;gap:8px;flex-wrap:wrap;align-items:center;margin-bottom:10px">
+          <select id="ag-college" aria-label="College"><option value="">Choose a college</option><option>COACS</option><option>CAS</option><option>CONM</option><option>COED</option><option>COBM</option><option>LAW</option><option>GS</option><option>TESDA-TVI</option></select>
+          <button type="button" id="ag-approve">Approve submitted grades</button>
+        </div>
+        <p class="hint" id="ag-msg"></p>
+    </div></div></section>
     <section class="panel" id="grade-logs"><div class="box"><h2>Grade Logs</h2><div class="body">
         <div style="display:flex;gap:8px;flex-wrap:wrap;align-items:center;margin-bottom:10px">
           <select id="gl-college" aria-label="College"><option value="">All colleges</option><option>COACS</option><option>CAS</option><option>CONM</option><option>COED</option><option>COBM</option><option>LAW</option><option>GS</option><option>TESDA-TVI</option></select>
           <select id="gl-status" aria-label="Status"><option value="">All statuses</option><option value="submitted">Submitted (waiting for approval)</option><option value="approved">Approved</option></select>
-          <button type="button" id="gl-approve" hidden>Approve submitted grades</button>
         </div>
         <p class="hint" id="gl-msg"></p>
         <div id="gl-list"><p class="hint">Loading grades…</p></div>
@@ -773,15 +781,15 @@
 
     safeOn('#gl-college', 'change', loadGrades);
     safeOn('#gl-status', 'change', loadGrades);
-    safeOn('#gl-approve', 'click', function () {
-      var c = $('#gl-college').value;
-      $('#gl-msg').textContent = '';
-      if (!c) { $('#gl-msg').textContent = 'Choose one college first, then approve its submitted grades.'; return; }
+    safeOn('#ag-approve', 'click', function () {
+      var c = $('#ag-college').value;
+      $('#ag-msg').textContent = '';
+      if (!c) { $('#ag-msg').textContent = 'Choose a college first.'; return; }
       fetch('/api/registrar/grades/approve', { method: 'POST', credentials: 'same-origin', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ college: c }) })
         .then(function (r) { return r.json().then(function (j) { return { ok: r.ok, j: j }; }); })
         .then(function (res) {
-          $('#gl-msg').textContent = res.ok ? res.j.approved + ' grade(s) approved for ' + c + '.' : (res.j.error || 'Could not approve.');
-          loadGrades();
+          $('#ag-msg').textContent = res.ok ? res.j.approved + ' grade(s) approved for ' + c + '.' : (res.j.error || 'Could not approve.');
+          if (typeof loadGrades === 'function') loadGrades();
         });
     });
 
@@ -1750,7 +1758,7 @@
         var collegesMenu = document.getElementById('collegesMenu'); if (collegesMenu) collegesMenu.hidden = true;
         if (me.role === 'records') { var bu = document.getElementById('batch-uploads-tab'); if (bu) bu.hidden = true; }
       }
-      if (isSuper) { var gla = $('#gl-approve'); if (gla) gla.hidden = false; loadPortalUsers(); loadActivity(); }
+      if (isSuper) { var apt = $('#approve-tab'); if (apt) apt.hidden = false; loadPortalUsers(); loadActivity(); }
       if (isSuper) { var sjw = $('#sj-college-wrap'); if (sjw) sjw.hidden = false; }
       loadSubjects();
       if (!isSuper) { var glc = $('#gl-college'); if (glc) { glc.value = me.college; glc.hidden = true; } }
