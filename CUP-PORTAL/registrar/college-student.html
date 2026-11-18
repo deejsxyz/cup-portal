@@ -542,6 +542,9 @@
   var reg = { term: '', ay: '', instructors: [] };
   function regSubjectsRender(list, box, yr) {
     if (!list.length) { box.innerHTML = '<p class="text-slate-500">No curriculum subjects uploaded yet. Upload subjects in Subjects first.</p>'; return; }
+    // Preselected subjects (same year level, term and college) go to the top of the list.
+    var isPre = function (c) { return Number(c.year_level) === yr && (!c.semester || !reg.term || c.semester === reg.term) && (!c.college || c.college === COLLEGE); };
+    list = list.slice().sort(function (x, y) { return (isPre(y) ? 1 : 0) - (isPre(x) ? 1 : 0); });
     var opts = '<option value="">-- Instructor --</option>' + reg.instructors.map(function (u) { return '<option value="' + u.id + '">' + esc(u.name) + '</option>'; }).join('');
     var defaults = list.map(function (c) { return c.default_instructor_id || ''; });
     var filterBar = '<div class="flex flex-wrap items-center justify-between gap-2 mb-3 pb-2 border-b border-slate-200">' +
