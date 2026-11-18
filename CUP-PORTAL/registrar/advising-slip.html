@@ -162,7 +162,7 @@
     enrollBtn.classList.toggle('enrolled', isEnrolled);
     document.getElementById('subjTitle').textContent = isEnrolled ? 'Enrolled subjects' : 'Pre-enrolled subjects';
     enrollBtn.disabled = !isEnrolled;
-    enrollMsg.textContent = isEnrolled ? 'Officially enrolled for the active term.' : '';
+    enrollMsg.textContent = isEnrolled ? 'OFFICIALLY ENROLLED' : '';
     enrollMsg.className = 'msg' + (isEnrolled ? ' ok' : '');
   }
   // Reload the student list, then reopen the student with fresh status.
@@ -244,7 +244,7 @@
       .then(function (r) { return r.json().then(function (j) { return { ok: r.ok, j: j }; }); })
       .then(function (res) {
         if (!res.ok) { enrollMsg.textContent = res.j.error || 'Could not enroll the student.'; enrollMsg.className = 'msg bad'; enrollBtn.disabled = false; return; }
-        enrollMsg.textContent = 'Officially enrolled for the active term.'; enrollMsg.className = 'msg ok';
+        enrollMsg.textContent = 'OFFICIALLY ENROLLED'; enrollMsg.className = 'msg ok';
         refreshAndOpen(current.student_no);
       })
       .catch(function () { enrollMsg.textContent = 'Could not enroll the student.'; enrollMsg.className = 'msg bad'; enrollBtn.disabled = false; });
