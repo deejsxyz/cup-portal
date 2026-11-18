@@ -143,7 +143,7 @@
   .bu-controls { display: flex; flex-wrap: wrap; gap: 10px; align-items: center; margin-top: 10px; }
   .bu-controls input[type="file"] { flex: 1 1 260px; max-width: 460px; background: #fff; padding: 6px; border: 1px solid var(--line); border-radius: 6px; }
   .bu-progress-wrap { margin-top: 12px; background: #e2ece2; border-radius: 999px; height: 18px; overflow: hidden; position: relative; border: 1px solid #9bbf9b; }
-  .bu-progress-bar { height: 100%; width: 0%; background: linear-gradient(90deg, var(--g), var(--g2)); transition: width .25s ease; }
+  .bu-progress-bar { height: 100%; width: 0%; background: linear-gradient(90deg, var(--g), var(--g2)); transition: width .6s linear; }
   .bu-progress-label { font-size: .8rem; font-weight: 700; color: var(--dg); margin-top: 6px; display: flex; justify-content: space-between; align-items: center; gap: 8px; }
   .bu-cred-list { margin-top: 12px; display: flex; flex-wrap: wrap; gap: 8px; padding: 12px; background: #eef6ee; border: 1px solid #9bbf9b; border-radius: 8px; }
   .bu-cred-list strong { flex-basis: 100%; font-size: .82rem; color: var(--dg); }
@@ -2304,7 +2304,7 @@
               var pct = j.total ? Math.round((j.done / j.total) * 100) : 0;
               setProg(pct, 'Saving ' + j.done.toLocaleString() + ' of ' + j.total.toLocaleString() + ' rows (' + pct + '%)');
             }).catch(function () {});
-        }, 400);
+        }, 150);
         setProg(0, 'Saving rows to database…');
         if (task.interrupted || !navigator.onLine) {
           showInterruptModal(task, 'Interrupted before final database commit.');
