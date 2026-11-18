@@ -3704,6 +3704,10 @@ app.post('/api/registrar/step6/:no/:task', requireRegistrar, async (req, res, ne
       `UPDATE reg_students SET ${col} = CASE WHEN $3 THEN COALESCE(${col}, now()) ELSE NULL END
        WHERE student_no = $1 AND college = $2 AND csc_paid_at IS NOT NULL RETURNING student_no, ${col} AS done_at`, [no, college, done]);
     if (!r.rows.length) return res.status(404).json({ error: 'Student not found or CSC fee not yet paid.' });
+    // Undoing a required step takes the student back out of Officially Enrolled.
+    if (!done && req.params.task === 'advising') {
+      await pool.query("UPDATE reg_students SET status = 'pre-registered' WHERE student_no = $1 AND college = $2 AND status = 'enrolled'", [no, college]);
+    }
     logAction(req, 'Registrar Office', (done ? 'Step 6 done: ' : 'Step 6 undone: ') + STEP6_LABELS[req.params.task], no + ' · ' + college);
     res.json({ ok: true, student_no: no, done_at: r.rows[0].done_at });
   } catch (err) {
@@ -3742,6 +3746,21 @@ app.get('/api/registrar/enroll-readiness/:no', requireSuperAdmin, async (req, re
   } catch (err) {
     console.error(err);
     res.status(500).json({ error: 'Could not check the steps.' });
+  }
+});
+// University Registrar: undo Officially Enrolled (back to pre-enrolled).
+app.post('/api/registrar/enroll-official/:no/undo', requireSuperAdmin, async (req, res) => {
+  const college = regCollege(req, (req.body || {}).college);
+  if (!college) return res.status(400).json({ error: 'Choose a college.' });
+  const no = String(req.params.no || '').trim();
+  try {
+    const r = await pool.query("UPDATE reg_students SET status = 'pre-registered' WHERE student_no = $1 AND college = $2 AND status = 'enrolled' RETURNING student_no", [no, college]);
+    if (!r.rows.length) return res.status(400).json({ error: 'This student is not officially enrolled.' });
+    logAction(req, 'University Registrar', 'Officially Enrolled undone (Submission of Advising Slip)', no + ' · ' + college);
+    res.json({ ok: true, student_no: no });
+  } catch (err) {
+    console.error(err);
+    res.status(500).json({ error: 'Could not undo the enrollment.' });
   }
 });
 // University Registrar: mark a pre-registered student Officially Enrolled, only when every step is done.

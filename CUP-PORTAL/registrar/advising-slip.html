@@ -124,7 +124,7 @@
     enrollBtn.textContent = isEnrolled ? 'ENROLLED ✔' : 'ENROLL STUDENT';
     enrollBtn.classList.toggle('enrolled', isEnrolled);
     document.getElementById('subjTitle').textContent = isEnrolled ? 'Enrolled subjects' : 'Pre-enrolled subjects';
-    enrollBtn.disabled = true;
+    enrollBtn.disabled = !isEnrolled;
     enrollMsg.textContent = isEnrolled ? 'Officially enrolled for the active term.' : '';
     enrollMsg.className = 'msg' + (s.status === 'enrolled' ? ' ok' : '');
     banner.hidden = true;
@@ -157,6 +157,13 @@
     });
   }
 
+  // Reload the student list, then reopen the student with fresh status.
+  function refreshAndOpen(no) {
+    getJson('/api/registrar/students?college=' + encodeURIComponent(COLLEGE)).then(function (res) {
+      if (res.ok) students = res.j.students || [];
+      open(no);
+    });
+  }
   function renderTasks(no, tasks) {
     var box = document.getElementById('step6');
     box.hidden = false;
@@ -182,20 +189,30 @@
     }).then(function (r) { return r.json().then(function (j) { return { ok: r.ok, j: j }; }); })
       .then(function (res) {
         if (!res.ok) { msg.textContent = res.j.error || 'Could not update.'; msg.className = 'hint bad'; b.disabled = false; return; }
-        msg.textContent = ''; open(current.student_no);
+        msg.textContent = ''; refreshAndOpen(current.student_no);
       }).catch(function () { msg.textContent = 'Could not update.'; b.disabled = false; });
   });
 
   enrollBtn.addEventListener('click', function () {
     if (!current || enrollBtn.disabled) return;
+    if (current.status === 'enrolled') {
+      // Clicking ENROLLED again undoes the enrollment.
+      enrollBtn.disabled = true; enrollMsg.textContent = 'Undoing…'; enrollMsg.className = 'msg';
+      fetch('/api/registrar/enroll-official/' + encodeURIComponent(current.student_no) + '/undo', { method: 'POST', credentials: 'same-origin', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ college: COLLEGE }) })
+        .then(function (r) { return r.json().then(function (j) { return { ok: r.ok, j: j }; }); })
+        .then(function (res) {
+          if (!res.ok) { enrollMsg.textContent = res.j.error || 'Could not undo.'; enrollMsg.className = 'msg bad'; enrollBtn.disabled = false; return; }
+          refreshAndOpen(current.student_no);
+        }).catch(function () { enrollMsg.textContent = 'Could not undo.'; enrollMsg.className = 'msg bad'; enrollBtn.disabled = false; });
+      return;
+    }
     enrollBtn.disabled = true; enrollMsg.textContent = 'Saving…'; enrollMsg.className = 'msg';
     fetch('/api/registrar/enroll-official/' + encodeURIComponent(current.student_no), { method: 'POST', credentials: 'same-origin', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ college: COLLEGE }) })
       .then(function (r) { return r.json().then(function (j) { return { ok: r.ok, j: j }; }); })
       .then(function (res) {
         if (!res.ok) { enrollMsg.textContent = res.j.error || 'Could not enroll the student.'; enrollMsg.className = 'msg bad'; enrollBtn.disabled = false; return; }
-        current.status = 'enrolled';
         enrollMsg.textContent = 'Officially enrolled for the active term.'; enrollMsg.className = 'msg ok';
-        open(current.student_no);
+        refreshAndOpen(current.student_no);
       })
       .catch(function () { enrollMsg.textContent = 'Could not enroll the student.'; enrollMsg.className = 'msg bad'; enrollBtn.disabled = false; });
   });
