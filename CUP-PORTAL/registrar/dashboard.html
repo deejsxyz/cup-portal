@@ -504,6 +504,7 @@
           <button type="button" id="ag-approve">Approve submitted grades</button>
         </div>
         <p class="hint" id="ag-msg"></p>
+        <div id="ag-list" style="margin-top:12px;overflow-x:auto"></div>
     </div></div></section>
     <section class="panel" id="grade-logs"><div class="box"><h2>Grade Logs</h2><div class="body">
         <div style="display:flex;gap:8px;flex-wrap:wrap;align-items:center;margin-bottom:10px">
@@ -781,6 +782,44 @@
 
     safeOn('#gl-college', 'change', loadGrades);
     safeOn('#gl-status', 'change', loadGrades);
+    var AG = { rows: [], page: 1, size: 20 };
+    var AG_SEM = { '1st Semester': 1, '2nd Semester': 2, 'Summer': 3 };
+    function loadAG() {
+      var c = $('#ag-college').value;
+      if (!c) { $('#ag-list').innerHTML = '<p class="hint">Choose a college to see its grades.</p>'; return; }
+      fetch('/api/registrar/grades?college=' + encodeURIComponent(c), { credentials: 'same-origin' })
+        .then(function (r) { return r.json().then(function (j) { return { ok: r.ok, j: j }; }); })
+        .then(function (res) {
+          if (!res.ok) { $('#ag-list').innerHTML = '<p class="hint">' + esc(res.j.error || 'Could not load grades.') + '</p>'; return; }
+          AG.rows = res.j.grades || []; AG.page = 1; drawAG();
+        }).catch(function () { $('#ag-list').innerHTML = '<p class="hint">Could not load grades.</p>'; });
+    }
+    function drawAG() {
+      var rows = AG.rows, pages = Math.max(1, Math.ceil(rows.length / AG.size));
+      if (AG.page > pages) AG.page = pages;
+      var slice = rows.slice((AG.page - 1) * AG.size, AG.page * AG.size);
+      var th = 'text-align:left;border-bottom:1px solid #7fa37f;padding:6px;white-space:nowrap';
+      var td = 'padding:6px;border-bottom:1px solid #d5e2d5;white-space:nowrap';
+      var html = '<p class="hint">' + rows.length + ' grade(s).</p>';
+      if (!rows.length) return ($('#ag-list').innerHTML = html + '<p class="hint">No grades for this college yet.</p>');
+      html += '<table style="width:100%;border-collapse:collapse;font-size:.9rem"><thead><tr>' +
+        ['Student No', 'Student', 'A.Y', 'Term', 'Grade', 'Status', 'Instructor'].map(function (t) { return '<th style="' + th + '">' + t + '</th>'; }).join('') +
+        '</tr></thead><tbody>' + slice.map(function (g) {
+          var name = (g.last_name || '') + ', ' + (g.first_name || '');
+          var status = g.status === 'approved' ? 'Approved' : 'Submitted';
+          return '<tr>' + [g.student_no, name, g.academic_year, g.term, g.final_grade, status, g.instructor || ''].map(function (v) {
+            return '<td style="' + td + '">' + esc(v) + '</td>';
+          }).join('') + '</tr>';
+        }).join('') + '</tbody></table>' +
+        '<div style="display:flex;gap:10px;align-items:center;margin-top:10px">' +
+        '<button type="button" id="ag-prev"' + (AG.page <= 1 ? ' disabled' : '') + '>Previous</button>' +
+        '<span class="hint">Page ' + AG.page + ' of ' + pages + '</span>' +
+        '<button type="button" id="ag-next"' + (AG.page >= pages ? ' disabled' : '') + '>Next</button></div>';
+      $('#ag-list').innerHTML = html;
+      if ($('#ag-prev')) $('#ag-prev').onclick = function () { AG.page--; drawAG(); };
+      if ($('#ag-next')) $('#ag-next').onclick = function () { AG.page++; drawAG(); };
+    }
+    safeOn('#ag-college', 'change', loadAG);
     safeOn('#ag-approve', 'click', function () {
       var c = $('#ag-college').value;
       $('#ag-msg').textContent = '';
@@ -789,7 +828,7 @@
         .then(function (r) { return r.json().then(function (j) { return { ok: r.ok, j: j }; }); })
         .then(function (res) {
           $('#ag-msg').textContent = res.ok ? res.j.approved + ' grade(s) approved for ' + c + '.' : (res.j.error || 'Could not approve.');
-          if (typeof loadGrades === 'function') loadGrades();
+          loadAG();
         });
     });
 
