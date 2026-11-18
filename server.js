@@ -3716,6 +3716,8 @@ const ENROLL_CHECKS = [
   { label: 'Step 2 · Section Assignment', ok: (r) => !!r.step2_sectioned_at },
   // NSTP: required for Year 1 and 2, or for anyone who chose an NSTP subject in Step 2. Otherwise Step 3 is automatically done.
   { label: 'Step 3 · NSTP', ok: (r) => !((Number(r.year_level) <= 2) || !!r.nstp_subject) || !!r.nstp_enrolled_at },
+  // Step 4 (Official CUP ID): done automatically once the student has a student number.
+  { label: 'Step 4 · Official CUP ID', ok: (r) => !!String(r.student_no || '').trim() },
   { label: 'Step 6 · CSC payment', ok: (r) => !!r.csc_paid_at },
   { label: 'Step 6 · Advising slip submitted', ok: (r) => !!r.advising_slip_at },
   { label: 'Step 6 · COE printed', ok: (r) => !!r.coe_printed_at },
