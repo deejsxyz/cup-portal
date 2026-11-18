@@ -19,6 +19,7 @@
   .hint { color: #64748b; font-size: 12px; }
   .btn { background: #3730a3; color: #fff; border: 0; border-radius: 8px; padding: 10px 18px; font-weight: 700; font-size: 12px; cursor: pointer; }
   .btn:disabled { background: #94a3b8; cursor: default; }
+  .btn.enrolled, .btn.enrolled:disabled { background: #047857; color: #fff; }
   .msg { font-weight: 700; font-size: 13px; }
   .ok { color: #047857; } .bad { color: #be123c; }
   .list { max-height: 200px; overflow-y: auto; border: 1px solid #e2e8f0; border-radius: 8px; margin-top: 6px; }
@@ -62,7 +63,7 @@
   </div>
 
   <div id="subjects" class="card" hidden>
-    <h2>Pre-enrolled subjects <span id="term" class="hint" style="text-transform:none;letter-spacing:0"></span></h2>
+    <h2><span id="subjTitle">Pre-enrolled subjects</span> <span id="term" class="hint" style="text-transform:none;letter-spacing:0"></span></h2>
     <div id="subjList"></div>
   </div>
 </div>
@@ -119,8 +120,12 @@
     current = s; qMsg.textContent = '';
     info.innerHTML = label('Student No.', s.student_no) + label('Name', fullName(s)) + label('Program', s.program) +
       label('Year & Section', (s.year_level || '') + (s.section || '')) + label('Status', s.status === 'enrolled' ? 'Officially Enrolled' : 'Pre-enrolled');
+    var isEnrolled = s.status === 'enrolled';
+    enrollBtn.textContent = isEnrolled ? 'ENROLLED ✔' : 'ENROLL STUDENT';
+    enrollBtn.classList.toggle('enrolled', isEnrolled);
+    document.getElementById('subjTitle').textContent = isEnrolled ? 'Enrolled subjects' : 'Pre-enrolled subjects';
     enrollBtn.disabled = true;
-    enrollMsg.textContent = s.status === 'enrolled' ? 'Already officially enrolled.' : '';
+    enrollMsg.textContent = isEnrolled ? 'Officially enrolled for the active term.' : '';
     enrollMsg.className = 'msg' + (s.status === 'enrolled' ? ' ok' : '');
     banner.hidden = true;
     record.hidden = false;
@@ -144,6 +149,7 @@
       var all = (res.ok && res.j.enrollments) || [];
       var cur = all.filter(function (h) { return h.term === term && h.academic_year === ay; })[0];
       var list = cur ? (cur.subjects || []) : [];
+      document.getElementById('subjTitle').textContent = s.status === 'enrolled' ? 'Enrolled subjects' : 'Pre-enrolled subjects';
       subjects.hidden = false;
       subjList.innerHTML = list.length ? '<table><thead><tr><th>Code</th><th>Descriptive title</th><th>Units</th><th>Section</th></tr></thead><tbody>' +
         list.map(function (x) { return '<tr><td>' + esc(x.course_code) + '</td><td>' + esc(x.descriptive_title || '') + '</td><td>' + esc(x.units == null ? '' : x.units) + '</td><td>' + esc(x.section || (cur && cur.section) || '') + '</td></tr>'; }).join('') + '</tbody></table>'
