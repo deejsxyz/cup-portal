@@ -3034,7 +3034,9 @@ app.get('/api/registrar/enrollments', requireRegistrar, async (req, res) => {
   const prior = await pool.query(
     'SELECT 1 FROM reg_enrollments WHERE student_no = $1 AND college = $2 AND NOT (term = $3 AND academic_year = $4) LIMIT 1',
     [no, college, t.term, t.ay]);
-  res.json({ enrollments: r.rows, student_type: prior.rows.length ? 'Old' : 'New' });
+  // Academic standing (REGULAR, IRREGULAR, WARNING, PROBATION, PERMANENT DISQUALIFICATION), same rules as the student portal.
+  const standingRow = await studentRetentionStatus(no).catch(() => null);
+  res.json({ enrollments: r.rows, student_type: prior.rows.length ? 'Old' : 'New', standing: standingRow ? standingRow.status : '' });
 });
 
 // Enroll a University-issued student for the active term with the chosen subjects and instructors.

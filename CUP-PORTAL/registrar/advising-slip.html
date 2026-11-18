@@ -70,7 +70,7 @@
 <script>
 (function () {
   var COLLEGE = (new URLSearchParams(location.search).get('college') || '').toUpperCase();
-  var students = [], term = '', ay = '', current = null, curSubjects = [], curStatus = '', curStudentType = '';
+  var students = [], term = '', ay = '', current = null, curSubjects = [], curStatus = '', curStudentType = '', curStanding = '';
   var q = document.getElementById('q'), sug = document.getElementById('suggest'), qMsg = document.getElementById('qMsg');
   var banner = document.getElementById('stepBanner');
   var record = document.getElementById('record'), info = document.getElementById('info'), enrollBtn = document.getElementById('enrollBtn'), enrollMsg = document.getElementById('enrollMsg');
@@ -149,6 +149,7 @@
       var list = cur ? (cur.subjects || []) : [];
       curSubjects = list;
       curStudentType = res.ok ? (res.j.student_type || '') : '';
+      curStanding = res.ok ? (res.j.standing || '') : '';
       document.getElementById('subjTitle').textContent = s.status === 'enrolled' ? 'Enrolled subjects' : 'Pre-enrolled subjects';
       subjects.hidden = false;
       subjList.innerHTML = list.length ? '<table><thead><tr><th>Code</th><th>Descriptive title</th><th>Units</th><th>Section</th><th>Schedule</th><th>Room</th><th>Instructor</th></tr></thead><tbody>' +
@@ -214,7 +215,7 @@
       '<div class="f"><b>Student No.:</b> ' + esc(s.student_no) + '</div>' +
       '<div class="f"><b>Name:</b> ' + esc(fullName(s)) + '</div>' +
       '<div class="f"><b>Program:</b> ' + esc(s.program) + '</div>' +
-      '<div class="f"><b>Status:</b> ' + esc(curStatus === 'enrolled' ? 'OFFICIALLY ENROLLED' : 'PRE-ENROLLED') + '</div>' +
+      '<div class="f"><b>Status:</b> ' + esc(curStanding) + '</div>' +
       '<div class="f"><b>Student Type:</b> ' + esc(curStudentType) + '</div>' +
       '<div class="f"><b>College:</b> ' + esc(COLLEGE) + '</div>' +
       '<div class="f"><b>Year &amp; Section:</b> ' + esc((s.year_level || '') + (s.section || '')) + '</div>' +
