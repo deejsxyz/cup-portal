@@ -319,7 +319,7 @@
             <span>3. Batch Grade Upload (<span class="bu-col-code">COACS</span>)</span>
             <a href="#" class="tpl-link" data-bu-tpl="grades">⬇ Download Grades_Batch_Upload.csv Template</a>
           </h3>
-          <p class="hint">Columns: <code>student_number, course_code, year_level, semester, final_grade</code>. Select one or multiple CSV files. Grades automatically align to each student by <code>student_number</code> for the active Academic Year and Semester. Duplicate subjects for the same student in the same Academic Year and Semester are strictly prevented.</p>
+          <p class="hint">Columns: <code>student_number, course_code, year_level, semester, final_grade</code>, optional <code>academic_year</code> (for example 2025-2026). Select one or multiple CSV files. Grades automatically align to each student by <code>student_number</code> for the active Academic Year and Semester. Duplicate subjects for the same student in the same Academic Year and Semester are strictly prevented.</p>
           <div class="bu-controls">
             <select id="bu-grades-ay" aria-label="Academic year for these grades" style="margin-right:8px"><option value="">Choose academic year</option><option>2021-2022</option><option>2022-2023</option><option>2023-2024</option><option>2024-2025</option><option>2025-2026</option><option>2026-2027</option></select>
             <input type="file" class="bu-files" multiple accept=".csv,text/csv" aria-label="Select Grade CSV files">
@@ -2263,6 +2263,7 @@
               body: JSON.stringify({
                 college: task.college,
                 dryRun: true,
+                academic_year: task.academicYear || '',
                 enrollment_status: task.enrollStatus,
                 files: [{ filename: f.name, csv: csvText }]
               })
