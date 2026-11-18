@@ -1663,6 +1663,7 @@ app.post('/api/registrar/portal-users/delete', requireSuperAdmin, async (req, re
     const keep = target.rows.map((x) => x.id);
     if (!keep.length) { await client.query('ROLLBACK'); return res.status(400).json({ error: 'Only archived accounts can be deleted.' }); }
     await client.query('DELETE FROM reg_assignments WHERE user_id = ANY($1::int[])', [keep]);
+    await client.query('DELETE FROM reg_subject_assignments WHERE user_id = ANY($1::int[])', [keep]);
     const r = await client.query('DELETE FROM reg_users WHERE id = ANY($1::int[])', [keep]);
     await client.query('COMMIT');
     logAction(req, 'University Registrar', 'accounts deleted', r.rowCount + ' account(s): ' + target.rows.map((x) => x.username).join(', ').slice(0, 300));
