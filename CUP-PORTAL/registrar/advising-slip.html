@@ -49,8 +49,8 @@
       <div class="lbl" style="margin-bottom:6px">Step 6 · Enrollment tasks</div>
       <div style="display:flex;gap:8px;flex-wrap:wrap">
         <button type="button" class="btn s6" data-task="advising" disabled>Advising slip submitted</button>
-        <button type="button" class="btn s6" data-task="coe" disabled>COE printed</button>
-        <button type="button" class="btn s6" data-task="id" disabled>ID validated</button>
+        <button type="button" class="btn s6" data-task="id" disabled>Validate ID</button>
+        <button type="button" class="btn s6" data-task="coe" disabled>PRINT COE</button>
       </div>
       <p id="s6Msg" class="hint" style="margin:6px 0 0"></p>
     </div>
@@ -158,7 +158,9 @@
     document.querySelectorAll('.btn.s6').forEach(function (b) {
       var k = b.getAttribute('data-task'), done = !!tasks[map[k]];
       b.classList.toggle('on', done);
-      b.textContent = { advising: 'Advising slip submitted', coe: 'COE printed', id: 'ID validated' }[k] + (done ? ' ✔' : '');
+      var idle = { advising: 'Advising slip submitted', id: 'Validate ID', coe: 'PRINT COE' }[k];
+      var doneText = { advising: 'Advising slip submitted ✔', id: 'ID VALIDATED ✔', coe: 'COE PRINTED ✔' }[k];
+      b.textContent = done ? doneText : idle;
       b.disabled = !tasks.csc;
       b.setAttribute('data-done', done ? '1' : '0');
       b.setAttribute('data-no', no);
