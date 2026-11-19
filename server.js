@@ -3834,7 +3834,7 @@ app.post('/api/registrar/subject-assignments', requireRegistrar, async (req, res
     const to24 = (h, mi, ap) => String((Number(h) % 12) + (/PM/i.test(ap) ? 12 : 0)).padStart(2, '0') + ':' + mi;
     const schStart = tm ? to24(tm[1], tm[2], tm[3]) : '';
     const schEnd = tm ? to24(tm[4], tm[5], tm[6]) : '';
-    const schTimes = !!(schStart && schEnd && schEnd > schStart);
+    const schTimes = !!(schStart && schEnd); // overnight (end earlier than start) is allowed
     if (schDays || schTimes || roomText) {
       for (const y of years) {
         for (const sec of sections) {
