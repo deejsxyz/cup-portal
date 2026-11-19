@@ -153,7 +153,6 @@
           <tr>
             <th class="border border-slate-300 px-1 py-1.5 w-6"></th>
             <th class="border border-slate-300 px-2 py-1.5 text-left">Subject</th>
-            <th class="border border-slate-300 px-2 py-1.5 text-left">College</th>
             <th class="border border-slate-300 px-2 py-1.5 text-left">Program</th>
             <th class="border border-slate-300 px-2 py-1.5 text-left">Year</th>
             <th class="border border-slate-300 px-2 py-1.5 text-left">Section</th>
@@ -165,7 +164,7 @@
             <th class="border border-slate-300 px-1 py-1.5 w-6"></th>
           </tr>
         </thead>
-        <tbody id="asgBody"><tr><td colspan="12" class="border border-slate-300 px-2 py-4 text-center text-slate-500">Loading…</td></tr></tbody>
+        <tbody id="asgBody"><tr><td colspan="11" class="border border-slate-300 px-2 py-4 text-center text-slate-500">Loading…</td></tr></tbody>
       </table>
     </div>
   </div>
@@ -367,7 +366,7 @@
   }
   function loadAssignments() {
     return api('/api/registrar/subject-assignments').then(function (res) {
-      if (!res.ok) { $('asgBody').innerHTML = '<tr><td colspan="12" class="border border-slate-300 px-2 py-4 text-center text-slate-500">' + esc(res.j.error || 'Could not load.') + '</td></tr>'; return; }
+      if (!res.ok) { $('asgBody').innerHTML = '<tr><td colspan="11" class="border border-slate-300 px-2 py-4 text-center text-slate-500">' + esc(res.j.error || 'Could not load.') + '</td></tr>'; return; }
       term = res.j.term; ay = res.j.academic_year;
       $('asgTerm').textContent = term && ay ? 'Active term: ' + term + ' · A.Y. ' + ay : 'The academic year and semester are not set yet. The University Registrar sets them in Settings → Grading period.';
       var rows = res.j.assignments || [];
@@ -377,7 +376,7 @@
         var secs = (a.sections || []).sort().join(', ');
         return '<tr><td class="border border-slate-300 px-1 py-1.5 text-center"><button type="button" data-add-group="' + a.id + '" title="Add a group for this subject" class="text-emerald-800 font-black text-lg leading-none cursor-pointer">+</button></td>' +
           '<td class="border border-slate-300 px-2 py-1.5">' + esc(a.course_code) + ' — ' + esc(a.descriptive_title || '') + '</td>' +
-          '<td class="border border-slate-300 px-2 py-1.5">' + esc(a.subject_college || '') + '</td><td class="border border-slate-300 px-2 py-1.5">' + esc(a.program || '') + '</td>' +
+          '<td class="border border-slate-300 px-2 py-1.5">' + esc(a.program || '') + '</td>' +
           '<td class="border border-slate-300 px-2 py-1.5">' + esc(yrs) + '</td><td class="border border-slate-300 px-2 py-1.5">' + esc(secs) + '</td>' +
           '<td class="border border-slate-300 px-2 py-1.5">' + esc(a.group_label || '') + '</td>' +
           '<td class="border border-slate-300 px-2 py-1.5">' + esc(a.day_label || '') + '</td>' +
@@ -385,7 +384,7 @@
           '<td class="border border-slate-300 px-2 py-1.5">' + esc(a.room || '') + '</td>' +
           '<td class="border border-slate-300 px-2 py-1.5">' + esc(a.faculty) + '</td>' +
           '<td class="border border-slate-300 px-1 py-1.5 text-center"><button type="button" data-remove="' + a.id + '" title="Remove this assignment" class="text-red-700 font-black text-lg leading-none cursor-pointer">×</button></td></tr>';
-      }).join('') : '<tr><td colspan="12" class="border border-slate-300 px-2 py-4 text-center text-slate-500">No subject assignments yet.</td></tr>';
+      }).join('') : '<tr><td colspan="11" class="border border-slate-300 px-2 py-4 text-center text-slate-500">No subject assignments yet.</td></tr>';
     });
   }
   $('asgBody').addEventListener('click', function (e) {
