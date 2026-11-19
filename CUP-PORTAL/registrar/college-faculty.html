@@ -136,10 +136,6 @@
     <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
       <label class="text-xs font-bold text-slate-700">Group
         <select id="asgGroup" class="block mt-1 w-full px-2 py-1.5 rounded border border-slate-300 text-xs bg-white"><option value="">None</option><option value="1">1</option><option value="2">2</option><option value="3">3</option><option value="4">4</option><option value="5">5</option><option value="6">6</option><option value="7">7</option><option value="8">8</option><option value="9">9</option><option value="10">10</option><option value="11">11</option><option value="12">12</option><option value="13">13</option><option value="14">14</option><option value="15">15</option><option value="16">16</option><option value="17">17</option><option value="18">18</option><option value="19">19</option><option value="20">20</option></select></label>
-      <label class="text-xs font-bold text-slate-700">Day
-        <input id="asgDay" type="text" maxlength="40" placeholder="e.g. MON-WED-FRI" class="block mt-1 w-full px-2 py-1.5 rounded border border-slate-300 text-xs bg-white"></label>
-      <label class="text-xs font-bold text-slate-700">Time
-        <input id="asgTime" type="text" maxlength="40" placeholder="e.g. 2PM-5PM or TBA" class="block mt-1 w-full px-2 py-1.5 rounded border border-slate-300 text-xs bg-white"></label>
     </div>
     <div class="flex flex-wrap items-center gap-3">
       <button type="button" id="asgSave" class="px-5 py-2 bg-indigo-700 hover:bg-indigo-800 text-white rounded-lg text-xs font-bold shadow-md cursor-pointer">Save assignment</button>
@@ -155,13 +151,11 @@
             <th class="border border-slate-300 px-2 py-1.5 text-left">Year</th>
             <th class="border border-slate-300 px-2 py-1.5 text-left">Section</th>
             <th class="border border-slate-300 px-2 py-1.5 text-left">Group</th>
-            <th class="border border-slate-300 px-2 py-1.5 text-left">Day</th>
-            <th class="border border-slate-300 px-2 py-1.5 text-left">Time</th>
             <th class="border border-slate-300 px-2 py-1.5 text-left">Faculty</th>
             <th class="border border-slate-300 px-2 py-1.5 text-center">Remove</th>
           </tr>
         </thead>
-        <tbody id="asgBody"><tr><td colspan="10" class="border border-slate-300 px-2 py-4 text-center text-slate-500">Loading…</td></tr></tbody>
+        <tbody id="asgBody"><tr><td colspan="8" class="border border-slate-300 px-2 py-4 text-center text-slate-500">Loading…</td></tr></tbody>
       </table>
     </div>
   </div>
@@ -335,7 +329,7 @@
   /* Subject Assignments */
   function loadAssignments() {
     return api('/api/registrar/subject-assignments').then(function (res) {
-      if (!res.ok) { $('asgBody').innerHTML = '<tr><td colspan="10" class="border border-slate-300 px-2 py-4 text-center text-slate-500">' + esc(res.j.error || 'Could not load.') + '</td></tr>'; return; }
+      if (!res.ok) { $('asgBody').innerHTML = '<tr><td colspan="8" class="border border-slate-300 px-2 py-4 text-center text-slate-500">' + esc(res.j.error || 'Could not load.') + '</td></tr>'; return; }
       term = res.j.term; ay = res.j.academic_year;
       $('asgTerm').textContent = term && ay ? 'Active term: ' + term + ' · A.Y. ' + ay : 'The academic year and semester are not set yet. The University Registrar sets them in Settings → Grading period.';
       var rows = res.j.assignments || [];
@@ -346,11 +340,9 @@
           '<td class="border border-slate-300 px-2 py-1.5">' + esc(a.subject_college || '') + '</td><td class="border border-slate-300 px-2 py-1.5">' + esc(a.program || '') + '</td>' +
           '<td class="border border-slate-300 px-2 py-1.5">' + esc(yrs) + '</td><td class="border border-slate-300 px-2 py-1.5">' + esc(secs) + '</td>' +
           '<td class="border border-slate-300 px-2 py-1.5">' + esc(a.group_label || '') + '</td>' +
-          '<td class="border border-slate-300 px-2 py-1.5">' + esc(a.day_label || '') + '</td>' +
-          '<td class="border border-slate-300 px-2 py-1.5">' + esc(a.time_slot || '') + '</td>' +
           '<td class="border border-slate-300 px-2 py-1.5">' + esc(a.faculty) + '</td>' +
           '<td class="border border-slate-300 px-2 py-1.5 text-center"><button type="button" data-remove="' + a.id + '" class="px-2 py-1 bg-red-600 hover:bg-red-700 text-white rounded text-[11px] font-bold cursor-pointer">Remove</button></td></tr>';
-      }).join('') : '<tr><td colspan="10" class="border border-slate-300 px-2 py-4 text-center text-slate-500">No subject assignments yet.</td></tr>';
+      }).join('') : '<tr><td colspan="8" class="border border-slate-300 px-2 py-4 text-center text-slate-500">No subject assignments yet.</td></tr>';
     });
   }
   $('asgBody').addEventListener('click', function (e) {
@@ -412,7 +404,7 @@
     var years = Array.prototype.slice.call(document.querySelectorAll('.asg-year:checked')).map(function (c) { return Number(c.value); });
     var secs = $('asgSection').value ? [$('asgSection').value] : [];
     var codes = Array.prototype.slice.call(document.querySelectorAll('.asg-subj:checked')).map(function (c) { return c.value; });
-    var body = { faculty_id: $('asgFaculty').value, subject_college: COLLEGE, program: $('asgProgram').value, course_codes: codes, years: years, sections: secs, group_label: $('asgGroup').value ? 'G' + $('asgGroup').value : '', day_label: $('asgDay').value, time_slot: $('asgTime').value };
+    var body = { faculty_id: $('asgFaculty').value, subject_college: COLLEGE, program: $('asgProgram').value, course_codes: codes, years: years, sections: secs, group_label: $('asgGroup').value ? 'G' + $('asgGroup').value : '' };
     if (!body.faculty_id) { msg.textContent = 'Choose a faculty member.'; return; }
     if (!body.program) { msg.textContent = 'Choose a program.'; return; }
     if (!body.course_codes.length) { msg.textContent = 'Choose at least one subject.'; return; }

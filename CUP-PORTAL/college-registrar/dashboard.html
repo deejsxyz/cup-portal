@@ -374,7 +374,7 @@
         <div id="sj-list" style="margin-top:10px;overflow-x:auto"></div>
         <div id="sch-box" style="margin-top:22px;padding-top:14px;border-top:1px solid #d5e2d5">
           <h3 style="margin:0 0 6px">Subject schedule</h3>
-          <p class="hint">Set the days, time and room of each subject per section. The instructor comes from Subject Assignments. This shows on the student's advising slip and Certificate of Enrollment.</p>
+          <p class="hint">Set the days, time and room of each subject per group and section. Each group's instructor comes from Subject Assignments (group labels such as G1 or G1A). This shows on the student's advising slip and Certificate of Enrollment.</p>
           <div style="display:flex;gap:10px;flex-wrap:wrap;align-items:flex-end">
             <label>Year level <select id="sch-year"><option value="">Select</option><option>1</option><option>2</option><option>3</option><option>4</option></select></label>
             <label>Section <select id="sch-section"><option value="">Select</option><option>A</option><option>B</option><option>C</option></select></label>
@@ -1520,6 +1520,7 @@
         return '<tr>' +
           '<td style="' + td + '">' + esc(r.course_code) + '</td>' +
           '<td style="' + td + '">' + esc(r.descriptive_title) + '</td>' +
+          '<td style="' + td + '">' + esc(r.group_label || '—') + '</td>' +
           '<td style="' + td + '">' + esc(r.instructor || '—') + '</td>' +
           '<td style="' + td + '"><input data-i="' + i + '" data-f="days" value="' + esc(r.days) + '" placeholder="e.g. MWF" maxlength="20" ' + inp + '></td>' +
           '<td style="' + td + '"><input type="time" data-i="' + i + '" data-f="start_time" value="' + esc(r.start_time) + '" ' + inp + '></td>' +
@@ -1531,7 +1532,7 @@
         '<label>Rows per page <select id="sch-size"><option>10</option><option>25</option><option>50</option></select></label>' +
         '<span class="hint">' + schRows.length + ' subject(s)</span></div>' +
         '<table style="width:100%;border-collapse:collapse;font-size:.9rem"><thead><tr>' +
-        ['Code', 'Descriptive title', 'Instructor', 'Days', 'Start', 'End', 'Room'].map(function (t) { return '<th style="' + th + '">' + t + '</th>'; }).join('') +
+        ['Code', 'Descriptive title', 'Group', 'Instructor', 'Days', 'Start', 'End', 'Room'].map(function (t) { return '<th style="' + th + '">' + t + '</th>'; }).join('') +
         '</tr></thead><tbody>' + rowsHtml + '</tbody></table>' +
         '<div style="display:flex;gap:10px;align-items:center;margin-top:10px">' +
         '<button type="button" id="sch-prev"' + (schPage <= 1 ? ' disabled' : '') + '>Previous</button>' +
@@ -1558,7 +1559,7 @@
       var msg = $('#sch-msg'); msg.textContent = '';
       schCapture();
       var items = schRows.map(function (r) {
-        return { course_code: r.course_code, days: r.days || '', start_time: r.start_time || '', end_time: r.end_time || '', room: r.room || '' };
+        return { course_code: r.course_code, group_label: r.group_label || '', days: r.days || '', start_time: r.start_time || '', end_time: r.end_time || '', room: r.room || '' };
       });
       var bad = items.filter(function (x) { return (x.start_time && !x.end_time) || (!x.start_time && x.end_time); });
       if (bad.length) { msg.textContent = 'Set both start and end time for ' + bad[0].course_code + '.'; return; }
