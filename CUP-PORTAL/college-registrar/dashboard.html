@@ -1551,7 +1551,6 @@
           return '<label style="margin-right:6px;white-space:nowrap"><input type="checkbox" data-day="' + d + '"' + (picked.indexOf(d) !== -1 ? ' checked' : '') + '> ' + d.charAt(0) + d.slice(1).toLowerCase() + '</label>';
         }).join('') + '</div>';
         return '<tr data-row="' + i + '"' + (schConf[i] && schConf[i].length ? ' style="background:#fde8e8"' : '') + '>' +
-          '<td style="' + narrow + '"><button type="button" data-add="' + i + '" title="Add a group row for this subject" style="border:0;background:none;color:#166534;font-weight:700;cursor:pointer;padding:0">+</button></td>' +
           '<td style="' + td + '">' +
           esc(r.course_code) + '</td>' +
           '<td style="' + td + '">' + esc(r.descriptive_title) + '</td>' +
@@ -1561,15 +1560,21 @@
           '<td style="' + td + ';white-space:nowrap"><input type="time" data-f="start_time" value="' + esc(r.start_time) + '"> to <input type="time" data-f="end_time" value="' + esc(r.end_time) + '"><div class="hint" data-tba-time style="font-size:.8rem;display:' + (r.tba_time && !r.edited ? '' : 'none') + '">TBA</div></td>' +
           '<td style="' + td + '">' + esc(r.instructor || 'TBA') + '</td>' +
           '<td style="' + td + '"><input data-f="room" value="' + esc(r.room) + '" maxlength="40" style="width:80px;box-sizing:border-box"></td>' +
-          '<td style="' + narrow + '"><button type="button" data-x="' + i + '" title="Remove this subject from the table" style="border:0;background:none;color:#b91c1c;font-weight:700;cursor:pointer;padding:0 4px">×</button></td>' +
           '</tr>';
       }).join('');
       $('#sch-list').innerHTML = '<div style="display:flex;gap:10px;align-items:center;flex-wrap:wrap;margin-bottom:8px">' +
         '<label>Rows per page <select id="sch-size"><option>10</option><option>25</option><option>50</option></select></label>' +
         '<span class="hint">' + view.length + ' subject(s)</span></div>' +
-        '<table style="width:100%;border-collapse:collapse;font-size:.9rem"><thead><tr>' +
-        ['', 'Code', 'Descriptive title', 'Group', 'Section', 'Day', 'Time', 'Instructor', 'Room', ''].map(function (t) { return '<th style="' + th + '">' + t + '</th>'; }).join('') +
-        '</tr></thead><tbody>' + rowsHtml + '</tbody></table>' +
+        '<div style="display:flex;gap:6px;align-items:flex-start">' +
+        '<table id="sch-gl" style="border-collapse:collapse;font-size:.9rem;width:34px"><thead><tr><th></th></tr></thead><tbody>' + view.slice(from, from + schSize).map(function (i) {
+          return '<tr><td style="padding:0 2px;vertical-align:middle"><button type="button" data-add="' + i + '" title="Add a group row for this subject" style="border:0;background:none;color:#166534;font-weight:700;cursor:pointer;padding:0">+</button></td></tr>';
+        }).join('') + '</tbody></table>' +
+        '<div style="flex:1;min-width:0;overflow-x:auto"><table style="width:100%;border-collapse:collapse;font-size:.9rem"><thead><tr>' +
+        ['Code', 'Descriptive title', 'Group', 'Section', 'Day', 'Time', 'Instructor', 'Room'].map(function (t) { return '<th style="' + th + '">' + t + '</th>'; }).join('') +
+        '</tr></thead><tbody>' + rowsHtml + '</tbody></table></div>' +
+        '<table id="sch-gr" style="border-collapse:collapse;font-size:.9rem;width:34px"><thead><tr><th></th></tr></thead><tbody>' + view.slice(from, from + schSize).map(function (i) {
+          return '<tr><td style="padding:0 2px;vertical-align:middle"><button type="button" data-x="' + i + '" title="Remove this subject from the table" style="border:0;background:none;color:#b91c1c;font-weight:700;cursor:pointer;padding:0 4px">×</button></td></tr>';
+        }).join('') + '</tbody></table></div>' +
         '<div style="display:flex;gap:10px;align-items:center;margin-top:10px">' +
         '<button type="button" id="sch-prev"' + (schPage <= 1 ? ' disabled' : '') + '>Previous</button>' +
         '<span class="hint">Page ' + schPage + ' of ' + pages + '</span>' +
@@ -1580,6 +1585,21 @@
       $('#sch-prev').onclick = function () { schCapture(); schPage--; schRender(); schCheck(); };
       $('#sch-next').onclick = function () { schCapture(); schPage++; schRender(); schCheck(); };
       $('#sch-save').onclick = schSave;
+      schSyncGutters();
+    }
+    // Keeps the + and × columns lined up with the table rows.
+    function schSyncGutters() {
+      var head = document.querySelector('#sch-list table[style*="width:100%"] thead tr');
+      var hh = head ? head.offsetHeight : 0;
+      var gl = document.querySelectorAll('#sch-gl tbody tr'), gr = document.querySelectorAll('#sch-gr tbody tr');
+      var glh = document.querySelector('#sch-gl thead tr'), grh = document.querySelector('#sch-gr thead tr');
+      if (glh) glh.style.height = hh + 'px';
+      if (grh) grh.style.height = hh + 'px';
+      document.querySelectorAll('#sch-list tbody tr[data-row]').forEach(function (tr, k) {
+        var h = tr.offsetHeight + 'px';
+        if (gl[k]) gl[k].style.height = h;
+        if (gr[k]) gr[k].style.height = h;
+      });
     }
     // Hides a row's TBA as soon as it is edited (no TBA while editing).
     function schTouch(e) {
