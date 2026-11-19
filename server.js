@@ -3054,6 +3054,43 @@ app.get('/api/registrar/coe/:no', requireRegistrar, async (req, res) => {
         cell.font = Object.assign({}, cell.font, { size: 9 });
       });
     });
+    // Fit text in the template's merged cells: header fields shrink to one line; subject cells wrap inside their own cell.
+    const colNo = (letters) => letters.split('').reduce((n, ch) => n * 26 + (ch.charCodeAt(0) - 64), 0);
+    const spanWidth = (from, to) => { let w = 0; for (let i = colNo(from); i <= colNo(to); i++) { w += (ws.getColumn(i).width || 8.43); } return w; };
+    const fitHeader = (addr, from, to) => {
+      const cell = ws.getCell(addr);
+      const v = cell.value == null ? '' : String(cell.value);
+      if (!v) return;
+      const base = (cell.font && cell.font.size) || 11;
+      const W = spanWidth(from, to);
+      const need = v.length * 1.1; // uppercase text is wide
+      const fit = base * W / need;
+      cell.alignment = Object.assign({}, cell.alignment, { wrapText: false, vertical: 'middle' });
+      if (fit < base) cell.font = Object.assign({}, cell.font, { size: Math.max(6, Math.floor(fit * 2) / 2) });
+    };
+    const wrapBody = (addr, from, to, row) => {
+      const cell = ws.getCell(addr);
+      const v = cell.value == null ? '' : String(cell.value);
+      cell.alignment = Object.assign({}, cell.alignment, { wrapText: true, vertical: 'middle' });
+      if (!v) return;
+      const W = spanWidth(from, to);
+      const perLine = W * 11 / 9; // characters per line at 9pt
+      const lines = Math.max(1, Math.ceil((v.length * 1.1) / perLine));
+      if (lines > 1) {
+        const cur = ws.getRow(row).height || 12.75;
+        ws.getRow(row).height = Math.max(cur, lines * 11.5);
+      }
+    };
+    [['F10', 'F', 'L'], ['Q10', 'Q', 'V'], ['AB10', 'AB', 'AG'], ['F11', 'F', 'V'], ['AB11', 'AB', 'AG'], ['F12', 'F', 'S'], ['W12', 'W', 'AG'], ['A8', 'A', 'AG']]
+      .forEach(([a, f, t2]) => fitHeader(a, f, t2));
+    for (let row = 15; row <= 15 + Math.min(subs.length, 41) - 1; row++) {
+      wrapBody('B' + row, 'B', 'F', row);
+      wrapBody('G' + row, 'G', 'I', row);
+      wrapBody('J' + row, 'J', 'N', row);
+      wrapBody('O' + row, 'O', 'W', row);
+      wrapBody('X' + row, 'X', 'Z', row);
+      wrapBody('AA' + row, 'AA', 'AG', row);
+    }
     const file = ('COE_' + no + '_' + t.ay + '_' + t.term).replace(/[^A-Za-z0-9_-]+/g, '_') + '.xlsx';
     res.setHeader('Content-Type', 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet');
     res.setHeader('Content-Disposition', 'attachment; filename="' + file + '"');
