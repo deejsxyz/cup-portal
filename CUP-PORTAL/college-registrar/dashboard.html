@@ -380,7 +380,8 @@
           <p class="hint">Subjects of the active term load automatically. Pick the group, days, time and room. The instructor comes from Subject Assignments. Leave Section blank to save to every section of the year level. This shows on the student's advising slip and Certificate of Enrollment.</p>
           <div style="display:flex;gap:10px;flex-wrap:wrap;align-items:flex-end">
             <label>Year level <select id="sch-year"><option value="">All years</option><option>1</option><option>2</option><option>3</option><option>4</option></select></label>
-            <label>Filter <input id="sch-filter" type="search" placeholder="Code or title" style="width:200px"></label>
+            <label>Add another group for <select id="sch-add-subject" style="max-width:260px"><option value="">Choose a major subject</option></select></label>
+          <button type="button" id="sch-add-row">Add row</button>
           <label>Section <select id="sch-section"><option value="">All sections</option><option>A</option><option>B</option><option>C</option></select></label>
           </div>
           <div id="sch-list" style="margin-top:10px;overflow-x:auto"></div>
@@ -1517,7 +1518,7 @@
       });
     }
     function schRender() {
-      var q = ($('#sch-filter') ? $('#sch-filter').value : '').trim().toLowerCase();
+      var q = '';
       var view = [];
       schRows.forEach(function (r, i) {
         if (!q || (r.course_code + ' ' + r.descriptive_title).toLowerCase().indexOf(q) !== -1) view.push(i);
@@ -1628,7 +1629,26 @@
         schCheck();
       }).catch(function () { $('#sch-msg').textContent = 'Could not load the schedule.'; });
     }
-    function schOpen() { schLoad(); }
+    // Major subjects for "Add another group": every major subject of the college, not only the active term (GEC and other shared subjects left out).
+    var schMajor = [];
+    function schLoadMajor() {
+      var c = sjCollege();
+      if (!c) return;
+      fetch('/api/registrar/courses?college=' + encodeURIComponent(c), { credentials: 'same-origin' }).then(function (r) { return r.json(); }).then(function (j) {
+        var seen = {};
+        schMajor = (j.courses || []).filter(function (x) {
+          if (/^(GEC|COR|PHE|NSTP|RIZ)/i.test(x.course_code) || seen[x.course_code]) return false;
+          seen[x.course_code] = true;
+          return true;
+        }).sort(function (a, b) { return String(a.course_code).localeCompare(String(b.course_code)); });
+        var cur = $('#sch-add-subject').value;
+        $('#sch-add-subject').innerHTML = '<option value="">Choose a major subject</option>' + schMajor.map(function (x) {
+          return '<option value="' + esc(x.course_code) + '">' + esc(x.course_code + ' — ' + x.descriptive_title) + '</option>';
+        }).join('');
+        $('#sch-add-subject').value = cur;
+      }).catch(function () {});
+    }
+    function schOpen() { schLoad(); schLoadMajor(); }
     // Live update: every 10 seconds the table re-reads the active term (Subject Assignments and schedules saved elsewhere). Paused while there are unsaved edits.
     setInterval(function () {
       var panel = document.getElementById('schedule-section');
@@ -1638,7 +1658,22 @@
     $('#sch-section').onchange = function () { schLoad(); };
     $('#sch-list').oninput = schTouch;
     $('#sch-list').onchange = schTouch;
-    $('#sch-filter').oninput = function () { schCapture(); schPage = 1; schRender(); };
+    $('#sch-add-row').onclick = function () {
+      var code = $('#sch-add-subject').value;
+      if (!code) return;
+      var c = schMajor.filter(function (x) { return x.course_code === code; })[0];
+      if (!c) return;
+      schCapture();
+      var nr = { course_code: code, descriptive_title: c.descriptive_title, units: c.units,
+        year_level: Number(c.year_level) || Number($('#sch-year').value) || 1, group_label: '', instructor: '',
+        days: '', start_time: '', end_time: '', room: '', tba_day: true, tba_time: true, edited: true };
+      var last = -1;
+      schRows.forEach(function (r, i) { if (r.course_code === code) last = i; });
+      schRows.splice(last < 0 ? schRows.length : last + 1, 0, nr);
+      schDirty = true;
+      schRender();
+      schCheck();
+    };
     function schSave() {
       var msg = $('#sch-msg'); msg.textContent = '';
       schCapture();
