@@ -202,28 +202,14 @@
     document.getElementById('s6Msg').textContent = !tasks.csc ? 'CSC payment is not yet recorded, so these tasks are not available.'
       : (curStatus !== 'enrolled' ? 'PRINT COE is available once the student is officially enrolled.' : '');
   }
-  // Certificate of Enrollment: auto-filled from the student's record. Layout is a placeholder until the template is provided.
-  var STANDING_ABBR = { 'REGULAR': 'REG', 'IRREGULAR': 'IRREG', 'WARNING': 'WARN', 'PROBATION': 'PROB', 'PERMANENT DISQUALIFICATION': 'DISQ' };
+  // Certificate of Enrollment: downloads the COE filled from the Excel template for the current student.
   function printCoe() {
-    var s = current, w = window.open('', '_blank');
-    if (!w) { document.getElementById('s6Msg').textContent = 'Allow pop-ups for this site to print the COE.'; return false; }
-    var rowsHtml = curSubjects.length ? curSubjects.map(function (x) {
-      return '<tr><td>' + esc(x.course_code) + '</td><td>' + esc(x.days || '') + '</td><td>' + esc(x.start_time && x.end_time ? fmtTime(x.start_time) + ' - ' + fmtTime(x.end_time) : '') + '</td><td>' + esc(x.descriptive_title || '') + '</td><td>' + esc(x.units == null ? '' : x.units) + '</td><td>' + esc(x.room || '') + '</td><td>' + esc(x.instructor || '') + '</td></tr>';
-    }).join('') : '<tr><td colspan="7">No subjects</td></tr>';
-    var units = curSubjects.reduce(function (a, x) { return a + (parseFloat(x.units) || 0); }, 0);
-    w.document.write('<!doctype html><html><head><title>Certificate of Enrollment</title><style>body{font-family:Arial,sans-serif;padding:40px;color:#000}h1{text-align:center;font-size:18px;margin:0}h2{text-align:center;font-size:14px;margin:4px 0 24px}table{width:100%;border-collapse:collapse;font-size:12px;margin-top:12px}td,th{border:1px solid #444;padding:6px;text-align:left}.f{margin:6px 0;font-size:13px}@media print{button{display:none}}</style></head><body>' +
-      '<h1>CERTIFICATE OF ENROLLMENT</h1><h2>' + esc(COLLEGE) + ' · ' + esc(term) + ' · A.Y. ' + esc(ay) + '</h2>' +
-      '<div class="f"><b>Student No.:</b> ' + esc(s.student_no) + '</div>' +
-      '<div class="f"><b>Name:</b> ' + esc(fullName(s)) + '</div>' +
-      '<div class="f"><b>Program:</b> ' + esc(s.program) + '</div>' +
-      '<div class="f"><b>Status:</b> ' + esc(STANDING_ABBR[curStanding] || curStanding) + '</div>' +
-      '<div class="f"><b>Student Type:</b> ' + esc(curStudentType) + '</div>' +
-      '<div class="f"><b>College:</b> ' + esc(COLLEGE) + '</div>' +
-      '<div class="f"><b>Year &amp; Section:</b> ' + esc((s.year_level || '') + (s.section || '')) + '</div>' +
-      '<table><thead><tr><th>Subject Code</th><th>Days</th><th>Time</th><th>Descriptive title</th><th>Units</th><th>Room</th><th>Instructor</th></tr></thead><tbody>' + rowsHtml + '</tbody></table>' +
-      '<div class="f" style="margin-top:10px"><b>Total units:</b> ' + units + '</div>' +
-      '<script>window.onload=function(){window.print();}<\/script></body></html>');
-    w.document.close();
+    var s = current;
+    if (!s) return false;
+    var a = document.createElement('a');
+    a.href = '/api/registrar/coe/' + encodeURIComponent(s.student_no) + '?college=' + encodeURIComponent(COLLEGE);
+    a.download = '';
+    document.body.appendChild(a); a.click(); a.remove();
     return true;
   }
   document.getElementById('step6').addEventListener('click', function (e) {

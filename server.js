@@ -2983,6 +2983,81 @@ app.get('/api/registrar/enroll-context', requireRegistrar, async (req, res) => {
 });
 
 // Enrollment history for one student (college registrar).
+// Certificate of Enrollment (Excel), filled from the COE template for an officially enrolled student.
+const COE_TEMPLATE = path.join(__dirname, 'CUP-PORTAL', 'forms', 'COE_Template.xlsx');
+const COE_STANDING_ABBR = { 'REGULAR': 'REG', 'IRREGULAR': 'IRREG', 'WARNING': 'WARN', 'PROBATION': 'PROB', 'PERMANENT DISQUALIFICATION': 'DISQ' };
+app.get('/api/registrar/coe/:no', requireRegistrar, async (req, res) => {
+  const college = regCollege(req, req.query.college);
+  if (!college) return res.status(403).json({ error: 'Choose a college.' });
+  try {
+    const no = String(req.params.no || '').trim();
+    const st = await pool.query('SELECT * FROM reg_students WHERE student_no = $1 AND college = $2', [no, college]);
+    if (!st.rows.length) return res.status(404).json({ error: 'Student not found.' });
+    const s = st.rows[0];
+    if (s.status !== 'enrolled') return res.status(400).json({ error: 'The student is not officially enrolled yet.' });
+    const t = await activeTerm();
+    const en = await pool.query('SELECT year_level, section, subjects FROM reg_enrollments WHERE student_no = $1 AND college = $2 AND term = $3 AND academic_year = $4', [no, college, t.term, t.ay]);
+    if (!en.rows.length) return res.status(400).json({ error: 'No enrollment for the active term.' });
+    const e = en.rows[0];
+    const subs = Array.isArray(e.subjects) ? e.subjects : [];
+    const codes = subs.map((x) => x.course_code);
+    const titles = new Map();
+    if (codes.length) {
+      const c = await pool.query('SELECT course_code, descriptive_title, units FROM reg_courses WHERE course_code = ANY($1)', [codes]);
+      c.rows.forEach((x) => { if (!titles.has(x.course_code)) titles.set(x.course_code, x); });
+    }
+    const sc = codes.length ? await pool.query(
+      'SELECT course_code, days, start_time, end_time, room FROM reg_schedules WHERE college = $1 AND term = $2 AND academic_year = $3 AND year_level = $4 AND section = $5 AND course_code = ANY($6)',
+      [college, t.term, t.ay, e.year_level, e.section, codes]) : { rows: [] };
+    const ic = codes.length ? await pool.query(
+      `SELECT sa.course_code, string_agg(DISTINCT u.name, ', ') AS instructor FROM reg_subject_assignments sa JOIN reg_users u ON u.id = sa.user_id
+        WHERE sa.college = $1 AND sa.term = $2 AND sa.academic_year = $3 AND $4 = ANY(sa.years) AND $5 = ANY(sa.sections) AND sa.course_code = ANY($6)
+        GROUP BY sa.course_code`,
+      [college, t.term, t.ay, e.year_level, e.section, codes]) : { rows: [] };
+    const smap = new Map(sc.rows.map((x) => [x.course_code, x]));
+    const imap = new Map(ic.rows.map((x) => [x.course_code, x.instructor]));
+    const prior = await pool.query('SELECT 1 FROM reg_enrollments WHERE student_no = $1 AND college = $2 AND NOT (term = $3 AND academic_year = $4) LIMIT 1', [no, college, t.term, t.ay]);
+    const standing = await studentRetentionStatus(no).catch(() => null);
+    const fmtT = (hhmm) => { const m = /^(\d{2}):(\d{2})$/.exec(hhmm || ''); if (!m) return ''; const h = Number(m[1]); return (h % 12 || 12) + ':' + m[2] + ' ' + (h >= 12 ? 'PM' : 'AM'); };
+
+    const wb = new ExcelJS.Workbook();
+    await wb.xlsx.readFile(COE_TEMPLATE);
+    const ws = wb.worksheets[0];
+    const name = [s.last_name, [s.first_name, s.middle_name, s.name_extension].filter((v) => v && String(v).trim()).join(' ')].filter(Boolean).join(', ');
+    ws.getCell('A8').value = cogTermLabel(t.term) + ', A.Y. ' + t.ay;
+    ws.getCell('F10').value = s.student_no;
+    ws.getCell('Q10').value = String(e.year_level) + String(e.section || '');
+    ws.getCell('AB10').value = prior.rows.length ? 'OLD' : 'NEW';
+    ws.getCell('F11').value = name.toUpperCase();
+    ws.getCell('AB11').value = COE_STANDING_ABBR[standing && standing.status] || (standing && standing.status) || 'REG';
+    ws.getCell('F12').value = (COLLEGE_FULL_NAMES[college] || college).toUpperCase();
+    ws.getCell('W12').value = ((s.program || '') + (s.major ? ' - ' + s.major : '')).toUpperCase();
+    subs.slice(0, 41).forEach((x, i) => {
+      const row = 15 + i;
+      const sd = smap.get(x.course_code) || {};
+      const tm = sd.start_time && sd.end_time ? fmtT(sd.start_time) + ' - ' + fmtT(sd.end_time) : '';
+      const title = x.descriptive_title || (titles.get(x.course_code) || {}).descriptive_title || '';
+      const units = x.units != null ? x.units : ((titles.get(x.course_code) || {}).units);
+      ws.getCell('A' + row).value = i + 1;
+      ws.getCell('B' + row).value = x.course_code;
+      ws.getCell('G' + row).value = sd.days || '';
+      ws.getCell('J' + row).value = tm;
+      ws.getCell('O' + row).value = title;
+      ws.getCell('X' + row).value = units == null ? '' : Number(units);
+      const inst = imap.get(x.course_code) || '';
+      ws.getCell('AA' + row).value = [inst, sd.room ? 'Room ' + sd.room : ''].filter(Boolean).join(' · ');
+    });
+    const file = ('COE_' + no + '_' + t.ay + '_' + t.term).replace(/[^A-Za-z0-9_-]+/g, '_') + '.xlsx';
+    res.setHeader('Content-Type', 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet');
+    res.setHeader('Content-Disposition', 'attachment; filename="' + file + '"');
+    await wb.xlsx.write(res);
+    res.end();
+  } catch (err) {
+    console.error('certificate of enrollment', err);
+    if (!res.headersSent) res.status(500).json({ error: 'Could not build the certificate of enrollment.' });
+  }
+});
+
 app.get('/api/registrar/enrollments', requireRegistrar, async (req, res) => {
   const college = regCollege(req, (req.body || {}).college || req.query.college);
   if (!college) return res.status(403).json({ error: 'Choose a college.' });
