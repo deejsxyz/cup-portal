@@ -182,8 +182,9 @@
         <button class="tab" type="button" data-panel="gs-student">Graduate School</button>
         <button class="tab" type="button" data-panel="tesda-student">TESDA</button>
         <button class="tab" type="button" data-panel="portal-accounts" id="accounts-tab" hidden>Accounts</button>
-        <button class="tab" type="button" data-panel="subjects-section">Subjects</button>
+        <button class="tab" type="button" data-panel="subjects-section" id="subjects-tab">Subjects</button>
         <button class="tab" type="button" data-panel="settings" id="settings-tab">Settings</button>
+        <button class="tab" type="button" data-panel="schedule-section" id="schedule-tab">Subject Schedule</button>
         <button class="tab" type="button" data-panel="batch-uploads" id="batch-uploads-tab">BATCH UPLOADS</button>
         <div class="menu" data-menu="logs">
           <button class="tab" type="button" aria-expanded="false">Logs</button>
@@ -372,6 +373,8 @@
         <button type="button" id="sj-upload">Upload subjects CSV</button>
         <p class="hint" id="sj-msg"></p>
         <div id="sj-list" style="margin-top:10px;overflow-x:auto"></div>
+    </div></div></section>
+    <section class="panel" id="schedule-section"><div class="box"><h2>Subject Schedule</h2><div class="body">
         <div id="sch-box" style="margin-top:22px;padding-top:14px;border-top:1px solid #d5e2d5">
           <h3 style="margin:0 0 6px">Subject schedule</h3>
           <p class="hint">Set the days, time and room of each subject per group and section. Each group's instructor comes from Subject Assignments (group labels such as G1 or G1A). This shows on the student's advising slip and Certificate of Enrollment.</p>
@@ -1931,7 +1934,20 @@
         btn.textContent = pair[1];
         btn.addEventListener('click', function () { showPanel(panelId); });
         anchor.parentNode.insertBefore(btn, anchor);
+        if (pair[0] === 'faculty') addNavTab(anchor, 'subjects-section', 'Subjects', '#subjects-tab');
+        if (pair[0] === 'step2') addNavTab(anchor, 'schedule-section', 'Subject Schedule', '#schedule-tab');
       });
+    }
+
+    // Subjects sits after Faculty; Subject Schedule after Pre-enrollment. The static tabs are for the University Registrar.
+    function addNavTab(anchor, panelId, label, staticSel) {
+      var st = $(staticSel); if (st) st.hidden = true;
+      var btn = document.createElement('button');
+      btn.className = 'tab'; btn.type = 'button';
+      btn.setAttribute('data-panel', panelId);
+      btn.textContent = label;
+      btn.addEventListener('click', function () { showPanel(panelId); });
+      anchor.parentNode.insertBefore(btn, anchor);
     }
 
     // The college's own buttons (Student, Faculty, Locked Account) appear under the nav bar.
