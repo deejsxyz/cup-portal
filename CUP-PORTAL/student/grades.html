@@ -294,7 +294,7 @@
     $('gNo').textContent = p.student_no;
     $('gProgram').textContent = p.program || '';
     $('gYear').textContent = PROG_ABBR(p.program) + '-' + p.year_level + (p.section || '');
-    $('gStatus').innerHTML = p.status === 'enrolled' ? '<span class="badge">OFFICIALLY ENROLLED</span>' : '<span class="hint">' + esc(p.status || '') + '</span>';
+    $('gStatus').innerHTML = p.status === 'enrolled' ? '<span class="badge">OFFICIALLY ENROLLED</span>' : '<span class="hint">' + esc(p.term_status || p.status || '') + '</span>';
     $('photo').src = p.photo || '/images/student-default-photo.webp';
     var next = p.photo_next_change ? new Date(p.photo_next_change) : null;
     var locked = !!next && next > new Date();

@@ -2855,11 +2855,20 @@ function maskEmail(e) {
 }
 app.get('/api/student/profile', requirePortal('student'), async (req, res) => {
   const r = await pool.query(
-    `SELECT student_no, first_name, middle_name, last_name, college, program, year_level, section, status, birthday, birthday_changed, email, photo, photo_changed_at
+    `SELECT student_no, first_name, middle_name, last_name, college, program, year_level, section, status, birthday, birthday_changed, email, photo, photo_changed_at, COALESCE(step1_status, '') AS step1_status
        FROM reg_students WHERE student_no = $1`, [req.portal.student_no]);
   if (!r.rows.length) return res.status(404).json({ error: 'Student record not found.' });
   const s = r.rows[0];
+  // Term status shown to the student for the active term.
+  const tsTerm = await gradingTerm();
+  const tsPre = await pool.query('SELECT 1 FROM reg_preregistrations WHERE student_no = $1 AND term = $2 AND academic_year = $3', [s.student_no, tsTerm.term, tsTerm.ay]);
+  let termStatus;
+  if (s.status === 'enrolled') termStatus = 'Officially enrolled';
+  else if (!tsPre.rowCount) termStatus = 'Not yet pre-registered. Complete the Pre-Registration form.';
+  else if (s.step1_status !== 'verified') termStatus = "Step 1 is not yet done. Confirm student record to the Registrar's Office.";
+  else termStatus = 'Pre-registered';
   res.json({
+    term_status: termStatus,
     student_no: s.student_no, first_name: s.first_name, middle_name: s.middle_name || '', last_name: s.last_name,
     college: s.college, college_name: COLLEGE_FULL_NAMES[s.college] || s.college, college_logo: COLLEGE_LOGOS[s.college] || '/images/cup-logo-seal.png',
     program: canonicalProgram(s.program) || s.program, year_level: s.year_level, section: s.section, status: s.status,
