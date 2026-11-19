@@ -1546,7 +1546,7 @@
           '<td style="' + td + ';white-space:nowrap"><input type="time" data-f="start_time" value="' + esc(r.start_time) + '"> to <input type="time" data-f="end_time" value="' + esc(r.end_time) + '"><div class="hint" data-tba-time style="font-size:.8rem;display:' + (r.tba_time && !r.edited ? '' : 'none') + '">TBA</div></td>' +
           '<td style="' + td + '">' + esc(r.instructor || 'TBA') + '</td>' +
           '<td style="' + td + '"><input data-f="room" value="' + esc(r.room) + '" maxlength="40" style="width:100%;box-sizing:border-box"></td>' +
-          '<td style="' + td + '"><button type="button" data-x="' + esc(r.course_code) + '" title="Remove this subject from the table" style="border:0;background:none;color:#b91c1c;font-weight:700;cursor:pointer;padding:0 4px">×</button></td>' +
+          '<td style="' + td + '"><button type="button" data-x="' + i + '" title="Remove this subject from the table" style="border:0;background:none;color:#b91c1c;font-weight:700;cursor:pointer;padding:0 4px">×</button></td>' +
           '</tr>';
       }).join('');
       $('#sch-list').innerHTML = '<div style="display:flex;gap:10px;align-items:center;flex-wrap:wrap;margin-bottom:8px">' +
@@ -1697,11 +1697,15 @@
       if (add) { schAddGroup(Number(add.getAttribute('data-add'))); return; }
       var b = e.target.closest ? e.target.closest('[data-x]') : null;
       if (!b) return;
-      var code = b.getAttribute('data-x');
+      // × removes only this row; the subject leaves the table when its last row is removed.
       schCapture();
-      schRows = schRows.filter(function (r) { return r.course_code !== code; });
-      schSubjects = schSubjects.filter(function (c) { return c !== code; });
-      if (schSubject === code) schSubject = schSubjects[schSubjects.length - 1] || '';
+      var idx = Number(b.getAttribute('data-x'));
+      var code = schRows[idx] ? schRows[idx].course_code : '';
+      schRows.splice(idx, 1);
+      if (!schRows.some(function (r) { return r.course_code === code; })) {
+        schSubjects = schSubjects.filter(function (c) { return c !== code; });
+        if (schSubject === code) schSubject = schSubjects[schSubjects.length - 1] || '';
+      }
       if (!schRows.length) { $('#sch-list').innerHTML = '<p class="hint">Choose a subject to show its schedule.</p>'; $('#sch-conflicts').innerHTML = ''; return; }
       schRender();
       schCheck();
@@ -1712,8 +1716,12 @@
       schCapture();
       var ref = schRows[refIdx];
       if (!ref) return;
+      var used = {};
+      schRows.forEach(function (r) { if (r.course_code === ref.course_code) used[r.group_label] = true; });
+      var free = '';
+      for (var g = 1; g <= 20 && !free; g++) if (!used['G' + g]) free = 'G' + g;
       var nr = { course_code: ref.course_code, descriptive_title: ref.descriptive_title, units: ref.units,
-        year_level: ref.year_level || Number($('#sch-year').value) || 1, group_label: '', instructor: '',
+        year_level: ref.year_level || Number($('#sch-year').value) || 1, group_label: free, instructor: '',
         days: '', start_time: '', end_time: '', room: '', tba_day: true, tba_time: true, edited: true };
       schRows.splice(refIdx + 1, 0, nr);
       schDirty = true;
