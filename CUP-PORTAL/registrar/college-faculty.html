@@ -116,7 +116,8 @@
       <label class="text-xs font-bold text-slate-700">Program
         <select id="asgProgram" class="block mt-1 w-full px-2 py-1.5 rounded border border-slate-300 text-xs bg-white"></select></label>
       <div class="text-xs font-bold text-slate-700 md:col-span-2">Subjects <span class="font-normal text-slate-500">(select one or more)</span>
-        <div id="asgSubjects" class="mt-1 max-h-56 overflow-y-auto border border-slate-300 rounded bg-white p-2 grid grid-cols-1 md:grid-cols-2 gap-x-4 gap-y-1"></div></div>
+        <div id="asgSubjects" class="mt-1 max-h-56 overflow-y-auto border border-slate-300 rounded bg-white p-2 grid grid-cols-1 md:grid-cols-2 gap-x-4 gap-y-1 transition-opacity"></div>
+        <p id="asgSubjHint" class="text-[11px] font-normal text-slate-500 mt-1">Choose a faculty member and a program first.</p></div>
     </div>
     <p class="text-[11px] text-slate-500">Only subjects of this college are listed. Pick the program, then tick one or more subjects.</p>
     <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
@@ -369,7 +370,22 @@
     $('asgSubjects').innerHTML = mine.length ? mine.map(function (c) {
       return '<label class="flex items-center gap-1"><input type="checkbox" class="asg-subj" value="' + esc(c.course_code) + '"> ' + esc(c.course_code + ' — ' + c.descriptive_title) + '</label>';
     }).join('') : '<p class="text-slate-500">No subjects for this college yet.</p>';
+    updateSubjectsEnabled();
   }
+  // Subject checkboxes stay greyed out until a faculty member and a program are chosen.
+  function updateSubjectsEnabled() {
+    var ready = !!$('asgFaculty').value && !!$('asgProgram').value;
+    var box = $('asgSubjects');
+    box.style.opacity = ready ? '1' : '0.45';
+    box.style.pointerEvents = ready ? '' : 'none';
+    document.querySelectorAll('.asg-subj').forEach(function (c) {
+      c.disabled = !ready;
+      if (!ready) c.checked = false;
+    });
+    $('asgSubjHint').hidden = ready;
+  }
+  $('asgFaculty').addEventListener('change', updateSubjectsEnabled);
+  $('asgProgram').addEventListener('change', updateSubjectsEnabled);
   function loadSubjects() {
     return api('/api/registrar/subject-catalog').then(function (res) {
       if (!res.ok) return;
