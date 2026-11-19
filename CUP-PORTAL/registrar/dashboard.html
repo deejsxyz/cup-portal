@@ -515,6 +515,9 @@
         <p class="hint">Approve all submitted grades for one college. Students can see grades only after approval.</p>
         <div style="display:flex;gap:8px;flex-wrap:wrap;align-items:center;margin-bottom:10px">
           <input id="ag-search" type="search" placeholder="Search student no. or name" aria-label="Search" style="min-width:240px">
+          <select id="ag-program" aria-label="Program"><option value="">All programs</option></select>
+          <select id="ag-year" aria-label="Year level"><option value="">All year levels</option><option value="1">1st Year</option><option value="2">2nd Year</option><option value="3">3rd Year</option><option value="4">4th Year</option></select>
+          <select id="ag-section" aria-label="Section"><option value="">All sections</option><option value="A">Section A</option><option value="B">Section B</option><option value="C">Section C</option></select>
           <select id="ag-college" aria-label="College"><option value="">Choose a college</option><option>COACS</option><option>CAS</option><option>CONM</option><option>COED</option><option>COBM</option><option>LAW</option><option>GS</option><option>TESDA-TVI</option></select>
           <button type="button" id="ag-approve">Approve submitted grades</button>
           <button type="button" id="ag-approve-sel" disabled>Approve selected (0)</button>
@@ -769,12 +772,20 @@
         .then(function (r) { return r.json().then(function (j) { return { ok: r.ok, j: j }; }); })
         .then(function (res) {
           if (!res.ok) { $('#ag-list').innerHTML = '<p class="hint">' + esc(res.j.error || 'Could not load grades.') + '</p>'; return; }
-          AG.rows = res.j.grades || []; AG.page = 1; AG.sel = {}; agUpdateSel(); drawAG();
+          AG.rows = res.j.grades || []; AG.page = 1; AG.sel = {};
+          var progs = {};
+          AG.rows.forEach(function (g) { if (g.program) progs[g.program] = agProgram(g.program); });
+          $('#ag-program').innerHTML = '<option value="">All programs</option>' + Object.keys(progs).sort().map(function (p) { return '<option value="' + esc(p) + '">' + esc(progs[p]) + '</option>'; }).join('');
+          agUpdateSel(); drawAG();
         }).catch(function () { $('#ag-list').innerHTML = '<p class="hint">Could not load grades.</p>'; });
     }
     function drawAG() {
       var q = AG.q.trim().toLowerCase();
-      var rows = !q ? AG.rows : AG.rows.filter(function (g) { return (String(g.student_no) + ' ' + (g.last_name || '') + ' ' + (g.first_name || '') + ' ' + (g.last_name || '') + ', ' + (g.first_name || '')).toLowerCase().indexOf(q) !== -1; });
+      var fp = $('#ag-program').value, fy = $('#ag-year').value, fs = $('#ag-section').value;
+      var base = AG.rows.filter(function (g) {
+        return (!fp || g.program === fp) && (!fy || String(g.year_level) === fy) && (!fs || g.section === fs);
+      });
+      var rows = !q ? base : base.filter(function (g) { return (String(g.student_no) + ' ' + (g.last_name || '') + ' ' + (g.first_name || '') + ' ' + (g.last_name || '') + ', ' + (g.first_name || '')).toLowerCase().indexOf(q) !== -1; });
       var pages = Math.max(1, Math.ceil(rows.length / AG.size));
       if (AG.page > pages) AG.page = pages;
       var slice = rows.slice((AG.page - 1) * AG.size, AG.page * AG.size);
@@ -813,6 +824,9 @@
       if ($('#ag-next')) $('#ag-next').onclick = function () { AG.page++; drawAG(); };
     }
     safeOn('#ag-college', 'change', function () { AG.sel = {}; AG.q = ''; $('#ag-search').value = ''; agUpdateSel(); loadAG(); });
+    ['#ag-program', '#ag-year', '#ag-section'].forEach(function (id) {
+      safeOn(id, 'change', function () { AG.page = 1; AG.sel = {}; agUpdateSel(); drawAG(); });
+    });
     safeOn('#ag-search', 'input', function () { AG.q = this.value; AG.page = 1; drawAG(); });
     safeOn('#ag-approve-sel', 'click', function () {
       var c = $('#ag-college').value;

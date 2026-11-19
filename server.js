@@ -1190,7 +1190,7 @@ app.get('/api/registrar/grades', requireRegistrar, async (req, res) => {
   try {
     const { rows } = await pool.query(
       `SELECT g.student_no, g.college, g.course_code, g.final_grade, g.remarks, g.instructor, g.term, g.academic_year, g.status, g.updated_at, g.approved_at,
-              st.first_name, st.last_name, st.program
+              st.first_name, st.last_name, st.program, st.year_level, st.section
        FROM reg_grades g JOIN reg_students st ON st.student_no = g.student_no
        ${where.length ? 'WHERE ' + where.join(' AND ') : ''}
        ORDER BY g.college, st.last_name, st.first_name, g.academic_year, g.term, g.course_code`, args);
