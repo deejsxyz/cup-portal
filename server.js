@@ -4595,10 +4595,11 @@ app.get('/api/csc/students', requireCsc, async (req, res) => {
 app.post('/api/csc/students/:no/paid', requireCsc, async (req, res) => {
   const no = String(req.params.no || '').trim();
   const paid = !!(req.body && req.body.paid === true);
+  if (!paid) return res.status(409).json({ error: 'A PAID status cannot be undone.' });
   try {
     const r = await pool.query(
-      `UPDATE reg_students SET csc_paid_at = CASE WHEN $2 THEN COALESCE(csc_paid_at, now()) ELSE NULL END
-       WHERE student_no = $1 AND status IN ('enrolled','pre-registered') RETURNING student_no, college, csc_paid_at`, [no, paid]);
+      `UPDATE reg_students SET csc_paid_at = COALESCE(csc_paid_at, now())
+       WHERE student_no = $1 AND status IN ('enrolled','pre-registered') RETURNING student_no, college, csc_paid_at`, [no]);
     if (!r.rows.length) return res.status(404).json({ error: 'Student not found.' });
     logAction(req, 'CSC Portal', paid ? 'CSC fee marked PAID' : 'CSC fee marked unpaid', no + ' · ' + r.rows[0].college);
     res.json({ ok: true, student_no: no, paid, csc_paid_at: r.rows[0].csc_paid_at });

@@ -177,7 +177,7 @@
           '<td>' + esc(progAbbrOf(s.program)) + esc(s.year_level) + '</td>' +
           '<td>' + esc(s.section) + '</td>' +
           '<td class="' + (paid ? 'paid' : 'unpaid') + '">' + (paid ? 'PAID' : 'UNPAID') + '</td>' +
-          '<td><label class="toggle"><input type="checkbox" data-paid="' + esc(s.student_no) + '"' + (paid ? ' checked' : '') + '> ' + (paid ? 'Paid' : 'Not paid') + '</label></td>' +
+          '<td><label class="toggle"><input type="checkbox" data-paid="' + esc(s.student_no) + '"' + (paid ? ' checked disabled' : '') + '> ' + (paid ? 'Paid' : 'Not paid') + '</label></td>' +
           '</tr>';
       }).join('');
     }
@@ -234,7 +234,7 @@
         if (!res.ok) { $('msg').textContent = res.j.error || 'Could not update the status.'; $('msg').className = 'msg err'; box.checked = !paid; box.disabled = false; return; }
         students.forEach(function (s) { if (s.student_no === no) s.csc_paid_at = res.j.csc_paid_at; });
         $('msg').className = 'msg';
-        $('msg').textContent = paid ? no + ' marked PAID and forwarded to Step 6.' : no + ' set back to UNPAID.';
+        $('msg').textContent = no + ' marked PAID and forwarded to Step 6. This cannot be undone.';
         render();
       })
       .catch(function () { $('msg').textContent = 'Connection problem. The status was not changed.'; $('msg').className = 'msg err'; box.checked = !paid; box.disabled = false; });
