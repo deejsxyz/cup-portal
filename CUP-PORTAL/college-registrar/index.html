@@ -121,9 +121,7 @@
 <script>
   (function () {
     var form = document.getElementById('login'), msg = document.getElementById('msg'), btn = document.getElementById('go');
-    // Already signed in: go straight to the dashboard.
-    fetch('/api/registrar/me', { credentials: 'same-origin' }).then(function (r) {
-      if (r.ok) r.json().then(function (j) { window.location.href = (j.role === 'superadmin') ? '/CUP-PORTAL/registrar/dashboard' : '/CUP-PORTAL/college-registrar/dashboard'; }).catch(function () {});
+    // No auto-redirect: a session in this browser is shared, so the login form always opens.
     }).catch(function () {});
     form.addEventListener('submit', function (e) {
       e.preventDefault();
