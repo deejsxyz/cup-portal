@@ -131,7 +131,7 @@
         </div>
       </fieldset>
       <label class="text-xs font-bold text-slate-700">Section
-        <select id="asgSection" class="block mt-1 w-full px-2 py-1.5 rounded border border-slate-300 text-xs bg-white"><option value="">Choose a section</option><option value="A">A</option><option value="B">B</option><option value="C">C</option></select></label>
+        <select id="asgSection" class="block mt-1 w-full px-2 py-1.5 rounded border border-slate-300 text-xs bg-white"><option value="">Choose a section</option><option value="A">A</option><option value="B">B</option><option value="C">C</option><option value="ALL">All sections</option></select></label>
     </div>
     <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
       <label class="text-xs font-bold text-slate-700">Group
@@ -422,7 +422,7 @@
     if (st && en && en <= st) { msg.textContent = 'The end time must be after the start time.'; return; }
     var time = st ? fmt12(st) + ' - ' + fmt12(en) : '';
     var body = { faculty_id: $('asgFaculty').value, subject_college: COLLEGE, program: $('asgProgram').value, course_codes: codes, years: years,
-      sections: sec ? [sec] : [], group_label: group, day_label: $('asgDay').value.trim() || 'TBA', time_slot: time || 'TBA' };
+      sections: sec === 'ALL' ? ['A', 'B', 'C'] : (sec ? [sec] : []), group_label: group, day_label: $('asgDay').value.trim() || 'TBA', time_slot: time || 'TBA' };
     if (!body.faculty_id) { msg.textContent = 'Choose a faculty member.'; return; }
     if (!body.program) { msg.textContent = 'Choose a program.'; return; }
     if (!body.course_codes.length) { msg.textContent = 'Choose at least one subject.'; return; }

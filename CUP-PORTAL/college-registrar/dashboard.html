@@ -380,7 +380,7 @@
           <p class="hint">Each group's instructor, day and time come from Subject Assignments. Type the room here. Groups are G1 to G20 (G1A is Section A only). This shows on the student's advising slip and Certificate of Enrollment.</p>
           <div style="display:flex;gap:10px;flex-wrap:wrap;align-items:flex-end">
             <label>Year level <select id="sch-year"><option value="">Select</option><option>1</option><option>2</option><option>3</option><option>4</option></select></label>
-            <label>Section <select id="sch-section"><option value="">Select</option><option>A</option><option>B</option><option>C</option></select></label>
+            <label>Section <select id="sch-section"><option value="">All sections</option><option>A</option><option>B</option><option>C</option></select></label>
             <button type="button" id="sch-load">Load subjects</button>
           </div>
           <div id="sch-list" style="margin-top:10px;overflow-x:auto"></div>
@@ -1499,7 +1499,7 @@
     // Subject schedule (days, time and room per subject per section; instructor from Subject Assignments)
     var schRows = [];
     function schCollectParams() {
-      var p = 'year_level=' + encodeURIComponent($('#sch-year').value) + '&section=' + encodeURIComponent($('#sch-section').value.trim().toUpperCase());
+      var p = 'year_level=' + encodeURIComponent($('#sch-year').value) + '&section=' + encodeURIComponent($('#sch-section').value.trim().toUpperCase() || 'ALL');
       if (me.role === 'superadmin') p += '&college=' + encodeURIComponent(sjCollege());
       return p;
     }
@@ -1556,7 +1556,8 @@
       clearTimeout(schCheckTimer);
       schCheckTimer = setTimeout(function () {
         var y = $('#sch-year').value, sec = $('#sch-section').value.trim().toUpperCase();
-        if (!y || !sec || !schRows.length) { schConf = {}; $('#sch-conflicts').innerHTML = ''; return; }
+        if (!y || !schRows.length) { schConf = {}; $('#sch-conflicts').innerHTML = ''; return; }
+        if (!sec) { schConf = {}; $('#sch-conflicts').innerHTML = '<span class="hint">Pick one section to check conflicts.</span>'; return; }
         var body = { year_level: y, section: sec, items: schRows.map(function (r) {
           return { course_code: r.course_code, group_label: r.group_label || '', days: r.days || '', start_time: r.start_time || '', end_time: r.end_time || '' };
         }) };
@@ -1581,7 +1582,7 @@
     }
     function schLoad(keepMsg) {
       var msg = $('#sch-msg'); if (!keepMsg) msg.textContent = '';
-      if (!$('#sch-year').value || !$('#sch-section').value.trim()) { msg.textContent = 'Choose year level and section first.'; return; }
+      if (!$('#sch-year').value) { msg.textContent = 'Choose a year level first.'; return; }
       fetch('/api/registrar/schedules?' + schCollectParams(), { credentials: 'same-origin' }).then(function (r) { return r.json(); }).then(function (j) {
         schRows = j.rows || [];
         schPage = 1;
@@ -1598,7 +1599,7 @@
       });
       var bad = items.filter(function (x) { return (x.start_time && !x.end_time) || (!x.start_time && x.end_time); });
       if (bad.length) { msg.textContent = 'Set both start and end time for ' + bad[0].course_code + '.'; return; }
-      var body = { year_level: $('#sch-year').value, section: $('#sch-section').value.trim().toUpperCase(), items: items };
+      var body = { year_level: $('#sch-year').value, section: $('#sch-section').value.trim().toUpperCase() || 'ALL', items: items };
       if (me.role === 'superadmin') body.college = sjCollege();
       fetch('/api/registrar/schedules', { method: 'POST', credentials: 'same-origin', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(body) })
         .then(function (r) { return r.json().then(function (j) { return { ok: r.ok, j: j }; }); })

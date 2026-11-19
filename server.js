@@ -3447,7 +3447,7 @@ app.get('/api/registrar/schedules', requireRegistrar, async (req, res) => {
   const college = regCollege(req, req.query.college);
   if (!college) return res.status(403).json({ error: 'Choose a college.' });
   const year = Number(req.query.year_level);
-  const section = String(req.query.section || '').trim().toUpperCase();
+  const section = String(req.query.section || '').trim().toUpperCase() || 'ALL'; // ALL: every section of the year
   const t = await gradingTerm();
   if (!t.term || !t.ay || !(year >= 1 && year <= 4) || !section) return res.json({ term: t.term, academic_year: t.ay, rows: [] });
   // Subjects of this year level, plus any subject assigned to this year and section.
@@ -3456,7 +3456,7 @@ app.get('/api/registrar/schedules', requireRegistrar, async (req, res) => {
        FROM (
          SELECT course_code FROM reg_courses WHERE college = $1 AND year_level = $4
          UNION
-         SELECT course_code FROM reg_subject_assignments WHERE college = $1 AND term = $2 AND academic_year = $3 AND $4 = ANY(years) AND $5 = ANY(sections)
+         SELECT course_code FROM reg_subject_assignments WHERE college = $1 AND term = $2 AND academic_year = $3 AND $4 = ANY(years) AND ($5 = 'ALL' OR $5 = ANY(sections))
        ) x
        LEFT JOIN LATERAL (SELECT descriptive_title, units FROM reg_courses rc WHERE rc.course_code = x.course_code ORDER BY (rc.college = $1) DESC LIMIT 1) c ON true
       ORDER BY x.course_code`,
@@ -3466,12 +3466,12 @@ app.get('/api/registrar/schedules', requireRegistrar, async (req, res) => {
     `SELECT sa.course_code, sa.group_label, COALESCE(string_agg(DISTINCT u.name, ', '), '') AS instructor,
             MIN(sa.day_label) AS day_label, MIN(sa.time_slot) AS time_slot
        FROM reg_subject_assignments sa JOIN reg_users u ON u.id = sa.user_id
-      WHERE sa.college = $1 AND sa.term = $2 AND sa.academic_year = $3 AND $4 = ANY(sa.years) AND $5 = ANY(sa.sections)
+      WHERE sa.college = $1 AND sa.term = $2 AND sa.academic_year = $3 AND $4 = ANY(sa.years) AND ($5 = 'ALL' OR $5 = ANY(sa.sections))
       GROUP BY sa.course_code, sa.group_label`,
     [college, t.term, t.ay, year, section]);
   const sch = await pool.query(
     `SELECT course_code, group_label, days, start_time, end_time, room FROM reg_schedules
-      WHERE college = $1 AND term = $2 AND academic_year = $3 AND year_level = $4 AND section = $5`,
+      WHERE college = $1 AND term = $2 AND academic_year = $3 AND year_level = $4 AND ($5 = 'ALL' OR section = $5)`,
     [college, t.term, t.ay, year, section]);
   const asgMap = new Map(asg.rows.map((a) => [a.course_code + '|' + a.group_label, a.instructor]));
   const asgTime = new Map(asg.rows.map((a) => [a.course_code + '|' + a.group_label, a]));
@@ -3503,8 +3503,8 @@ app.post('/api/registrar/schedules', requireRegistrar, async (req, res) => {
   const college = regCollege(req, b.college || req.query.college);
   if (!college) return res.status(403).json({ error: 'Choose a college.' });
   const year = Number(b.year_level);
-  const section = String(b.section || '').trim().toUpperCase().slice(0, 20);
-  if (!(year >= 1 && year <= 4) || !section) return res.status(400).json({ error: 'Choose year level and section.' });
+  const section = String(b.section || '').trim().toUpperCase().slice(0, 20) || 'ALL';
+  if (!(year >= 1 && year <= 4)) return res.status(400).json({ error: 'Choose a year level.' });
   const t = await gradingTerm();
   if (!t.term || !t.ay) return res.status(400).json({ error: 'The grading term is not set yet.' });
   const items = Array.isArray(b.items) ? b.items : [];
@@ -3519,9 +3519,15 @@ app.post('/api/registrar/schedules', requireRegistrar, async (req, res) => {
       const st = String(it.start_time || '').trim();
       const et = String(it.end_time || '').trim();
       const room = String(it.room || '').trim().slice(0, 40);
+      // ALL: save to every section that has this group in Subject Assignments.
+      const secs = section === 'ALL'
+        ? (await client.query('SELECT DISTINCT unnest(sa.sections) AS sec FROM reg_subject_assignments sa WHERE sa.college=$1 AND sa.term=$2 AND sa.academic_year=$3 AND sa.course_code=$4 AND sa.group_label=$5 AND $6 = ANY(sa.years)',
+            [college, t.term, t.ay, code, group, year])).rows.map((r) => r.sec)
+        : [section];
+      for (const sec of secs) {
       if (!days && !st && !et && !room) {
         await client.query('DELETE FROM reg_schedules WHERE college=$1 AND course_code=$2 AND term=$3 AND academic_year=$4 AND year_level=$5 AND section=$6 AND group_label=$7',
-          [college, code, t.term, t.ay, year, section, group]);
+          [college, code, t.term, t.ay, year, sec, group]);
         continue;
       }
       if ((st && !SCHED_TIME_RE.test(st)) || (et && !SCHED_TIME_RE.test(et))) throw new Error('Time must be set for ' + code + (group ? ' ' + group : '') + '.');
@@ -3531,7 +3537,8 @@ app.post('/api/registrar/schedules', requireRegistrar, async (req, res) => {
          VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11)
          ON CONFLICT (college, course_code, term, academic_year, year_level, section, group_label)
          DO UPDATE SET days = EXCLUDED.days, start_time = EXCLUDED.start_time, end_time = EXCLUDED.end_time, room = EXCLUDED.room`,
-        [college, code, t.term, t.ay, year, section, group, days, st, et, room]);
+        [college, code, t.term, t.ay, year, sec, group, days, st, et, room]);
+      }
     }
     await client.query('COMMIT');
   } catch (err) {
@@ -3573,7 +3580,8 @@ app.post('/api/registrar/schedules/check', requireRegistrar, async (req, res) =>
   const year = Number(b.year_level);
   const section = String(b.section || '').trim().toUpperCase().slice(0, 20);
   const t = await gradingTerm();
-  if (!t.term || !t.ay || !(year >= 1 && year <= 4) || !section) return res.json({ conflicts: {} });
+  // A conflict check needs one section; ALL is not checked.
+  if (!t.term || !t.ay || !(year >= 1 && year <= 4) || !section || section === 'ALL') return res.json({ conflicts: {} });
   const items = (Array.isArray(b.items) ? b.items : []).slice(0, 500).map((it, i) => ({
     i, code: String(it.course_code || '').trim().slice(0, 40), group: String(it.group_label || '').trim().toUpperCase().slice(0, 30),
     days: String(it.days || '').trim().toUpperCase(), st: String(it.start_time || '').trim(), et: String(it.end_time || '').trim()
