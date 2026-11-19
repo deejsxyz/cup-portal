@@ -161,6 +161,7 @@
   .acct-drop button { display: block; width: 100%; text-align: left; background: #fff; border: 0; padding: 11px 14px; font: inherit; font-weight: 700; color: #0f5a1c; cursor: pointer; }
   .acct-drop button:hover { background: #f1f7f1; }
   .box h2.pn-tabs { display:flex; flex-wrap:wrap; gap:8px; align-items:center; text-transform:none; letter-spacing:0; font-size:12px; padding:10px 14px; }
+  .pn-tabs .ev-head-count { margin-left:auto; }
   .pn-tabs button { border:1px solid rgba(255,255,255,.55); background:transparent; color:#fff; border-radius:8px; padding:6px 12px; font-size:12px; font-weight:700; cursor:pointer; }
   .pn-tabs button.on { background:#fff; color:#14532d; border-color:#fff; }
 </style>
@@ -537,11 +538,9 @@
       </form>
       <span class="soon acct-na">Only the University Registrar can manage accounts.</span>
     </div></div></section>
-    <section class="panel" id="coacs-step6"><div class="box"><h2>COACS | Submission of Advising Slip</h2><div class="body" style="padding:0">
-      <iframe src="/CUP-PORTAL/registrar/advising-slip.html?college=COACS" title="COACS Enrollment" style="width:100%;min-height:900px;border:0;display:block"></iframe>
-    </div></div></section>
-    <section class="panel" id="coacs-evaluation"><div class="box"><h2 style="display:flex;align-items:center;justify-content:flex-start;flex-wrap:wrap;gap:10px"><span class="ev-head-count" style="font-size:12px;font-weight:700">Loading…</span></h2><div class="body" style="padding:0">
-      <iframe src="/CUP-PORTAL/registrar/college-evaluation.html?college=COACS" title="COACS Evaluation" style="width:100%;min-height:900px;border:0;display:block"></iframe>
+    <section class="panel" id="coacs-step6"><div class="box"><h2 class="pn-tabs" data-kind="step6"><span class="pn-btns"></span><span class="ev-head-count" style="font-size:12px;font-weight:700">Loading…</span></h2><div class="body" style="padding:0">
+      <div data-sub="advising"><iframe src="/CUP-PORTAL/registrar/advising-slip.html?college=COACS" title="COACS Enrollment" style="width:100%;min-height:900px;border:0;display:block"></iframe></div>
+      <div data-sub="evaluation" hidden><iframe src="/CUP-PORTAL/registrar/college-evaluation.html?college=COACS" title="COACS Evaluation" style="width:100%;min-height:900px;border:0;display:block"></iframe></div>
     </div></div></section>
     <section class="panel" id="coacs-locked"><div class="box"><h2>COACS | Locked Account</h2><div class="body"><span class="soon">Not connected yet</span></div></div></section>
     <section class="panel" id="cas-student"><div class="box"><h2 class="pn-tabs" data-kind="student"></h2><div class="body" style="padding:0">
@@ -561,11 +560,9 @@
       </form>
       <span class="soon acct-na">Only the University Registrar can manage accounts.</span>
     </div></div></section>
-    <section class="panel" id="cas-step6"><div class="box"><h2>CAS | Submission of Advising Slip</h2><div class="body" style="padding:0">
-      <iframe src="/CUP-PORTAL/registrar/advising-slip.html?college=CAS" title="CAS Enrollment" style="width:100%;min-height:900px;border:0;display:block"></iframe>
-    </div></div></section>
-    <section class="panel" id="cas-evaluation"><div class="box"><h2 style="display:flex;align-items:center;justify-content:flex-start;flex-wrap:wrap;gap:10px"><span class="ev-head-count" style="font-size:12px;font-weight:700">Loading…</span></h2><div class="body" style="padding:0">
-      <iframe src="/CUP-PORTAL/registrar/college-evaluation.html?college=CAS" title="CAS Evaluation" style="width:100%;min-height:900px;border:0;display:block"></iframe>
+    <section class="panel" id="cas-step6"><div class="box"><h2 class="pn-tabs" data-kind="step6"><span class="pn-btns"></span><span class="ev-head-count" style="font-size:12px;font-weight:700">Loading…</span></h2><div class="body" style="padding:0">
+      <div data-sub="advising"><iframe src="/CUP-PORTAL/registrar/advising-slip.html?college=CAS" title="CAS Enrollment" style="width:100%;min-height:900px;border:0;display:block"></iframe></div>
+      <div data-sub="evaluation" hidden><iframe src="/CUP-PORTAL/registrar/college-evaluation.html?college=CAS" title="CAS Evaluation" style="width:100%;min-height:900px;border:0;display:block"></iframe></div>
     </div></div></section>
     <section class="panel" id="cas-locked"><div class="box"><h2>CAS | Locked Account</h2><div class="body"><span class="soon">Not connected yet</span></div></div></section>
     <section class="panel" id="conm-student"><div class="box"><h2 class="pn-tabs" data-kind="student"></h2><div class="body" style="padding:0">
@@ -585,11 +582,9 @@
       </form>
       <span class="soon acct-na">Only the University Registrar can manage accounts.</span>
     </div></div></section>
-    <section class="panel" id="conm-step6"><div class="box"><h2>CONM | Submission of Advising Slip</h2><div class="body" style="padding:0">
-      <iframe src="/CUP-PORTAL/registrar/advising-slip.html?college=CONM" title="CONM Enrollment" style="width:100%;min-height:900px;border:0;display:block"></iframe>
-    </div></div></section>
-    <section class="panel" id="conm-evaluation"><div class="box"><h2 style="display:flex;align-items:center;justify-content:flex-start;flex-wrap:wrap;gap:10px"><span class="ev-head-count" style="font-size:12px;font-weight:700">Loading…</span></h2><div class="body" style="padding:0">
-      <iframe src="/CUP-PORTAL/registrar/college-evaluation.html?college=CONM" title="CONM Evaluation" style="width:100%;min-height:900px;border:0;display:block"></iframe>
+    <section class="panel" id="conm-step6"><div class="box"><h2 class="pn-tabs" data-kind="step6"><span class="pn-btns"></span><span class="ev-head-count" style="font-size:12px;font-weight:700">Loading…</span></h2><div class="body" style="padding:0">
+      <div data-sub="advising"><iframe src="/CUP-PORTAL/registrar/advising-slip.html?college=CONM" title="CONM Enrollment" style="width:100%;min-height:900px;border:0;display:block"></iframe></div>
+      <div data-sub="evaluation" hidden><iframe src="/CUP-PORTAL/registrar/college-evaluation.html?college=CONM" title="CONM Evaluation" style="width:100%;min-height:900px;border:0;display:block"></iframe></div>
     </div></div></section>
     <section class="panel" id="conm-locked"><div class="box"><h2>CONM | Locked Account</h2><div class="body"><span class="soon">Not connected yet</span></div></div></section>
     <section class="panel" id="coed-student"><div class="box"><h2 class="pn-tabs" data-kind="student"></h2><div class="body" style="padding:0">
@@ -609,11 +604,9 @@
       </form>
       <span class="soon acct-na">Only the University Registrar can manage accounts.</span>
     </div></div></section>
-    <section class="panel" id="coed-step6"><div class="box"><h2>COEd | Enrollment</h2><div class="body" style="padding:0">
-      <iframe src="/CUP-PORTAL/registrar/advising-slip.html?college=COED" title="COED Enrollment" style="width:100%;min-height:900px;border:0;display:block"></iframe>
-    </div></div></section>
-    <section class="panel" id="coed-evaluation"><div class="box"><h2 style="display:flex;align-items:center;justify-content:flex-start;flex-wrap:wrap;gap:10px"><span class="ev-head-count" style="font-size:12px;font-weight:700">Loading…</span></h2><div class="body" style="padding:0">
-      <iframe src="/CUP-PORTAL/registrar/college-evaluation.html?college=COED" title="COED Evaluation" style="width:100%;min-height:900px;border:0;display:block"></iframe>
+    <section class="panel" id="coed-step6"><div class="box"><h2 class="pn-tabs" data-kind="step6"><span class="pn-btns"></span><span class="ev-head-count" style="font-size:12px;font-weight:700">Loading…</span></h2><div class="body" style="padding:0">
+      <div data-sub="advising"><iframe src="/CUP-PORTAL/registrar/advising-slip.html?college=COED" title="COED Enrollment" style="width:100%;min-height:900px;border:0;display:block"></iframe></div>
+      <div data-sub="evaluation" hidden><iframe src="/CUP-PORTAL/registrar/college-evaluation.html?college=COED" title="COED Evaluation" style="width:100%;min-height:900px;border:0;display:block"></iframe></div>
     </div></div></section>
     <section class="panel" id="coed-locked"><div class="box"><h2>COEd | Locked Account</h2><div class="body"><span class="soon">Not connected yet</span></div></div></section>
     <section class="panel" id="cobm-student"><div class="box"><h2 class="pn-tabs" data-kind="student"></h2><div class="body" style="padding:0">
@@ -633,11 +626,9 @@
       </form>
       <span class="soon acct-na">Only the University Registrar can manage accounts.</span>
     </div></div></section>
-    <section class="panel" id="cobm-step6"><div class="box"><h2>CoBM | Enrollment</h2><div class="body" style="padding:0">
-      <iframe src="/CUP-PORTAL/registrar/advising-slip.html?college=COBM" title="COBM Enrollment" style="width:100%;min-height:900px;border:0;display:block"></iframe>
-    </div></div></section>
-    <section class="panel" id="cobm-evaluation"><div class="box"><h2 style="display:flex;align-items:center;justify-content:flex-start;flex-wrap:wrap;gap:10px"><span class="ev-head-count" style="font-size:12px;font-weight:700">Loading…</span></h2><div class="body" style="padding:0">
-      <iframe src="/CUP-PORTAL/registrar/college-evaluation.html?college=COBM" title="COBM Evaluation" style="width:100%;min-height:900px;border:0;display:block"></iframe>
+    <section class="panel" id="cobm-step6"><div class="box"><h2 class="pn-tabs" data-kind="step6"><span class="pn-btns"></span><span class="ev-head-count" style="font-size:12px;font-weight:700">Loading…</span></h2><div class="body" style="padding:0">
+      <div data-sub="advising"><iframe src="/CUP-PORTAL/registrar/advising-slip.html?college=COBM" title="COBM Enrollment" style="width:100%;min-height:900px;border:0;display:block"></iframe></div>
+      <div data-sub="evaluation" hidden><iframe src="/CUP-PORTAL/registrar/college-evaluation.html?college=COBM" title="COBM Evaluation" style="width:100%;min-height:900px;border:0;display:block"></iframe></div>
     </div></div></section>
     <section class="panel" id="cobm-locked"><div class="box"><h2>CoBM | Locked Account</h2><div class="body"><span class="soon">Not connected yet</span></div></div></section>
     <section class="panel" id="law-student"><div class="box"><h2 class="pn-tabs" data-kind="student"></h2><div class="body" style="padding:0">
@@ -657,11 +648,9 @@
       </form>
       <span class="soon acct-na">Only the University Registrar can manage accounts.</span>
     </div></div></section>
-    <section class="panel" id="law-step6"><div class="box"><h2>School of Law | Enrollment</h2><div class="body" style="padding:0">
-      <iframe src="/CUP-PORTAL/registrar/advising-slip.html?college=LAW" title="LAW Enrollment" style="width:100%;min-height:900px;border:0;display:block"></iframe>
-    </div></div></section>
-    <section class="panel" id="law-evaluation"><div class="box"><h2 style="display:flex;align-items:center;justify-content:flex-start;flex-wrap:wrap;gap:10px"><span class="ev-head-count" style="font-size:12px;font-weight:700">Loading…</span></h2><div class="body" style="padding:0">
-      <iframe src="/CUP-PORTAL/registrar/college-evaluation.html?college=LAW" title="LAW Evaluation" style="width:100%;min-height:900px;border:0;display:block"></iframe>
+    <section class="panel" id="law-step6"><div class="box"><h2 class="pn-tabs" data-kind="step6"><span class="pn-btns"></span><span class="ev-head-count" style="font-size:12px;font-weight:700">Loading…</span></h2><div class="body" style="padding:0">
+      <div data-sub="advising"><iframe src="/CUP-PORTAL/registrar/advising-slip.html?college=LAW" title="LAW Enrollment" style="width:100%;min-height:900px;border:0;display:block"></iframe></div>
+      <div data-sub="evaluation" hidden><iframe src="/CUP-PORTAL/registrar/college-evaluation.html?college=LAW" title="LAW Evaluation" style="width:100%;min-height:900px;border:0;display:block"></iframe></div>
     </div></div></section>
     <section class="panel" id="law-locked"><div class="box"><h2>School of Law | Locked Account</h2><div class="body"><span class="soon">Not connected yet</span></div></div></section>
     <section class="panel" id="gs-student"><div class="box"><h2 class="pn-tabs" data-kind="student"></h2><div class="body" style="padding:0">
@@ -681,11 +670,9 @@
       </form>
       <span class="soon acct-na">Only the University Registrar can manage accounts.</span>
     </div></div></section>
-    <section class="panel" id="gs-step6"><div class="box"><h2>Graduate School | Enrollment</h2><div class="body" style="padding:0">
-      <iframe src="/CUP-PORTAL/registrar/advising-slip.html?college=GS" title="GS Enrollment" style="width:100%;min-height:900px;border:0;display:block"></iframe>
-    </div></div></section>
-    <section class="panel" id="gs-evaluation"><div class="box"><h2 style="display:flex;align-items:center;justify-content:flex-start;flex-wrap:wrap;gap:10px"><span class="ev-head-count" style="font-size:12px;font-weight:700">Loading…</span></h2><div class="body" style="padding:0">
-      <iframe src="/CUP-PORTAL/registrar/college-evaluation.html?college=GS" title="GS Evaluation" style="width:100%;min-height:900px;border:0;display:block"></iframe>
+    <section class="panel" id="gs-step6"><div class="box"><h2 class="pn-tabs" data-kind="step6"><span class="pn-btns"></span><span class="ev-head-count" style="font-size:12px;font-weight:700">Loading…</span></h2><div class="body" style="padding:0">
+      <div data-sub="advising"><iframe src="/CUP-PORTAL/registrar/advising-slip.html?college=GS" title="GS Enrollment" style="width:100%;min-height:900px;border:0;display:block"></iframe></div>
+      <div data-sub="evaluation" hidden><iframe src="/CUP-PORTAL/registrar/college-evaluation.html?college=GS" title="GS Evaluation" style="width:100%;min-height:900px;border:0;display:block"></iframe></div>
     </div></div></section>
     <section class="panel" id="gs-locked"><div class="box"><h2>Graduate School | Locked Account</h2><div class="body"><span class="soon">Not connected yet</span></div></div></section>
     <section class="panel" id="tesda-student"><div class="box"><h2 class="pn-tabs" data-kind="student"></h2><div class="body" style="padding:0">
@@ -705,11 +692,9 @@
       </form>
       <span class="soon acct-na">Only the University Registrar can manage accounts.</span>
     </div></div></section>
-    <section class="panel" id="tesda-step6"><div class="box"><h2>TESDA-TVI | Submission of Advising Slip</h2><div class="body" style="padding:0">
-      <iframe src="/CUP-PORTAL/registrar/advising-slip.html?college=TESDA-TVI" title="TESDA-TVI Enrollment" style="width:100%;min-height:900px;border:0;display:block"></iframe>
-    </div></div></section>
-    <section class="panel" id="tesda-evaluation"><div class="box"><h2 style="display:flex;align-items:center;justify-content:flex-start;flex-wrap:wrap;gap:10px"><span class="ev-head-count" style="font-size:12px;font-weight:700">Loading…</span></h2><div class="body" style="padding:0">
-      <iframe src="/CUP-PORTAL/registrar/college-evaluation.html?college=TESDA-TVI" title="TESDA-TVI Evaluation" style="width:100%;min-height:900px;border:0;display:block"></iframe>
+    <section class="panel" id="tesda-step6"><div class="box"><h2 class="pn-tabs" data-kind="step6"><span class="pn-btns"></span><span class="ev-head-count" style="font-size:12px;font-weight:700">Loading…</span></h2><div class="body" style="padding:0">
+      <div data-sub="advising"><iframe src="/CUP-PORTAL/registrar/advising-slip.html?college=TESDA-TVI" title="TESDA-TVI Enrollment" style="width:100%;min-height:900px;border:0;display:block"></iframe></div>
+      <div data-sub="evaluation" hidden><iframe src="/CUP-PORTAL/registrar/college-evaluation.html?college=TESDA-TVI" title="TESDA-TVI Evaluation" style="width:100%;min-height:900px;border:0;display:block"></iframe></div>
     </div></div></section>
     <section class="panel" id="tesda-locked"><div class="box"><h2>TESDA-TVI | Locked Account</h2><div class="body"><span class="soon">Not connected yet</span></div></div></section>
   </main>
@@ -2424,9 +2409,10 @@
 (function () {
   var KINDS = {
     student: [['view', 'View Student'], ['new', 'New Student'], ['existing', 'Existing Student'], ['grades', 'Manage Grade']],
-    faculty: [['register', 'Register Faculty'], ['manage', 'Manage Faculty'], ['assign', 'Subject Assignments']]
+    faculty: [['register', 'Register Faculty'], ['manage', 'Manage Faculty'], ['assign', 'Subject Assignments']],
+    step6: [['advising', 'Advising Slip'], ['evaluation', 'Evaluation']]
   };
-  var DEFAULT = { student: 'view', faculty: 'manage' };
+  var DEFAULT = { student: 'view', faculty: 'manage', step6: 'advising' };
   function paint(h, active) {
     h.querySelectorAll('button').forEach(function (b) {
       b.className = b.getAttribute('data-tab') === active ? 'on' : '';
@@ -2434,16 +2420,22 @@
   }
   document.querySelectorAll('h2.pn-tabs').forEach(function (h) {
     var kind = h.getAttribute('data-kind');
-    var frame = h.closest('section.panel').querySelector('iframe');
-    h.innerHTML = KINDS[kind].map(function (t) {
+    var panel = h.closest('section.panel');
+    var frame = panel.querySelector('iframe');
+    var box = h.querySelector('.pn-btns') || h;
+    box.innerHTML = KINDS[kind].map(function (t) {
       return '<button type="button" data-tab="' + t[0] + '">' + t[1] + '</button>';
     }).join('');
     paint(h, DEFAULT[kind]);
-    h.querySelectorAll('button').forEach(function (b) {
+    box.querySelectorAll('button').forEach(function (b) {
       b.addEventListener('click', function () {
         var t = b.getAttribute('data-tab');
         paint(h, t);
-        if (frame && frame.contentWindow) frame.contentWindow.postMessage({ panelTab: t }, '*');
+        if (kind === 'step6') {
+          panel.querySelectorAll('[data-sub]').forEach(function (x) { x.hidden = x.getAttribute('data-sub') !== t; });
+        } else if (frame && frame.contentWindow) {
+          frame.contentWindow.postMessage({ panelTab: t }, '*');
+        }
       });
     });
   });
