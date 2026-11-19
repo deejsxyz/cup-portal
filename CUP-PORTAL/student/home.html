@@ -29,6 +29,11 @@
   .proc h3 { font-size: 1rem; font-weight: 600; margin: 6px 0 2px; }
   .proc p { margin: 0; color: #6b7280; font-size: .92rem; }
   .proc li.done h3 { color: var(--dg); }
+  .pr-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); gap: 12px; margin-bottom: 14px; }
+  .pr-grid label { display: block; font-size: .78rem; font-weight: 700; color: #475569; text-transform: uppercase; letter-spacing: .03em; }
+  .pr-grid input, .pr-grid select { display: block; width: 100%; margin-top: 4px; padding: 9px 10px; border: 1px solid #cbd5e1; border-radius: 6px; font: inherit; font-size: .95rem; background: #fff; }
+  .pr-grid .ro { margin-top: 4px; padding: 9px 10px; border-radius: 6px; background: #f1f5f9; color: #334155; font-size: .95rem; }
+  .pr-status { font-weight: 700; color: var(--dg); }
   .card { background: #fff; border: 1px solid var(--line); border-radius: 8px; padding: 18px; margin-bottom: 18px; }
   .info { display: grid; grid-template-columns: repeat(auto-fit, minmax(180px, 1fr)); gap: 12px 18px; }
   .info .k { font-size: .8rem; text-transform: uppercase; color: #5b6b5b; letter-spacing: .04em; }
@@ -70,6 +75,24 @@
   </div>
 </header>
 <main>
+  <section class="card" id="prereg">
+    <h2>Pre-Registration</h2>
+    <p class="msg" id="pr-state" hidden></p>
+    <form id="pr-form" novalidate>
+      <div class="pr-grid" id="pr-locked"></div>
+      <div class="pr-grid">
+        <label>Email address<input id="pr-email" type="email" maxlength="150" autocomplete="email"></label>
+        <label>Contact number<input id="pr-contact" type="tel" maxlength="30" placeholder="09171234567"></label>
+        <label>Civil status<select id="pr-civil"><option value="">Select</option><option>Single</option><option>Married</option><option>Widowed</option><option>Separated</option></select></label>
+      </div>
+      <div class="actions" id="pr-actions">
+        <button type="button" class="btn btn-s" id="pr-save">Save changes</button>
+        <button type="button" class="btn btn-p" id="pr-submit">Submit pre-registration</button>
+      </div>
+      <p class="msg" id="pr-msg" role="status" hidden></p>
+    </form>
+  </section>
+
   <section class="card">
     <h2>Enrollment Procedure</h2>
     <ol class="proc" id="proc"><li><p>Loading…</p></li></ol>
@@ -111,6 +134,45 @@
     function $(id) { return document.getElementById(id); }
     var state = null;
 
+    function prMsg(t, ok) { var m = $('pr-msg'); m.textContent = t; m.className = 'msg ' + (ok ? 'ok' : 'bad'); m.hidden = false; }
+    function loadPrereg() {
+      fetch('/api/student/prereg', { credentials: 'same-origin' }).then(function (r) { return r.json().then(function (j) { return { ok: r.ok, j: j }; }); })
+        .then(function (res) {
+          if (!res.ok) { $('pr-state').textContent = res.j.error || 'Could not load.'; $('pr-state').className = 'msg bad'; $('pr-state').hidden = false; return; }
+          var j = res.j, L = j.locked;
+          var fields = [['Student number', L.student_no], ['Last name', L.last_name], ['First name', L.first_name], ['Middle name', L.middle_name], ['Extension', L.name_extension], ['Birthday', L.birthday], ['Program', L.program], ['Year level', L.year_level]];
+          $('pr-locked').innerHTML = fields.map(function (f) { return '<div><div class="ro-k" style="font-size:.78rem;font-weight:700;color:#475569;text-transform:uppercase">' + f[0] + '</div><div class="ro">' + (f[1] == null || f[1] === '' ? '—' : String(f[1]).replace(/[&<>"']/g, function (c) { return { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]; })) + '</div></div>'; }).join('');
+          $('pr-email').value = j.info.email; $('pr-contact').value = j.info.contact_number; $('pr-civil').value = j.info.civil_status;
+          var done = j.submitted;
+          ['pr-email', 'pr-contact', 'pr-civil'].forEach(function (id) { $(id).disabled = done; });
+          $('pr-actions').hidden = done;
+          if (done) {
+            $('pr-state').innerHTML = '<span class="pr-status">Pre-registered for A.Y. ' + j.term.ay + ', ' + j.term.semester + '.</span> This cannot be undone. The Registrar can now see your records.';
+            $('pr-state').className = 'msg ok'; $('pr-state').hidden = false;
+          } else {
+            $('pr-state').textContent = 'Check your information, then submit. Once you submit, you cannot change it.';
+            $('pr-state').className = 'msg info'; $('pr-state').hidden = false;
+          }
+        }).catch(function () { $('pr-state').textContent = 'Could not load the form.'; $('pr-state').hidden = false; });
+    }
+    function prBody() { return { email: $('pr-email').value.trim(), contact_number: $('pr-contact').value.trim(), civil_status: $('pr-civil').value }; }
+    $('pr-save').addEventListener('click', function () {
+      fetch('/api/student/prereg', { method: 'PUT', credentials: 'same-origin', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(prBody()) })
+        .then(function (r) { return r.json().then(function (j) { return { ok: r.ok, j: j }; }); })
+        .then(function (res) { if (!res.ok) return prMsg(res.j.error || 'Could not save.', false); prMsg('Saved.', true); });
+    });
+    $('pr-submit').addEventListener('click', function () {
+      if (!window.confirm('Submit your pre-registration? You will not be able to change it after this.')) return;
+      fetch('/api/student/prereg', { method: 'PUT', credentials: 'same-origin', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(prBody()) })
+        .then(function (r) { return r.json().then(function (j) { return { ok: r.ok, j: j }; }); })
+        .then(function (res) {
+          if (!res.ok) { prMsg(res.j.error || 'Could not save.', false); throw new Error('save'); }
+          return fetch('/api/student/prereg/submit', { method: 'POST', credentials: 'same-origin' }).then(function (r) { return r.json().then(function (j) { return { ok: r.ok, j: j }; }); });
+        })
+        .then(function (res) { if (!res.ok) return prMsg(res.j.error || 'Could not submit.', false); loadPrereg(); })
+        .catch(function () {});
+    });
+    loadPrereg();
     function loadProcedure() {
       fetch('/api/student/enrollment-steps', { credentials: 'same-origin' }).then(function (r) { return r.json().then(function (j) { return { ok: r.ok, j: j }; }); })
         .then(function (res) {

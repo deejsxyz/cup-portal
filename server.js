@@ -1092,11 +1092,13 @@ app.get('/api/registrar/students', requireRegistrar, async (req, res) => {
   const college = req.reg.role === 'registrar' ? req.reg.college : String(req.query.college || '');
   if (!REG_COLLEGES.includes(college)) return res.status(400).json({ error: 'Choose a college.' });
   try {
+    const pt = await gradingTerm();
     const { rows } = await pool.query(
       `SELECT student_no, last_name, first_name, middle_name, name_extension, gender, birthday::text AS birthday, program, year_level, section, email, contact_number, civil_status,
               (SELECT u.archived_at FROM reg_users u WHERE u.student_no = reg_students.student_no LIMIT 1) AS account_archived,
               status, (csc_paid_at IS NOT NULL) AS csc_paid
-       FROM reg_students WHERE college = $1 AND status IN ('enrolled','pre-registered') ORDER BY last_name, first_name`, [college]);
+       FROM reg_students WHERE college = $1 AND status IN ('enrolled','pre-registered') AND EXISTS (SELECT 1 FROM reg_preregistrations p WHERE p.student_no = reg_students.student_no AND p.term = $2 AND p.academic_year = $3)
+       ORDER BY last_name, first_name`, [college, pt.term, pt.ay]);
     res.json({ college, students: rows.filter((s) => !isHiddenStudentRow(s)) });
   } catch (err) {
     console.error(err);
@@ -1187,6 +1189,10 @@ app.get('/api/registrar/grades', requireRegistrar, async (req, res) => {
   const args = [];
   if (college) { args.push(college); where.push('g.college = $' + args.length); }
   if (['submitted', 'approved'].includes(status)) { args.push(status); where.push('g.status = $' + args.length); }
+  // Records appear to the registrars only after the student pre-registers for the active term.
+  const pg = await gradingTerm();
+  args.push(pg.term, pg.ay);
+  where.push("EXISTS (SELECT 1 FROM reg_preregistrations p WHERE p.student_no = g.student_no AND p.term = $" + (args.length - 1) + " AND p.academic_year = $" + args.length + ")");
   try {
     const { rows } = await pool.query(
       `SELECT g.student_no, g.college, g.course_code, g.final_grade, g.remarks, g.instructor, g.term, g.academic_year, g.status, g.updated_at, g.approved_at,
@@ -4739,11 +4745,12 @@ app.get('/api/registrar/step2', requireCollegeRegistrar, async (req, res) => {
   const college = regCollege(req, req.query.college);
   if (!college || !REG_COLLEGES.includes(college)) return res.status(400).json({ error: 'Choose a college.' });
   try {
+    const pt2 = await gradingTerm();
     const { rows } = await pool.query(
       `SELECT student_no, last_name, first_name, middle_name, program, year_level, section, status, COALESCE(step1_status, '') AS step1_status,
               step2_evaluated_at, step2_advised_at, step2_sectioned_at, COALESCE(nstp_subject, '') AS nstp_subject
-       FROM reg_students WHERE college = $1 AND status IN ('enrolled','pre-registered')
-       ORDER BY last_name, first_name`, [college]);
+       FROM reg_students WHERE college = $1 AND status IN ('enrolled','pre-registered') AND step1_status = 'verified' AND EXISTS (SELECT 1 FROM reg_preregistrations p WHERE p.student_no = reg_students.student_no AND p.term = $2 AND p.academic_year = $3)
+       ORDER BY last_name, first_name`, [college, pt2.term, pt2.ay]);
     res.json({ students: rows });
   } catch (err) {
     console.error(err);
@@ -4887,9 +4894,11 @@ app.get('/api/registrar/step1', requireRegistrar, async (req, res) => {
   const college = step1College(req, req.query.college);
   if (!college || !REG_COLLEGES.includes(college)) return res.status(400).json({ error: 'Choose a college.' });
   try {
+    const pt1 = await gradingTerm();
     const students = await pool.query(
       `SELECT student_no, last_name, first_name, middle_name, program, year_level, section, status
-       FROM reg_students WHERE college = $1 AND status IN ('enrolled','pre-registered') ORDER BY last_name, first_name`, [college]);
+       FROM reg_students WHERE college = $1 AND status IN ('enrolled','pre-registered') AND EXISTS (SELECT 1 FROM reg_preregistrations p WHERE p.student_no = reg_students.student_no AND p.term = $2 AND p.academic_year = $3)
+       ORDER BY last_name, first_name`, [college, pt1.term, pt1.ay]);
     const statuses = await runStep1(students.rows.map((r) => r.student_no));
     const grades = await pool.query(
       'SELECT student_no, course_code, final_grade, remarks FROM reg_grades WHERE college = $1', [college]);
@@ -6564,6 +6573,78 @@ app.post('/api/admin/portal', requireAdmin, async (req, res) => {
 
 // Student: profile, term, curriculum for the program and year, and current selections.
 // Enrollment procedure for the logged-in student, from the same step records the registrar uses.
+// Pre-registration form for the active term. Editable info is saved as the student types; submitting is final.
+async function studentRecord(accountId) {
+  const p = await pool.query('SELECT student_number FROM student_profiles WHERE account_id = $1', [accountId]);
+  if (!p.rowCount) return null;
+  const r = await pool.query(
+    'SELECT student_no, college, last_name, first_name, middle_name, name_extension, birthday::text AS birthday, program, year_level, email, contact_number, civil_status FROM reg_students WHERE student_no = $1',
+    [p.rows[0].student_number]);
+  return r.rows[0] || null;
+}
+app.get('/api/student/prereg', requireStudent, async (req, res) => {
+  try {
+    const t = await gradingTerm();
+    const rec = await studentRecord(req.studentId);
+    if (!rec) return res.status(404).json({ error: 'No student record found for this account.' });
+    const sub = await pool.query('SELECT submitted_at FROM reg_preregistrations WHERE student_no = $1 AND term = $2 AND academic_year = $3', [rec.student_no, t.term, t.ay]);
+    res.json({
+      term: t, submitted: sub.rowCount > 0, submitted_at: sub.rowCount ? sub.rows[0].submitted_at : null,
+      locked: { student_no: rec.student_no, last_name: rec.last_name, first_name: rec.first_name, middle_name: rec.middle_name || '', name_extension: rec.name_extension || '', birthday: rec.birthday || '', program: rec.program, year_level: rec.year_level, college: rec.college },
+      info: { email: rec.email || '', contact_number: rec.contact_number || '', civil_status: rec.civil_status || '' },
+    });
+  } catch (err) {
+    console.error(err);
+    res.status(500).json({ error: 'Could not load the pre-registration form.' });
+  }
+});
+app.put('/api/student/prereg', requireStudent, async (req, res) => {
+  try {
+    const t = await gradingTerm();
+    if (!t.term || !t.ay) return res.status(400).json({ error: 'The active term is not set yet.' });
+    const rec = await studentRecord(req.studentId);
+    if (!rec) return res.status(404).json({ error: 'No student record found for this account.' });
+    const sub = await pool.query('SELECT 1 FROM reg_preregistrations WHERE student_no = $1 AND term = $2 AND academic_year = $3', [rec.student_no, t.term, t.ay]);
+    if (sub.rowCount) return res.status(409).json({ error: 'You are already pre-registered. The form can no longer be changed.' });
+    const b = req.body || {};
+    const email = String(b.email || '').trim().slice(0, 150);
+    const contact = String(b.contact_number || '').trim().slice(0, 30);
+    const civil = String(b.civil_status || '').trim().slice(0, 30);
+    if (email && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) return res.status(400).json({ error: 'Enter a valid email address.' });
+    if (contact && !/^[0-9+()\s-]{7,30}$/.test(contact)) return res.status(400).json({ error: 'Enter a valid contact number.' });
+    await pool.query('UPDATE reg_students SET email = $2, contact_number = $3, civil_status = $4 WHERE student_no = $1',
+      [rec.student_no, email || null, contact || null, civil || null]);
+    res.json({ ok: true });
+  } catch (err) {
+    console.error(err);
+    res.status(500).json({ error: 'Could not save the form.' });
+  }
+});
+app.post('/api/student/prereg/submit', requireStudent, async (req, res) => {
+  const client = await pool.connect();
+  try {
+    const t = await gradingTerm();
+    if (!t.term || !t.ay) return res.status(400).json({ error: 'The active term is not set yet.' });
+    const rec = await studentRecord(req.studentId);
+    if (!rec) return res.status(404).json({ error: 'No student record found for this account.' });
+    await client.query('BEGIN');
+    const info = { email: rec.email || '', contact_number: rec.contact_number || '', civil_status: rec.civil_status || '' };
+    const ins = await client.query(
+      `INSERT INTO reg_preregistrations (student_no, term, academic_year, college, info) VALUES ($1,$2,$3,$4,$5)
+       ON CONFLICT (student_no, term, academic_year) DO NOTHING RETURNING student_no`,
+      [rec.student_no, t.term, t.ay, rec.college, JSON.stringify(info)]);
+    if (!ins.rowCount) { await client.query('ROLLBACK'); return res.status(409).json({ error: 'You are already pre-registered.' }); }
+    await client.query('COMMIT');
+    logAction(req, 'student ' + rec.student_no, 'pre-registered', rec.student_no + ' ' + t.term + ' ' + t.ay);
+    res.json({ ok: true });
+  } catch (err) {
+    await client.query('ROLLBACK').catch(() => {});
+    console.error(err);
+    res.status(500).json({ error: 'Could not submit the pre-registration.' });
+  } finally {
+    client.release();
+  }
+});
 app.get('/api/student/enrollment-steps', requireStudent, async (req, res) => {
   try {
     const p = await pool.query('SELECT student_number FROM student_profiles WHERE account_id = $1', [req.studentId]);
