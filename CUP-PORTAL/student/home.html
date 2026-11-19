@@ -181,7 +181,7 @@
           var firstOpen = res.j.steps.filter(function (s) { return !s.done; })[0];
           $('proc').innerHTML = res.j.steps.map(function (s) {
             var cls = s.done ? 'done' : (firstOpen && firstOpen.n === s.n ? 'cur' : '');
-            return '<li class="' + cls + '"><span class="num">' + s.n + '</span><div><h3>' + s.label + '</h3><p>' + s.note + '</p></div></li>';
+            return '<li class="' + cls + '"><span class="num">' + s.n + '</span><div><h3>' + s.label + '</h3></div></li>';
           }).join('');
           if (res.j.officiallyEnrolled) { var n = $('proc-note'); n.textContent = 'You are officially enrolled for this term.'; n.className = 'msg ok'; n.hidden = false; }
         }).catch(function () { $('proc').innerHTML = '<li><p>Could not load your enrollment steps.</p></li>'; });
