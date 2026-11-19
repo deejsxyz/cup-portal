@@ -3881,6 +3881,60 @@ function schDayCodes(text) {
   return SCHED_DAY_ORDER.filter((d) => found.has(d)).join(' ');
 }
 
+// Copies the instructor and schedule from Subject Assignment / Subject schedule into students' enrolled subjects.
+// Only blank values are filled, so a value already saved on a student is never overwritten.
+// slots: [{years:[], sections:[]}] limits the work to those year levels and sections; null means every student of the term.
+async function syncEnrollmentsFromAssignments(db, college, term, ay, slots) {
+  if (!term || !ay) return 0;
+  const enr = await db.query(
+    'SELECT student_no, year_level, section, subjects FROM reg_enrollments WHERE college = $1 AND term = $2 AND academic_year = $3',
+    [college, term, ay]);
+  const sa = await db.query(
+    `SELECT sa.id, sa.user_id, sa.course_code, sa.years, sa.sections, u.name FROM reg_subject_assignments sa
+       JOIN reg_users u ON u.id = sa.user_id
+      WHERE sa.college = $1 AND sa.term = $2 AND sa.academic_year = $3 ORDER BY sa.id DESC`, [college, term, ay]);
+  const sc = await db.query(
+    `SELECT course_code, year_level, section, days, start_time, end_time, room FROM reg_schedules
+      WHERE college = $1 AND term = $2 AND academic_year = $3 AND days <> '' ORDER BY group_label`, [college, term, ay]);
+  const assign = new Map();
+  for (const a of sa.rows) for (const y of a.years || []) for (const sec of a.sections || []) {
+    const k = a.course_code + '|' + y + '|' + sec;
+    if (!assign.has(k)) assign.set(k, { user_id: a.user_id, name: a.name });
+  }
+  const sched = new Map();
+  for (const r of sc.rows) {
+    const k = r.course_code + '|' + r.year_level + '|' + r.section;
+    if (!sched.has(k)) sched.set(k, r);
+  }
+  let changedCount = 0;
+  for (const e of enr.rows) {
+    const yr = Number(e.year_level), sec = String(e.section || '');
+    if (slots && !slots.some((x) => x.years.includes(yr) && x.sections.includes(sec))) continue;
+    const subs = Array.isArray(e.subjects) ? e.subjects : [];
+    let changed = false;
+    for (const x of subs) {
+      const k = x.course_code + '|' + yr + '|' + sec;
+      if (!x.instructor_id && assign.has(k)) {
+        const a = assign.get(k);
+        x.instructor_id = a.user_id; x.instructor_name = a.name; changed = true;
+        await db.query(
+          'INSERT INTO reg_assignments (user_id, college, course_code, term, academic_year) VALUES ($1,$2,$3,$4,$5) ON CONFLICT (user_id, course_code, term, academic_year) DO NOTHING',
+          [a.user_id, college, x.course_code, term, ay]);
+      }
+      if (!x.days && sched.has(k)) {
+        const q = sched.get(k);
+        x.days = q.days; x.start_time = q.start_time || ''; x.end_time = q.end_time || ''; x.room = q.room || ''; changed = true;
+      }
+    }
+    if (changed) {
+      await db.query('UPDATE reg_enrollments SET subjects = $4 WHERE student_no = $1 AND term = $2 AND academic_year = $3',
+        [e.student_no, term, ay, JSON.stringify(subs)]);
+      changedCount++;
+    }
+  }
+  return changedCount;
+}
+
 app.post('/api/registrar/subject-assignments', requireRegistrar, async (req, res) => {
   const college = regCollege(req, (req.body || {}).college || req.query.college);
   if (!college) return res.status(403).json({ error: 'Choose a college.' });
@@ -3956,6 +4010,8 @@ app.post('/api/registrar/subject-assignments', requireRegistrar, async (req, res
         }
       }
     }
+    await syncEnrollmentsFromAssignments(client, college, m.grading_semester, m.grading_ay,
+      [{ years, sections: sections.length ? sections : ['A', 'B', 'C'] }]);
     await client.query('COMMIT');
     logAction(req, college + ' registrar', 'subject assigned', codes.join(', ') + ' to ' + userId);
     res.json({ ok: true, count: codes.length });
@@ -6805,4 +6861,8 @@ async function backfillApplicantIds() {
 
 app.listen(port, () => {
   console.log(`City University Pasay site running on port ${port}`);
+  // One-time style catch-up for the active term: fills blanks only, so running it again is harmless.
+  gradingTerm().then(async (t) => {
+    for (const c of REG_COLLEGES) await syncEnrollmentsFromAssignments(pool, c, t.term, t.ay, null);
+  }).catch((err) => console.error('Enrollment sync at startup failed:', err));
 });
