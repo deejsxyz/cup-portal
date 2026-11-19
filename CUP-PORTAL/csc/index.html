@@ -93,7 +93,7 @@
           <button type="button" id="viewAllBtn" class="btn-indigo">View All Students</button>
           <button type="button" id="printPaidBtn" class="btn-slate">🖨️ Print Paid Students</button>
           <select id="yearFilter" aria-label="Year level">
-            <option value="">All Year Levels</option><option value="1">BSN1</option><option value="2">BSN2</option><option value="3">BSN3</option><option value="4">BSN4</option>
+            <option value="">All Year Levels</option><option value="1">1st Year</option><option value="2">2nd Year</option><option value="3">3rd Year</option><option value="4">4th Year</option>
           </select>
           <select id="secFilter" aria-label="Section">
             <option value="">All Sections</option><option value="A">Section A</option><option value="B">Section B</option><option value="C">Section C</option>
@@ -127,7 +127,7 @@
   var page = 1, showAll = false;
   function $(id) { return document.getElementById(id); }
   function esc(v) { return String(v == null ? '' : v).replace(/[&<>"']/g, function (c) { return { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]; }); }
-  function lastFirst(s) { return [s.last_name + ',', s.first_name, s.middle_name || ''].join(' ').replace(/\s+/g, ' ').trim(); }
+  function progAbbrOf(p) { var m = /\(([^)]+)\)\s*$/.exec(p || ''); return m ? m[1] : ''; }   function progAbbrOf(p) { var m = /\(([^)]+)\)\s*$/.exec(p || ''); return m ? m[1] : ''; }   function lastFirst(s) { return [s.last_name + ',', s.first_name, s.middle_name || ''].join(' ').replace(/\s+/g, ' ').trim(); }
 
   function showLogin(msg) {
     $('app').hidden = true; $('login').hidden = false; $('logout').hidden = true; $('who').textContent = '';
@@ -174,7 +174,7 @@
           '<td style="text-transform:uppercase;font-weight:700">' + esc(s.last_name) + '</td>' +
           '<td style="text-transform:uppercase">' + esc(s.first_name) + '</td>' +
           '<td style="text-transform:uppercase">' + esc(s.middle_name || '—') + '</td>' +
-          '<td>BSN' + esc(s.year_level) + '</td>' +
+          '<td>' + esc(progAbbrOf(s.program)) + esc(s.year_level) + '</td>' +
           '<td>' + esc(s.section) + '</td>' +
           '<td class="' + (paid ? 'paid' : 'unpaid') + '">' + (paid ? 'PAID' : 'UNPAID') + '</td>' +
           '<td><label class="toggle"><input type="checkbox" data-paid="' + esc(s.student_no) + '"' + (paid ? ' checked' : '') + '> ' + (paid ? 'Paid' : 'Not paid') + '</label></td>' +
@@ -215,7 +215,7 @@
     var w = window.open('', '_blank');
     if (!w) return;
     w.document.write('<!doctype html><html><head><meta charset="utf-8"><title>' + current + ' CSC Paid Students</title><style>body{font-family:Arial,sans-serif;margin:24px}table{width:100%;border-collapse:collapse;font-size:12px}th,td{border:1px solid #888;padding:4px 6px;text-align:left}</style></head><body><h2>' + current + ' | CSC Fee Paid Students</h2><p>' + rows.length + ' student(s)</p><table><thead><tr><th>Student ID</th><th>Last Name</th><th>First Name</th><th>Middle Name</th><th>Year</th><th>Section</th><th>Paid On</th></tr></thead><tbody>' +
-      rows.map(function (s) { return '<tr><td>' + esc(s.student_no) + '</td><td>' + esc(s.last_name) + '</td><td>' + esc(s.first_name) + '</td><td>' + esc(s.middle_name || '') + '</td><td>BSN' + esc(s.year_level) + '</td><td>' + esc(s.section) + '</td><td>' + esc(new Date(s.csc_paid_at).toLocaleDateString('en-PH')) + '</td></tr>'; }).join('') +
+      rows.map(function (s) { return '<tr><td>' + esc(s.student_no) + '</td><td>' + esc(s.last_name) + '</td><td>' + esc(s.first_name) + '</td><td>' + esc(s.middle_name || '') + '</td><td>' + esc(progAbbrOf(s.program)) + esc(s.year_level) + '</td><td>' + esc(s.section) + '</td><td>' + esc(new Date(s.csc_paid_at).toLocaleDateString('en-PH')) + '</td></tr>'; }).join('') +
       '</tbody></table></body></html>');
     w.document.close(); w.focus(); w.print();
   });
