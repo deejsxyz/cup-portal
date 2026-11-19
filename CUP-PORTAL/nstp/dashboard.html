@@ -19,7 +19,7 @@
 </style>
 </head>
 <body class="bg-slate-50 text-slate-800 min-h-screen">
-<header class="bg-emerald-950 text-white px-4 py-3 flex flex-wrap items-center gap-3">
+<header class="bg-emerald-950 text-white px-4 py-3 flex flex-wrap items-center gap-3"><span id="liveClock" class="ml-auto text-sm font-semibold"></span>
   <div class="mr-auto">
     <div class="font-extrabold tracking-wide">NSTP PORTAL</div>
     <div class="text-xs text-emerald-200">NSTP Officer</div>
@@ -263,6 +263,20 @@
     fetch('/api/nstp/logout', { method: 'POST', credentials: 'same-origin' }).finally(toLogin);
   });
   load();
+})();
+</script>
+<script>
+(function () {
+  var el = document.getElementById('liveClock');
+  if (!el) return;
+  var f = new Intl.DateTimeFormat('en-US', { timeZone: 'Asia/Manila', weekday: 'long', month: 'long', day: 'numeric', year: 'numeric', hour: 'numeric', minute: '2-digit', second: '2-digit', hour12: true });
+  function tick() {
+    var p = {};
+    f.formatToParts(new Date()).forEach(function (x) { p[x.type] = x.value; });
+    el.textContent = '\uD83D\uDCC5 ' + p.weekday + ', ' + p.month + ' ' + p.day + ', ' + p.year + ' at ' + p.hour + ':' + p.minute + ':' + p.second + ' ' + p.dayPeriod;
+  }
+  tick();
+  setInterval(tick, 1000);
 })();
 </script>
 </body>

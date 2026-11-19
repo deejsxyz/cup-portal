@@ -13,6 +13,7 @@
   * { box-sizing: border-box; }
   html, body { margin: 0; background: var(--bg); color: var(--ink); }
   body { font-family: 'Libre Franklin', Arial, Helvetica, sans-serif; min-height: 100vh; }
+  .live-clock { position: absolute; right: 24px; bottom: 14px; font-size: 13px; font-weight: 700; color: var(--dg); white-space: nowrap; }
   .top { background: #fff; position: relative; height: 75px; display: flex; align-items: flex-end; padding: 0 24px 0 190px; }
   .seal { position: absolute; left: 36px; top: 0; width: 130px; height: 130px; display: flex; align-items: center; justify-content: center; z-index: 10; }
   .seal img { width: 130px; height: 130px; object-fit: contain; }
@@ -172,6 +173,7 @@
 <body>
   <header>
     <div class="top">
+      <div class="live-clock" id="liveClock"></div>
       <a class="seal" href="/CUP-PORTAL/" title="Back to the CUP Portal" style="text-decoration:none;"><img src="/images/cup-logo-seal.png" alt="City University of Pasay seal"></a>
       <div class="name">
         <div class="small">City University of Pasay</div>
@@ -2444,6 +2446,20 @@
   var s = document.getElementById('bu-stop-emails'), r = document.getElementById('bu-resume-emails');
   if (s) s.addEventListener('click', function () { send('stop'); });
   if (r) r.addEventListener('click', function () { send('resume'); });
+})();
+</script>
+<script>
+(function () {
+  var el = document.getElementById('liveClock');
+  if (!el) return;
+  var f = new Intl.DateTimeFormat('en-US', { timeZone: 'Asia/Manila', weekday: 'long', month: 'long', day: 'numeric', year: 'numeric', hour: 'numeric', minute: '2-digit', second: '2-digit', hour12: true });
+  function tick() {
+    var p = {};
+    f.formatToParts(new Date()).forEach(function (x) { p[x.type] = x.value; });
+    el.textContent = '\uD83D\uDCC5 ' + p.weekday + ', ' + p.month + ' ' + p.day + ', ' + p.year + ' at ' + p.hour + ':' + p.minute + ':' + p.second + ' ' + p.dayPeriod;
+  }
+  tick();
+  setInterval(tick, 1000);
 })();
 </script>
 </body>
