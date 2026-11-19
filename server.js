@@ -3746,6 +3746,30 @@ app.post('/api/registrar/subject-assignments', requireRegistrar, async (req, res
         'INSERT INTO reg_subject_assignments (user_id, college, course_code, term, academic_year, years, sections, subject_college, program, group_label, day_label, time_slot) VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12)',
         [userId, college, code, m.grading_semester, m.grading_ay, years, sections, subjectCollege, program, groupLabel, dayLabel, timeSlot]);
     }
+    // Also fill the Subject Scheduling table (reg_schedules) for each year and section picked.
+    // Only blank days/times are filled; a schedule that already has a value keeps it.
+    const schDays = /^TBA$/i.test(dayLabel) ? '' : dayLabel.toUpperCase().replace(/\s+/g, '').slice(0, 20);
+    const tm = /^(\d{1,2}):(\d{2})\s*(AM|PM)\s*-\s*(\d{1,2}):(\d{2})\s*(AM|PM)$/i.exec(timeSlot);
+    const to24 = (h, mi, ap) => String((Number(h) % 12) + (/PM/i.test(ap) ? 12 : 0)).padStart(2, '0') + ':' + mi;
+    const schStart = tm ? to24(tm[1], tm[2], tm[3]) : '';
+    const schEnd = tm ? to24(tm[4], tm[5], tm[6]) : '';
+    const schTimes = !!(schStart && schEnd && schEnd > schStart);
+    if (schDays || schTimes) {
+      for (const y of years) {
+        for (const sec of sections) {
+          for (const code of codes) {
+            await client.query(
+              `INSERT INTO reg_schedules (college, course_code, term, academic_year, year_level, section, group_label, days, start_time, end_time, room)
+               VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,'')
+               ON CONFLICT (college, course_code, term, academic_year, year_level, section, group_label)
+               DO UPDATE SET days = CASE WHEN reg_schedules.days = '' THEN EXCLUDED.days ELSE reg_schedules.days END,
+                             start_time = CASE WHEN reg_schedules.start_time = '' THEN EXCLUDED.start_time ELSE reg_schedules.start_time END,
+                             end_time = CASE WHEN reg_schedules.end_time = '' THEN EXCLUDED.end_time ELSE reg_schedules.end_time END`,
+              [college, code, m.grading_semester, m.grading_ay, y, sec, groupLabel, schDays, schTimes ? schStart : '', schTimes ? schEnd : '']);
+          }
+        }
+      }
+    }
     await client.query('COMMIT');
     logAction(req, college + ' registrar', 'subject assigned', codes.join(', ') + ' to ' + userId);
     res.json({ ok: true, count: codes.length });
