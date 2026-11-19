@@ -3293,16 +3293,21 @@ app.get('/api/registrar/schedules', requireRegistrar, async (req, res) => {
   const section = String(req.query.section || '').trim().toUpperCase();
   const t = await gradingTerm();
   if (!t.term || !t.ay || !(year >= 1 && year <= 4) || !section) return res.json({ term: t.term, academic_year: t.ay, rows: [] });
+  // Subjects of this year level in the curriculum, plus any subject assigned to this year and section this term.
   const r = await pool.query(
-    `SELECT c.course_code, c.descriptive_title, c.units,
+    `SELECT x.course_code, COALESCE(c.descriptive_title, '') AS descriptive_title, COALESCE(c.units, 0) AS units,
             COALESCE(s.days, '') AS days, COALESCE(s.start_time, '') AS start_time, COALESCE(s.end_time, '') AS end_time, COALESCE(s.room, '') AS room,
             COALESCE((SELECT string_agg(DISTINCT u.name, ', ') FROM reg_subject_assignments sa JOIN reg_users u ON u.id = sa.user_id
-                       WHERE sa.college = $1 AND sa.course_code = c.course_code AND sa.term = $2 AND sa.academic_year = $3
+                       WHERE sa.college = $1 AND sa.course_code = x.course_code AND sa.term = $2 AND sa.academic_year = $3
                          AND $4 = ANY(sa.years) AND $5 = ANY(sa.sections)), '') AS instructor
-       FROM reg_courses c
-       LEFT JOIN reg_schedules s ON s.college = c.college AND s.course_code = c.course_code AND s.term = $2 AND s.academic_year = $3 AND s.year_level = $4 AND s.section = $5
-      WHERE c.college = $1 AND c.year_level = $4
-      ORDER BY c.course_code`,
+       FROM (
+         SELECT course_code FROM reg_courses WHERE college = $1 AND year_level = $4
+         UNION
+         SELECT course_code FROM reg_subject_assignments WHERE college = $1 AND term = $2 AND academic_year = $3 AND $4 = ANY(years) AND $5 = ANY(sections)
+       ) x
+       LEFT JOIN LATERAL (SELECT descriptive_title, units FROM reg_courses rc WHERE rc.course_code = x.course_code ORDER BY (rc.college = $1) DESC LIMIT 1) c ON true
+       LEFT JOIN reg_schedules s ON s.college = $1 AND s.course_code = x.course_code AND s.term = $2 AND s.academic_year = $3 AND s.year_level = $4 AND s.section = $5
+      ORDER BY x.course_code`,
     [college, t.term, t.ay, year, section]);
   res.json({ term: t.term, academic_year: t.ay, rows: r.rows });
 });
