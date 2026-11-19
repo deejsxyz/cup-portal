@@ -3550,6 +3550,28 @@ app.post('/api/registrar/schedules', requireRegistrar, async (req, res) => {
            ON CONFLICT (college, course_code, term, academic_year, year_level, section, group_label)
            DO UPDATE SET days = EXCLUDED.days, start_time = EXCLUDED.start_time, end_time = EXCLUDED.end_time, room = EXCLUDED.room`,
           [college, code, t.term, t.ay, year, sec, group, days, st, et, room]);
+        // A scheduled group with no assignment yet gets one automatically, with the same instructor as the
+        // subject's existing assignment for this year and section. Skipped when no such assignment exists.
+        if (group && (days || (st && et))) {
+          const hasRow = await client.query(
+            'SELECT 1 FROM reg_subject_assignments WHERE college=$1 AND term=$2 AND academic_year=$3 AND course_code=$4 AND group_label=$5 AND $6 = ANY(years) AND $7 = ANY(sections) LIMIT 1',
+            [college, t.term, t.ay, code, group, year, sec]);
+          if (!hasRow.rows.length) {
+            const src = await client.query(
+              `SELECT user_id, subject_college, program FROM reg_subject_assignments
+                WHERE college=$1 AND term=$2 AND academic_year=$3 AND course_code=$4 AND $5 = ANY(years) AND $6 = ANY(sections)
+                ORDER BY id LIMIT 1`,
+              [college, t.term, t.ay, code, year, sec]);
+            if (src.rows.length) {
+              const sv = src.rows[0];
+              await client.query(
+                `INSERT INTO reg_subject_assignments (user_id, college, course_code, term, academic_year, years, sections, subject_college, program, group_label, day_label, time_slot)
+                 VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12)`,
+                [sv.user_id, college, code, t.term, t.ay, [year], [sec], sv.subject_college, sv.program, group,
+                 days || 'TBA', st && et ? fmt12Sched(st) + ' - ' + fmt12Sched(et) : 'TBA']);
+            }
+          }
+        }
         // Keep the Subject Assignments list in step with the schedule.
         await client.query(
           `UPDATE reg_subject_assignments SET day_label = $1, time_slot = $2
