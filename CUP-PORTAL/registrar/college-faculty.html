@@ -374,13 +374,27 @@
     var seen = {};
     var mine = (catalog.courses || []).filter(function (c) {
       if (c.college !== COLLEGE || !isMajorSubject(c.course_code) || seen[c.course_code]) return false;
+      if (progKeys && progKeys.indexOf(keyOf(c.course_code)) === -1) return false;
       seen[c.course_code] = true;
       return true;
     }).sort(function (a, b) { return String(a.course_code).localeCompare(String(b.course_code)); });
     $('asgSubjects').innerHTML = mine.length ? mine.map(function (c) {
       return '<label class="flex items-center gap-1"><input type="checkbox" class="asg-subj" value="' + esc(c.course_code) + '"> ' + esc(c.course_code + ' — ' + c.descriptive_title) + '</label>';
-    }).join('') : '<p class="text-slate-500">No subjects for this college yet.</p>';
+    }).join('') : '<p class="text-slate-500">' + (progKeys ? 'No subjects for this program in the curriculum import.' : 'No subjects for this college yet.') + '</p>';
     updateSubjectsEnabled();
+    applySubjectSearch();
+  }
+  // Program filter: the subjects of the chosen program (curriculum import). null = no program chosen.
+  var progKeys = null;
+  function keyOf(code) { return String(code || '').replace(/\s+/g, '').toUpperCase(); }
+  function loadProgramSubjects() {
+    var p = $('asgProgram').value;
+    if (!p) { progKeys = null; fillSubjectSelect(); return; }
+    api('/api/registrar/curriculum-codes?program=' + encodeURIComponent(p)).then(function (res) {
+      var codes = res.ok ? (res.j.codes || []) : [];
+      progKeys = codes.map(keyOf);
+      fillSubjectSelect();
+    });
   }
   // Subject checkboxes stay greyed out until a faculty member and a program are chosen.
   function updateSubjectsEnabled() {
@@ -395,7 +409,7 @@
     $('asgSubjHint').hidden = ready;
   }
   $('asgFaculty').addEventListener('change', updateSubjectsEnabled);
-  $('asgProgram').addEventListener('change', updateSubjectsEnabled);
+  $('asgProgram').addEventListener('change', function () { loadProgramSubjects(); updateSubjectsEnabled(); });
 
   // Live search: ignores capitals and spaces ("gec101" matches "GEC 101")
   function applySubjectSearch() {
