@@ -3667,6 +3667,14 @@ app.get('/api/registrar/subject-catalog', requireRegistrar, async (req, res) => 
   res.json({ colleges: REG_COLLEGES, programs: REG_PROGRAM_COLLEGES, courses: r.rows });
 });
 
+// Subject codes of one program, from the curriculum import (used by the Program filter in Subject schedule).
+app.get('/api/registrar/curriculum-codes', requireRegistrar, async (req, res) => {
+  const program = String(req.query.program || '').trim();
+  if (!program) return res.json({ codes: [] });
+  const r = await pool.query('SELECT DISTINCT code FROM curriculum_subjects WHERE program = $1 ORDER BY code', [program]);
+  res.json({ codes: r.rows.map((x) => x.code) });
+});
+
 app.post('/api/registrar/subject-assignments', requireRegistrar, async (req, res) => {
   const college = regCollege(req, (req.body || {}).college || req.query.college);
   if (!college) return res.status(403).json({ error: 'Choose a college.' });

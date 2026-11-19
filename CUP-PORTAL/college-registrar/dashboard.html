@@ -379,6 +379,7 @@
           <h3 style="margin:0 0 6px">Subject schedule</h3>
           <p class="hint">Subjects of the active term load automatically. Pick the group, days, time and room. The instructor comes from Subject Assignments. Leave Section blank to save to every section of the year level. This shows on the student's advising slip and Certificate of Enrollment.</p>
           <div style="display:flex;gap:10px;flex-wrap:wrap;align-items:flex-end">
+            <label>Program <select id="sch-program" style="width:260px"><option value="">All programs</option></select></label>
             <label>Subject <input id="sch-subject" list="sch-subject-list" placeholder="Type to search" autocomplete="off" style="width:300px"></label><datalist id="sch-subject-list"></datalist>
           <label>Year level <select id="sch-year"><option value="">All years</option><option>1</option><option>2</option><option>3</option><option>4</option></select></label>
           <label>Section <select id="sch-section"><option value="">All sections</option><option>A</option><option>B</option><option>C</option></select></label>
@@ -1674,9 +1675,36 @@
     }
     // Major subjects for "Add another group": every major subject of the college, not only the active term (GEC and other shared subjects left out).
     var schMajor = [];
+    // Program filter for the subject search: shows only the subjects of the chosen program (curriculum import).
+    var schProgCodes = null;
+    function schFillSubjectList() {
+      var list = schMajor.filter(function (x) { return !schProgCodes || schProgCodes.indexOf(x.course_code) !== -1; });
+      $('#sch-subject-list').innerHTML = list.map(function (x) {
+        return '<option value="' + esc(x.course_code + ' — ' + x.descriptive_title) + '"></option>';
+      }).join('');
+    }
+    function schFillPrograms() {
+      var c = sjCollege();
+      if (!c) return;
+      fetch('/api/registrar/subject-catalog', { credentials: 'same-origin' }).then(function (r) { return r.json(); }).then(function (j) {
+        var progs = (j.programs && j.programs[c]) || [];
+        $('#sch-program').innerHTML = '<option value="">All programs</option>' + progs.map(function (p) { return '<option value="' + esc(p) + '">' + esc(p) + '</option>'; }).join('');
+        schProgCodes = null;
+        schFillSubjectList();
+      }).catch(function () {});
+    }
+    safeOn('#sch-program', 'change', function () {
+      var p = this.value;
+      if (!p) { schProgCodes = null; schFillSubjectList(); return; }
+      fetch('/api/registrar/curriculum-codes?program=' + encodeURIComponent(p), { credentials: 'same-origin' }).then(function (r) { return r.json(); }).then(function (j) {
+        schProgCodes = j.codes || [];
+        schFillSubjectList();
+      }).catch(function () {});
+    });
     function schLoadMajor() {
       var c = sjCollege();
       if (!c) return;
+      schFillPrograms();
       fetch('/api/registrar/courses?college=' + encodeURIComponent(c), { credentials: 'same-origin' }).then(function (r) { return r.json(); }).then(function (j) {
         var seen = {};
         schMajor = (j.courses || []).filter(function (x) {
@@ -1684,9 +1712,7 @@
           seen[x.course_code] = true;
           return true;
         }).sort(function (a, b) { return String(a.course_code).localeCompare(String(b.course_code)); });
-        $('#sch-subject-list').innerHTML = schMajor.map(function (x) {
-          return '<option value="' + esc(x.course_code + ' — ' + x.descriptive_title) + '"></option>';
-        }).join('');
+        schFillSubjectList();
       }).catch(function () {});
     }
     // Picking a subject from the search box loads its rows. Picking it again reloads them, so nothing is added twice.
