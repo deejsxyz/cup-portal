@@ -133,7 +133,7 @@
       <label class="text-xs font-bold text-slate-700">Section
         <select id="asgSection" class="block mt-1 w-full px-2 py-1.5 rounded border border-slate-300 text-xs bg-white"><option value="">Choose a section</option><option value="A">A</option><option value="B">B</option><option value="C">C</option><option value="ALL">All sections</option></select></label>
     </div>
-    <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
+    <div class="grid grid-cols-1 md:grid-cols-5 gap-4">
       <label class="text-xs font-bold text-slate-700">Group
         <select id="asgGroup" class="block mt-1 w-full px-2 py-1.5 rounded border border-slate-300 text-xs bg-white"><option value="">None</option><option value="1">1</option><option value="2">2</option><option value="3">3</option><option value="4">4</option><option value="5">5</option><option value="6">6</option><option value="7">7</option><option value="8">8</option><option value="9">9</option><option value="10">10</option><option value="11">11</option><option value="12">12</option><option value="13">13</option><option value="14">14</option><option value="15">15</option><option value="16">16</option><option value="17">17</option><option value="18">18</option><option value="19">19</option><option value="20">20</option></select></label>
       <label class="text-xs font-bold text-slate-700">Day
@@ -142,6 +142,8 @@
         <input id="asgStart" type="time" class="block mt-1 w-full px-2 py-1.5 rounded border border-slate-300 text-xs bg-white"></label>
       <label class="text-xs font-bold text-slate-700">End time
         <input id="asgEnd" type="time" class="block mt-1 w-full px-2 py-1.5 rounded border border-slate-300 text-xs bg-white"></label>
+      <label class="text-xs font-bold text-slate-700">Room
+        <input id="asgRoom" type="text" maxlength="40" placeholder="e.g. RM 204" class="block mt-1 w-full px-2 py-1.5 rounded border border-slate-300 text-xs bg-white"></label>
     </div>
     <div class="flex flex-wrap items-center gap-3">
       <button type="button" id="asgSave" class="px-5 py-2 bg-indigo-700 hover:bg-indigo-800 text-white rounded-lg text-xs font-bold shadow-md cursor-pointer">Save assignment</button>
@@ -159,11 +161,12 @@
             <th class="border border-slate-300 px-2 py-1.5 text-left">Group</th>
             <th class="border border-slate-300 px-2 py-1.5 text-left">Day</th>
             <th class="border border-slate-300 px-2 py-1.5 text-left">Time</th>
+            <th class="border border-slate-300 px-2 py-1.5 text-left">Room</th>
             <th class="border border-slate-300 px-2 py-1.5 text-left">Faculty</th>
             <th class="border border-slate-300 px-2 py-1.5 text-center">Remove</th>
           </tr>
         </thead>
-        <tbody id="asgBody"><tr><td colspan="10" class="border border-slate-300 px-2 py-4 text-center text-slate-500">Loading…</td></tr></tbody>
+        <tbody id="asgBody"><tr><td colspan="11" class="border border-slate-300 px-2 py-4 text-center text-slate-500">Loading…</td></tr></tbody>
       </table>
     </div>
   </div>
@@ -337,7 +340,7 @@
   /* Subject Assignments */
   function loadAssignments() {
     return api('/api/registrar/subject-assignments').then(function (res) {
-      if (!res.ok) { $('asgBody').innerHTML = '<tr><td colspan="10" class="border border-slate-300 px-2 py-4 text-center text-slate-500">' + esc(res.j.error || 'Could not load.') + '</td></tr>'; return; }
+      if (!res.ok) { $('asgBody').innerHTML = '<tr><td colspan="11" class="border border-slate-300 px-2 py-4 text-center text-slate-500">' + esc(res.j.error || 'Could not load.') + '</td></tr>'; return; }
       term = res.j.term; ay = res.j.academic_year;
       $('asgTerm').textContent = term && ay ? 'Active term: ' + term + ' · A.Y. ' + ay : 'The academic year and semester are not set yet. The University Registrar sets them in Settings → Grading period.';
       var rows = res.j.assignments || [];
@@ -350,9 +353,10 @@
           '<td class="border border-slate-300 px-2 py-1.5">' + esc(a.group_label || '') + '</td>' +
           '<td class="border border-slate-300 px-2 py-1.5">' + esc(a.day_label || '') + '</td>' +
           '<td class="border border-slate-300 px-2 py-1.5">' + esc(a.time_slot || '') + '</td>' +
+          '<td class="border border-slate-300 px-2 py-1.5">' + esc(a.room || '') + '</td>' +
           '<td class="border border-slate-300 px-2 py-1.5">' + esc(a.faculty) + '</td>' +
           '<td class="border border-slate-300 px-2 py-1.5 text-center"><button type="button" data-remove="' + a.id + '" class="px-2 py-1 bg-red-600 hover:bg-red-700 text-white rounded text-[11px] font-bold cursor-pointer">Remove</button></td></tr>';
-      }).join('') : '<tr><td colspan="10" class="border border-slate-300 px-2 py-4 text-center text-slate-500">No subject assignments yet.</td></tr>';
+      }).join('') : '<tr><td colspan="11" class="border border-slate-300 px-2 py-4 text-center text-slate-500">No subject assignments yet.</td></tr>';
     });
   }
   $('asgBody').addEventListener('click', function (e) {
@@ -448,7 +452,7 @@
     if (st && en && en <= st) { msg.textContent = 'The end time must be after the start time.'; return; }
     var time = st ? fmt12(st) + ' - ' + fmt12(en) : '';
     var body = { faculty_id: $('asgFaculty').value, subject_college: COLLEGE, program: $('asgProgram').value, course_codes: codes, years: years,
-      sections: sec === 'ALL' ? ['A', 'B', 'C'] : (sec ? [sec] : []), group_label: group, day_label: $('asgDay').value.trim() || 'TBA', time_slot: time || 'TBA' };
+      sections: sec === 'ALL' ? ['A', 'B', 'C'] : (sec ? [sec] : []), group_label: group, day_label: $('asgDay').value.trim() || 'TBA', time_slot: time || 'TBA', room: $('asgRoom').value.trim() };
     if (!body.faculty_id) { msg.textContent = 'Choose a faculty member.'; return; }
     if (!body.program) { msg.textContent = 'Choose a program.'; return; }
     if (!body.course_codes.length) { msg.textContent = 'Choose at least one subject.'; return; }
@@ -458,7 +462,7 @@
       if (!res.ok) { msg.textContent = res.j.error || 'Could not save.'; return; }
       msg.textContent = 'Saved.';
       document.querySelectorAll('.asg-year, .asg-subj').forEach(function (c) { c.checked = false; });
-      $('asgGroup').value = ''; $('asgSection').value = ''; $('asgDay').value = ''; $('asgStart').value = ''; $('asgEnd').value = '';
+      $('asgGroup').value = ''; $('asgSection').value = ''; $('asgDay').value = ''; $('asgStart').value = ''; $('asgEnd').value = ''; $('asgRoom').value = '';
       loadAssignments();
     });
   });
