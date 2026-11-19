@@ -3090,6 +3090,8 @@ app.get('/api/registrar/coe/:no', requireRegistrar, async (req, res) => {
     };
     [['F10', 'F', 'L'], ['Q10', 'Q', 'V'], ['AB10', 'AB', 'AG'], ['F11', 'F', 'V'], ['AB11', 'AB', 'AG'], ['F12', 'F', 'S'], ['W12', 'W', 'AG'], ['A8', 'A', 'AG']]
       .forEach(([a, f, t2]) => fitHeader(a, f, t2));
+    // Student ID, student type and status stay at 9pt.
+    ['F10', 'AB10', 'AB11'].forEach((addr) => { const c = ws.getCell(addr); c.font = Object.assign({}, c.font, { size: 9 }); });
     for (let row = 15; row <= 15 + Math.min(subs.length, 41) - 1; row++) {
       wrapBody('B' + row, 'B', 'F', row);
       wrapBody('G' + row, 'G', 'I', row);
