@@ -2043,16 +2043,15 @@ app.get('/api/faculty/sheet', requirePortal('faculty'), async (req, res) => {
     const r = await pool.query(
       `SELECT s.student_no, s.last_name, s.first_name, s.middle_name, e.year_level, e.section,
               g.final_grade, g.remarks,
-              (SELECT x->>'instructor_name' FROM jsonb_array_elements(e.subjects) x WHERE x->>'course_code' = $1 LIMIT 1) AS instructor
+              (SELECT u.name FROM reg_subject_assignments sa JOIN reg_users u ON u.id = sa.user_id WHERE sa.user_id = $8::int AND sa.college = $4 AND sa.course_code = $1 AND sa.term = $2 AND sa.academic_year = $3 AND $5 = ANY(sa.years) AND $6 = ANY(sa.sections) LIMIT 1) AS instructor
          FROM reg_enrollments e
          JOIN reg_students s ON s.student_no = e.student_no
          LEFT JOIN reg_grades g ON g.student_no = e.student_no AND g.course_code = $1 AND g.term = $2 AND g.academic_year = $3
         WHERE e.college = $4 AND e.term = $2 AND e.academic_year = $3 AND e.year_level = $5 AND e.section = $6
           AND e.subjects @> $7::jsonb
-          AND EXISTS (SELECT 1 FROM jsonb_array_elements(e.subjects) x WHERE x->>'course_code' = $1 AND (x->>'instructor_id' = $8 OR x->>'instructor_name' = (SELECT name FROM reg_users WHERE id = $8::int)))
+          AND EXISTS (SELECT 1 FROM reg_subject_assignments sa WHERE sa.user_id = $8::int AND sa.college = $4 AND sa.course_code = $1 AND sa.term = $2 AND sa.academic_year = $3 AND $5 = ANY(sa.years) AND $6 = ANY(sa.sections))
         ORDER BY s.last_name, s.first_name`,
       [code, t.term, t.ay, college, year, section, JSON.stringify([{ course_code: code }]), String(req.portal.id)]);
-    if (!r.rows.some((x) => x.final_grade != null && String(x.final_grade).trim() !== '')) return res.status(400).json({ error: 'No grades recorded yet for this subject.' });
     res.json({ students: r.rows.filter((s) => !isHiddenStudentRow(s)), term: t.term, academic_year: t.ay });
   } catch (err) {
     console.error(err);
@@ -2253,16 +2252,15 @@ app.get('/api/faculty/report-of-grades.xlsx', requirePortal('faculty'), async (r
     const r = await pool.query(
       `SELECT s.student_no, s.last_name, s.first_name, s.middle_name, s.gender, s.program, s.major, e.year_level,
               g.final_grade,
-              (SELECT x->>'instructor_name' FROM jsonb_array_elements(e.subjects) x WHERE x->>'course_code' = $1 LIMIT 1) AS instructor
+              (SELECT u.name FROM reg_subject_assignments sa JOIN reg_users u ON u.id = sa.user_id WHERE sa.user_id = $8::int AND sa.college = $4 AND sa.course_code = $1 AND sa.term = $2 AND sa.academic_year = $3 AND $5 = ANY(sa.years) AND $6 = ANY(sa.sections) LIMIT 1) AS instructor
          FROM reg_enrollments e
          JOIN reg_students s ON s.student_no = e.student_no
          LEFT JOIN reg_grades g ON g.student_no = e.student_no AND g.course_code = $1 AND g.term = $2 AND g.academic_year = $3
         WHERE e.college = $4 AND e.term = $2 AND e.academic_year = $3 AND e.year_level = $5 AND e.section = $6
           AND e.subjects @> $7::jsonb
-          AND EXISTS (SELECT 1 FROM jsonb_array_elements(e.subjects) x WHERE x->>'course_code' = $1 AND (x->>'instructor_id' = $8 OR x->>'instructor_name' = (SELECT name FROM reg_users WHERE id = $8::int)))
+          AND EXISTS (SELECT 1 FROM reg_subject_assignments sa WHERE sa.user_id = $8::int AND sa.college = $4 AND sa.course_code = $1 AND sa.term = $2 AND sa.academic_year = $3 AND $5 = ANY(sa.years) AND $6 = ANY(sa.sections))
         ORDER BY s.last_name, s.first_name`,
       [code, t.term, t.ay, college, year, section, JSON.stringify([{ course_code: code }]), String(req.portal.id)]);
-    if (!r.rows.some((x) => x.final_grade != null && String(x.final_grade).trim() !== '')) return res.status(400).json({ error: 'No grades recorded yet for this subject.' });
     const FIRST_ROW = 12, LAST_ROW = 41, PER_PAGE = LAST_ROW - FIRST_ROW + 1, TPL_MARK = 42;
     // Males first, then females (each alphabetical), then anyone with no gender recorded.
     const GROUPS = [['MALE', 'Male'], ['FEMALE', 'Female'], ['GENDER NOT SPECIFIED', null]];
