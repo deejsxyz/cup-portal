@@ -449,6 +449,29 @@
   });
 
   /* Start: must be a signed-in student who has finished the first-login change */
+  // Live updates: every 15 seconds re-read the student's data and redraw only when something changed.
+  var lastSnap = null;
+  function liveTick() {
+    if (document.hidden) return;
+    Promise.all([api('/api/student/profile'), api('/api/student/grades'), api('/api/student/status'),
+      api('/api/student/enrollment-steps'), api('/api/student/prereg')]).then(function (rs) {
+      var snap = JSON.stringify(rs.map(function (r) { return r.j; }));
+      if (lastSnap === null) { lastSnap = snap; return; }
+      if (snap === lastSnap) return;
+      lastSnap = snap;
+      var ay = $('aySelect').value, sem = $('semSelect').value;
+      loadProfile();
+      loadStatus();
+      loadGrades().then(function () {
+        if (Array.prototype.some.call($('aySelect').options, function (o) { return o.value === ay; })) $('aySelect').value = ay;
+        fillSemesters($('aySelect').value);
+        if (sem) $('semSelect').value = sem;
+        renderGrades();
+      });
+      if (window.cupRefreshEnroll) window.cupRefreshEnroll();
+    }).catch(function () {});
+  }
+  setInterval(liveTick, 15000);
   api('/api/portal/me').then(function (res) {
     if (!res.ok) { window.location.href = '/CUP-PORTAL/student/login'; return null; }
     if (res.j.must_change) { window.location.href = '/CUP-PORTAL/change-password'; return null; }
@@ -527,6 +550,7 @@
         }).catch(function () { $('proc').innerHTML = '<li><p>Could not load your enrollment steps.</p></li>'; });
     }
     loadProcedure();
+  window.cupRefreshEnroll = function () { loadPrereg(); loadProcedure(); };
   loadPrereg();
   loadProcedure();
 })();
