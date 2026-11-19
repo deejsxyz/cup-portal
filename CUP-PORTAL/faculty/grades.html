@@ -143,7 +143,7 @@
   var $ = function (id) { return document.getElementById(id); };
   var COLLEGES = ['COACS', 'CAS', 'CONM', 'COED', 'COBM', 'LAW', 'GS', 'TESDA-TVI'];
   var GRADES = ['', '1.00', '1.25', '1.50', '1.75', '2.00', '2.25', '2.50', '2.75', '3.00', '4.00', '5.00', 'X', 'INC', 'W', 'NG'];
-  var YEARS = { 1: 'BSN1', 2: 'BSN2', 3: 'BSN3', 4: 'BSN4' };
+  var YEARS = { 1: '1st Year', 2: '2nd Year', 3: '3rd Year', 4: '4th Year' }; function progAbbrOf(p) { var m = /\(([^)]+)\)\s*$/.exec(p || ''); return m ? m[1] : ''; }
   var state = { edits: {}, college: '', list: [], roster: [], page: 1, size: 10, term: '', ay: '', course: '', year: 0, section: '' };
   window.cupGradeHasEdits = function () { return Object.keys(state.edits || {}).length > 0; };
   /* Keep the selected class, page and unsaved grades when the page is refreshed (this tab only). */
@@ -253,7 +253,7 @@
         $('sheetCard').hidden = false;
         var a = assignmentFor(code);
         $('sheetTitle').textContent = '[' + code + '] ' + (a && a.descriptive_title ? a.descriptive_title : '');
-        $('sheetSub').textContent = 'BSN-' + year + sec + ' · ' + state.term + ' · A.Y. ' + state.ay;
+        $('sheetSub').textContent = (state.roster && state.roster[0] ? progAbbrOf(state.roster[0].program) : '') + '-' + year + sec + ' · ' + state.term + ' · A.Y. ' + state.ay;
         $('sheetCount').textContent = 'Total Students Enrolled: ' + state.roster.length;
         $('saveMsg').textContent = '';
         render();
@@ -272,7 +272,7 @@
         '<td>' + (from + i + 1) + '</td>' +
         '<td style="font-family:monospace;font-weight:700">' + esc(s.student_no) + '</td>' +
         '<td style="text-transform:uppercase;font-weight:700">' + esc(s.last_name) + ', ' + esc(s.first_name) + ' ' + esc(s.middle_name || '') + '</td>' +
-        '<td>BSN-' + esc(s.year_level) + esc(s.section) + '</td>' +
+        '<td>' + esc(progAbbrOf(s.program)) + '-' + esc(s.year_level) + esc(s.section) + '</td>' +
         '<td><select class="g">' + opts + '</select></td>' +
         '<td class="rem">' + esc(remark(current)) + '</td>' +
         '<td>' + esc(s.instructor || '') + '</td></tr>';
