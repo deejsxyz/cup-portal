@@ -404,8 +404,11 @@
     });
   });
   var catalog = { colleges: [], programs: {}, courses: [] };
+  // Programs with majors are listed one entry per major (as in the curriculum), since each major has its own subjects.
+  var curriculumPrograms = [];
   function fillProgramSelect() {
-    $('asgProgram').innerHTML = '<option value="">-- Program --</option>' + (catalog.programs[COLLEGE] || []).map(function (p) {
+    var choices = curriculumPrograms.length ? curriculumPrograms : (catalog.programs[COLLEGE] || []);
+    $('asgProgram').innerHTML = '<option value="">-- Program --</option>' + choices.map(function (p) {
       return '<option value="' + esc(p) + '">' + esc(p) + '</option>';
     }).join('');
     fillSubjectSelect();
@@ -462,7 +465,9 @@
   $('asgSubjSearch').addEventListener('input', applySubjectSearch);
 
   function loadSubjects() {
-    return api('/api/registrar/subject-catalog').then(function (res) {
+    return Promise.all([api('/api/registrar/curriculum-programs?college=' + encodeURIComponent(COLLEGE)), api('/api/registrar/subject-catalog')]).then(function (out) {
+      curriculumPrograms = out[0].ok ? (out[0].j.programs || []) : [];
+      var res = out[1];
       if (!res.ok) return;
       catalog = res.j;
       var seen = {};
