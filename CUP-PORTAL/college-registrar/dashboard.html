@@ -379,7 +379,7 @@
     <section class="panel" id="schedule-section"><div class="box"><h2>Subject Schedule</h2><div class="body">
         <div id="sch-box" style="margin-top:22px;padding-top:14px;border-top:1px solid #d5e2d5">
           <h3 style="margin:0 0 6px">Subject schedule</h3>
-          <p class="hint">Subjects of the active term load automatically. Pick the group, days, time and room. The instructor comes from Subject Assignments. Leave Section blank to save to every section of the year level. This shows on the student's advising slip and Certificate of Enrollment.</p>
+          <p class="hint">Read-only. Subjects of the active term are listed here with the group, section, days, time, room and instructor saved in Subject Assignment. To change a schedule, edit it in Subject Assignment. This shows on the student's advising slip and Certificate of Enrollment.</p>
           <div style="display:flex;gap:10px;flex-wrap:wrap;align-items:flex-end">
             <label>Program <select id="sch-program" style="width:260px"><option value="">All programs</option></select></label>
             <label>Subject <input id="sch-subject" list="sch-subject-list" placeholder="Type to search" autocomplete="off" style="width:300px"></label><datalist id="sch-subject-list"></datalist>
@@ -1588,7 +1588,19 @@
       $('#sch-prev').onclick = function () { schCapture(); schPage--; schRender(); schCheck(); };
       $('#sch-next').onclick = function () { schCapture(); schPage++; schRender(); schCheck(); };
       $('#sch-save').onclick = schSave;
+      schLock();
       schSyncGutters();
+    }
+    // Read-only view: no inputs, no + / × gutters, no Save button.
+    function schLock() {
+      document.querySelectorAll('#sch-list input, #sch-list select').forEach(function (el) {
+        if (el.id === 'sch-size' || el.id === 'sch-prev' || el.id === 'sch-next') return;
+        el.disabled = true;
+      });
+      ['#sch-gl', '#sch-gr', '#sch-save'].forEach(function (sel) {
+        var el = document.querySelector(sel);
+        if (el) el.style.display = 'none';
+      });
     }
     // Keeps the + and × columns lined up with the table rows.
     function schSyncGutters() {
