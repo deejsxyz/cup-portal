@@ -1535,9 +1535,9 @@
         var groups = '<option value="">-</option>';
         for (var g = 1; g <= 20; g++) groups += '<option value="G' + g + '"' + (r.group_label === 'G' + g ? ' selected' : '') + '>G' + g + '</option>';
         var picked = (r.days || '').split(' ');
-        var days = SCH_DAYS.map(function (d) {
+        var days = '<div style="display:grid;grid-template-columns:repeat(4,max-content);gap:2px 10px">' + SCH_DAYS.map(function (d) {
           return '<label style="margin-right:6px;white-space:nowrap"><input type="checkbox" data-day="' + d + '"' + (picked.indexOf(d) !== -1 ? ' checked' : '') + '> ' + d.charAt(0) + d.slice(1).toLowerCase() + '</label>';
-        }).join('');
+        }).join('') + '</div>';
         return '<tr data-row="' + i + '"' + (schConf[i] && schConf[i].length ? ' style="background:#fde8e8"' : '') + '>' +
           '<td style="' + td + '"><button type="button" data-add="' + i + '" title="Add a group row for this subject" style="border:0;background:none;color:#166534;font-weight:700;cursor:pointer;padding:0 6px 0 0">+</button>' +
           esc(r.course_code) + '</td>' +
