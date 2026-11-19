@@ -1554,7 +1554,7 @@
           '<td style="' + td + '">' +
           esc(r.course_code) + '</td>' +
           '<td style="' + td + '">' + esc(r.descriptive_title) + '</td>' +
-          '<td style="' + td + '"><select data-f="group_label">' + groups + '</select></td>' +
+          '<td style="' + td + '"><select data-f="group_label" disabled title="Set automatically by the + button" style="background:#e5e7eb;color:#6b7280;cursor:not-allowed">' + groups + '</select></td>' +
           '<td style="' + td + '"><select data-f="section"><option value="">-</option>' + ['A', 'B', 'C'].map(function (x) { return '<option value="' + x + '"' + (r.section === x ? ' selected' : '') + '>' + x + '</option>'; }).join('') + '</select></td>' +
           '<td style="' + td + '">' + days + '<div class="hint" data-tba-day style="font-size:.8rem;display:' + (r.tba_day && !r.edited ? '' : 'none') + '">TBA</div></td>' +
           '<td style="' + td + ';white-space:nowrap"><input type="time" data-f="start_time" value="' + esc(r.start_time) + '"> to <input type="time" data-f="end_time" value="' + esc(r.end_time) + '"><div class="hint" data-tba-time style="font-size:.8rem;display:' + (r.tba_time && !r.edited ? '' : 'none') + '">TBA</div></td>' +
