@@ -3031,7 +3031,9 @@ app.get('/api/registrar/coe/:no', requireRegistrar, async (req, res) => {
     ws.getCell('F11').value = name.toUpperCase();
     ws.getCell('AB11').value = COE_STANDING_ABBR[standing && standing.status] || (standing && standing.status) || 'REG';
     ws.getCell('F12').value = (COLLEGE_FULL_NAMES[college] || college).toUpperCase();
-    ws.getCell('W12').value = ((s.program || '') + (s.major ? ' - ' + s.major : '')).toUpperCase();
+    // Course: program abbreviation only, e.g. "Bachelor of Science in Nursing (BSN)" -> BSN (with major abbreviation after a dash).
+    const progAbbr = ((String(s.program || '').match(/\(([^)]+)\)/) || [])[1] || String(s.program || '')).trim();
+    ws.getCell('W12').value = (progAbbr + (s.major ? '-' + String(s.major).trim() : '')).toUpperCase();
     subs.slice(0, 41).forEach((x, i) => {
       const row = 15 + i;
       const sd = smap.get(x.course_code) || {};
@@ -3046,6 +3048,11 @@ app.get('/api/registrar/coe/:no', requireRegistrar, async (req, res) => {
       ws.getCell('X' + row).value = units == null ? '' : Number(units);
       const inst = imap.get(x.course_code) || '';
       ws.getCell('AA' + row).value = [inst, sd.room ? 'Room ' + sd.room : ''].filter(Boolean).join(' · ');
+      // Body of the subject table is 9pt.
+      ['A', 'B', 'G', 'J', 'O', 'X', 'AA'].forEach((c) => {
+        const cell = ws.getCell(c + row);
+        cell.font = Object.assign({}, cell.font, { size: 9 });
+      });
     });
     const file = ('COE_' + no + '_' + t.ay + '_' + t.term).replace(/[^A-Za-z0-9_-]+/g, '_') + '.xlsx';
     res.setHeader('Content-Type', 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet');
