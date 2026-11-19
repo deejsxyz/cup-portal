@@ -370,7 +370,7 @@
     }).join('');
     fillSubjectSelect();
   }
-  function fillSubjectSelect() {
+  var NON_MAJOR = /^(GEC|NSTP|PHE|PE|RIZ|COR)(?=\s|\d|$)/i;   function isMajorSubject(code) { return !NON_MAJOR.test(String(code || '').trim()); }   function fillSubjectSelect() {
     var seen = {};
     var mine = (catalog.courses || []).filter(function (c) {
       if (c.college !== COLLEGE || seen[c.course_code]) return false;
@@ -402,6 +402,7 @@
       catalog = res.j;
       var seen = {};
       subjects = (catalog.courses || []).filter(function (c) {
+        if (!isMajorSubject(c.course_code)) return false;
         if (seen[c.course_code]) return false;
         seen[c.course_code] = true;
         return true;
