@@ -1518,6 +1518,17 @@
         r.days = Array.prototype.slice.call(tr.querySelectorAll('[data-day]:checked')).map(function (c) { return c.getAttribute('data-day'); }).join(' ');
       });
     }
+    // Empty table with headers and five blank rows, shown until a subject is picked.
+    function schEmptyTable() {
+      var th = 'text-align:left;border-bottom:1px solid #7fa37f;padding:6px';
+      var td = 'padding:6px;border-bottom:1px solid #d5e2d5;height:34px';
+      var heads = ['Code', 'Descriptive title', 'Group', 'Section', 'Day', 'Time', 'Instructor', 'Room', ''];
+      var blank = '<tr>' + heads.map(function () { return '<td style="' + td + '"></td>'; }).join('') + '</tr>';
+      return '<table style="width:100%;border-collapse:collapse;font-size:.9rem"><thead><tr>' +
+        heads.map(function (t) { return '<th style="' + th + '">' + t + '</th>'; }).join('') +
+        '</tr></thead><tbody>' + blank + blank + blank + blank + blank + '</tbody></table>' +
+        '<p class="hint" style="margin-top:8px">Choose a subject to show its schedule.</p>';
+    }
     function schRender() {
       var q = '';
       var view = [];
@@ -1629,7 +1640,7 @@
     }
     // Loads the subjects of the active term for the chosen filters (both optional).
     function schLoad(silent) {
-      if (!schSubjects.length) { schRows = []; $('#sch-list').innerHTML = '<p class="hint">Choose a subject to show its schedule.</p>'; $('#sch-conflicts').innerHTML = ''; return; }
+      if (!schSubjects.length) { schRows = []; $('#sch-list').innerHTML = schEmptyTable(); $('#sch-conflicts').innerHTML = ''; return; }
       if (!silent) schDirty = false;
       fetch('/api/registrar/schedules?' + schCollectParams(), { credentials: 'same-origin' }).then(function (r) { return r.json(); }).then(function (j) {
         schRows = (j.rows || []).map(function (r) { r.tba_day = !r.days; r.tba_time = !(r.start_time && r.end_time); r.edited = false; return r; });
@@ -1684,7 +1695,7 @@
     $('#sch-subject').onchange = function () { schPickSubject(this.value); };
     function schOpen() {
       schLoadMajor();
-      if (!schSubjects.length) $('#sch-list').innerHTML = '<p class="hint">Choose a subject to show its schedule.</p>';
+      if (!schSubjects.length) $('#sch-list').innerHTML = schEmptyTable();
     }
     // Live update: every 10 seconds the table re-reads the active term (Subject Assignments and schedules saved elsewhere). Paused while there are unsaved edits.
     setInterval(function () {
@@ -1709,7 +1720,7 @@
         schSubjects = schSubjects.filter(function (c) { return c !== code; });
         if (schSubject === code) schSubject = schSubjects[schSubjects.length - 1] || '';
       }
-      if (!schRows.length) { $('#sch-list').innerHTML = '<p class="hint">Choose a subject to show its schedule.</p>'; $('#sch-conflicts').innerHTML = ''; return; }
+      if (!schRows.length) { $('#sch-list').innerHTML = schEmptyTable(); $('#sch-conflicts').innerHTML = ''; return; }
       schRender();
       schCheck();
     });
