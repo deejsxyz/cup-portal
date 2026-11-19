@@ -2112,6 +2112,8 @@
     }
     document.addEventListener('keydown', function (e) {
       if (e.key !== 'Escape') return;
+      var cancelBtn = document.querySelector('#sj-list button[data-act="cancel"]');
+      if (cancelBtn) { cancelBtn.click(); return; }
       var open = document.querySelector('.panel.on');
       if (!open) { hideCollegeBar(); return; }
       var f = open.querySelector('iframe');
