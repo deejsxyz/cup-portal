@@ -3511,6 +3511,9 @@ app.get('/api/registrar/schedules', requireRegistrar, async (req, res) => {
 // 24-hour "13:00" to the assignment list's "1:00 PM" style.
 const fmt12Sched = (hhmm) => { const [hh, mi] = String(hhmm).split(':'); const h = Number(hh); return (h % 12 || 12) + ':' + mi + ' ' + (h >= 12 ? 'PM' : 'AM'); };
 app.post('/api/registrar/schedules', requireRegistrar, async (req, res) => {
+  // Read-only: schedules are saved from Subject Assignment only.
+  return res.status(403).json({ error: 'The subject schedule is read-only. Save days, time and room in Subject Assignment.' });
+  // eslint-disable-next-line no-unreachable
   const b = req.body || {};
   const college = regCollege(req, b.college || req.query.college);
   if (!college) return res.status(403).json({ error: 'Choose a college.' });
@@ -3769,6 +3772,7 @@ app.post('/api/registrar/subject-assignments', requireRegistrar, async (req, res
   if (/^\d{1,2}$/.test(groupLabel)) groupLabel = 'G' + groupLabel; // a bare number means G<number>
   const dayLabel = String(b.day_label || '').trim().slice(0, 40);
   const timeSlot = String(b.time_slot || '').trim().slice(0, 40);
+  const roomText = String(b.room || '').trim().slice(0, 40);
   const years = (Array.isArray(b.years) ? b.years : []).map(Number).filter((y) => [1, 2, 3, 4].includes(y));
   let sections = (Array.isArray(b.sections) ? b.sections : []).map((s) => String(s).trim()).filter((s) => ['A', 'B', 'C'].includes(s));
   if (!codes.length) return res.status(400).json({ error: 'Choose at least one subject.' });
@@ -3801,26 +3805,27 @@ app.post('/api/registrar/subject-assignments', requireRegistrar, async (req, res
         'INSERT INTO reg_subject_assignments (user_id, college, course_code, term, academic_year, years, sections, subject_college, program, group_label, day_label, time_slot) VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12)',
         [userId, college, code, m.grading_semester, m.grading_ay, years, sections, subjectCollege, program, groupLabel, dayLabel, timeSlot]);
     }
-    // Also fill the Subject Scheduling table (reg_schedules) for each year and section picked.
-    // Only blank days/times are filled; a schedule that already has a value keeps it.
+    // Subject Assignment is the only place schedules are saved: it writes the days, time and room
+    // to the Subject schedule table for each year and section picked. A blank value keeps what is saved.
     const schDays = schDayCodes(dayLabel).slice(0, 20);
     const tm = /^(\d{1,2}):(\d{2})\s*(AM|PM)\s*-\s*(\d{1,2}):(\d{2})\s*(AM|PM)$/i.exec(timeSlot);
     const to24 = (h, mi, ap) => String((Number(h) % 12) + (/PM/i.test(ap) ? 12 : 0)).padStart(2, '0') + ':' + mi;
     const schStart = tm ? to24(tm[1], tm[2], tm[3]) : '';
     const schEnd = tm ? to24(tm[4], tm[5], tm[6]) : '';
     const schTimes = !!(schStart && schEnd && schEnd > schStart);
-    if (schDays || schTimes) {
+    if (schDays || schTimes || roomText) {
       for (const y of years) {
         for (const sec of sections) {
           for (const code of codes) {
             await client.query(
               `INSERT INTO reg_schedules (college, course_code, term, academic_year, year_level, section, group_label, days, start_time, end_time, room)
-               VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,'')
+               VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11)
                ON CONFLICT (college, course_code, term, academic_year, year_level, section, group_label)
-               DO UPDATE SET days = CASE WHEN reg_schedules.days = '' THEN EXCLUDED.days ELSE reg_schedules.days END,
-                             start_time = CASE WHEN reg_schedules.start_time = '' THEN EXCLUDED.start_time ELSE reg_schedules.start_time END,
-                             end_time = CASE WHEN reg_schedules.end_time = '' THEN EXCLUDED.end_time ELSE reg_schedules.end_time END`,
-              [college, code, m.grading_semester, m.grading_ay, y, sec, groupLabel, schDays, schTimes ? schStart : '', schTimes ? schEnd : '']);
+               DO UPDATE SET days = CASE WHEN EXCLUDED.days <> '' THEN EXCLUDED.days ELSE reg_schedules.days END,
+                             start_time = CASE WHEN EXCLUDED.start_time <> '' THEN EXCLUDED.start_time ELSE reg_schedules.start_time END,
+                             end_time = CASE WHEN EXCLUDED.end_time <> '' THEN EXCLUDED.end_time ELSE reg_schedules.end_time END,
+                             room = CASE WHEN EXCLUDED.room <> '' THEN EXCLUDED.room ELSE reg_schedules.room END`,
+              [college, code, m.grading_semester, m.grading_ay, y, sec, groupLabel, schDays, schTimes ? schStart : '', schTimes ? schEnd : '', roomText]);
           }
         }
       }
