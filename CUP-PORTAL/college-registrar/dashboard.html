@@ -387,8 +387,7 @@
           <label>Section <select id="sch-section"><option value="">All sections</option><option>A</option><option>B</option><option>C</option></select></label>
                     </div>
           <div id="sch-list" style="margin-top:10px;overflow-x:auto"></div>
-          <div id="sch-conflicts" class="hint" style="margin-top:8px"></div>
-          <p class="hint" id="sch-msg"></p>
+              <p class="hint" id="sch-msg"></p>
         </div>
     </div></div></section>
     <section class="panel" id="portal-accounts"><div class="box"><h2>Accounts</h2><div class="body">
@@ -1500,7 +1499,7 @@
     safeOn('#al-load', 'click', loadActivity);
     // Subjects and units (college registrar: own college; University Registrar: any college)
     // Subject schedule: the active term's subjects load on open; the year and section filters update the table.
-    var schSubject = '', schSubjects = [], schRows = [], schPage = 1, schSize = 10, schConf = {}, schCheckSeq = 0, schDirty = false;
+    var schSubject = '', schSubjects = [], schRows = [], schPage = 1, schSize = 10, schDirty = false;
     var SCH_DAYS = ['MON', 'TUE', 'WED', 'THU', 'FRI', 'SAT', 'SUN'];
     function schCollectParams(courses) {
       var p = 'year_level=' + encodeURIComponent($('#sch-year').value) + '&section=' + encodeURIComponent($('#sch-section').value);
@@ -1553,7 +1552,7 @@
         var days = '<div style="display:grid;grid-template-columns:repeat(4,max-content);gap:2px 10px">' + SCH_DAYS.map(function (d) {
           return '<label style="margin-right:6px;white-space:nowrap"><input type="checkbox" data-day="' + d + '"' + (picked.indexOf(d) !== -1 ? ' checked' : '') + '> ' + d.charAt(0) + d.slice(1).toLowerCase() + '</label>';
         }).join('') + '</div>';
-        return '<tr data-row="' + i + '"' + (schConf[i] && schConf[i].length ? ' style="background:#fde8e8"' : '') + '>' +
+        return '<tr data-row="' + i + '"' + '>' +
           '<td style="' + td + '">' +
           esc(r.course_code) + '</td>' +
           '<td style="' + td + '">' + esc(r.descriptive_title) + '</td>' +
@@ -1584,9 +1583,9 @@
         '<button type="button" id="sch-next"' + (schPage >= pages ? ' disabled' : '') + '>Next</button></div>' +
         '<button type="button" id="sch-save" style="margin-top:10px">Save schedule</button>';
       $('#sch-size').value = String(schSize);
-      $('#sch-size').onchange = function () { schCapture(); schSize = Number(this.value) || 10; schPage = 1; schRender(); schCheck(); };
-      $('#sch-prev').onclick = function () { schCapture(); schPage--; schRender(); schCheck(); };
-      $('#sch-next').onclick = function () { schCapture(); schPage++; schRender(); schCheck(); };
+      $('#sch-size').onchange = function () { schCapture(); schSize = Number(this.value) || 10; schPage = 1; schRender(); };
+      $('#sch-prev').onclick = function () { schCapture(); schPage--; schRender(); };
+      $('#sch-next').onclick = function () { schCapture(); schPage++; schRender(); };
       $('#sch-save').onclick = schSave;
       schLock();
       schSyncGutters();
@@ -1630,63 +1629,17 @@
         if (d) d.style.display = 'none';
         if (t) t.style.display = 'none';
       }
-      schDirty = true; schCapture(); schCheck();
-    }
-    // Live conflict check on every keystroke: one check per year level and section (all three sections when none is picked).
-    // Each run gets a sequence number; a response from an older run is ignored so it cannot overwrite newer results.
-    function schCheck() {
-      var seq = ++schCheckSeq;
-      {
-        if (!schRows.length) { schConf = {}; $('#sch-conflicts').innerHTML = ''; return; }
-        var secs = $('#sch-section').value ? [$('#sch-section').value] : ['A', 'B', 'C'];
-        var byYear = {};
-        schRows.forEach(function (r, i) { if (r.year_level) (byYear[r.year_level] = byYear[r.year_level] || []).push(i); });
-        var jobs = [];
-        Object.keys(byYear).forEach(function (y) {
-          secs.forEach(function (sec) {
-            var idx = byYear[y].filter(function (i) { return !schRows[i].section || schRows[i].section === sec; });
-            if (!idx.length) return;
-            var body = { year_level: y, section: sec, items: idx.map(function (i) {
-              var r = schRows[i];
-              return { course_code: r.course_code, group_label: r.group_label || '', days: r.days || '', start_time: r.start_time || '', end_time: r.end_time || '' };
-            }) };
-            if (me.role === 'superadmin') body.college = sjCollege();
-            jobs.push(fetch('/api/registrar/schedules/check', { method: 'POST', credentials: 'same-origin', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(body) })
-              .then(function (r) { return r.json(); }).then(function (j) {
-                return Object.keys(j.conflicts || {}).map(function (k) { return { i: idx[Number(k)], sec: sec, msgs: j.conflicts[k] }; });
-              }).catch(function () { return []; }));
-          });
-        });
-        Promise.all(jobs).then(function (parts) {
-          if (seq !== schCheckSeq) return;
-          schConf = {};
-          var lines = [];
-          parts.forEach(function (list) {
-            list.forEach(function (x) {
-              var r = schRows[x.i];
-              var name = r.course_code + (r.group_label ? ' ' + r.group_label : '') + (secs.length > 1 ? ' (Section ' + x.sec + ')' : '');
-              schConf[x.i] = schConf[x.i] || [];
-              x.msgs.forEach(function (m) { schConf[x.i].push(m); lines.push(esc(name + ': ' + m)); });
-            });
-          });
-          $('#sch-conflicts').innerHTML = lines.length ? '<strong style="color:#b91c1c">Conflicts (' + lines.length + '):</strong><br>' + lines.join('<br>') : '<span class="hint">No conflicts.</span>';
-          document.querySelectorAll('#sch-list tr[data-row]').forEach(function (tr) {
-            var i = Number(tr.getAttribute('data-row'));
-            tr.style.background = schConf[i] && schConf[i].length ? '#fde8e8' : '';
-          });
-        });
-      }
+      schDirty = true; schCapture();
     }
     // Loads the subjects of the active term for the chosen filters (both optional).
     function schLoad(silent) {
-      if (!schSubjects.length) { schRows = []; $('#sch-list').innerHTML = schEmptyTable(); $('#sch-conflicts').innerHTML = ''; return; }
+      if (!schSubjects.length) { schRows = []; $('#sch-list').innerHTML = schEmptyTable(); return; }
       if (!silent) schDirty = false;
       fetch('/api/registrar/schedules?' + schCollectParams(), { credentials: 'same-origin' }).then(function (r) { return r.json(); }).then(function (j) {
         schRows = (j.rows || []).map(function (r) { r.tba_day = !r.days; r.tba_time = !(r.start_time && r.end_time); r.edited = false; return r; });
         if (!silent) schPage = 1;
-        if (!schRows.length) { $('#sch-list').innerHTML = '<p class="hint">No subjects for the active term yet.</p>'; $('#sch-conflicts').innerHTML = ''; return; }
+        if (!schRows.length) { $('#sch-list').innerHTML = '<p class="hint">No subjects for the active term yet.</p>'; return; }
         schRender();
-        schCheck();
       }).catch(function () { $('#sch-msg').textContent = 'Could not load the schedule.'; });
     }
     // Major subjects for "Add another group": every major subject of the college, not only the active term (GEC and other shared subjects left out).
@@ -1761,7 +1714,6 @@
         var add = (j.rows || []).map(function (r) { r.tba_day = !r.days; r.tba_time = !(r.start_time && r.end_time); r.edited = false; return r; });
         schRows = schRows.concat(add);
         schRender();
-        schCheck();
       }).catch(function () { $('#sch-msg').textContent = 'Could not add the subject.'; });
     }
     $('#sch-subject').onchange = function () { schPickSubject(this.value); };
@@ -1792,9 +1744,8 @@
         schSubjects = schSubjects.filter(function (c) { return c !== code; });
         if (schSubject === code) schSubject = schSubjects[schSubjects.length - 1] || '';
       }
-      if (!schRows.length) { $('#sch-list').innerHTML = schEmptyTable(); $('#sch-conflicts').innerHTML = ''; return; }
+      if (!schRows.length) { $('#sch-list').innerHTML = schEmptyTable(); return; }
       schRender();
-      schCheck();
     });
     $('#sch-list').onchange = schTouch;
     // + before a code: a new group row for that subject, placed right under this row.
@@ -1816,7 +1767,6 @@
       schRows.splice(refIdx + 1, 0, nr);
       schDirty = true;
       schRender();
-      schCheck();
     }
     function schSave() {
       var msg = $('#sch-msg'); msg.textContent = '';
