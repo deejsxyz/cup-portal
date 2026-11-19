@@ -3652,6 +3652,10 @@ app.post('/api/registrar/schedules/pdf', requireRegistrar, (req, res) => {
     ['Code', 70, 'code'], ['Descriptive title', 200, 'title'], ['Group', 50, 'group'], ['Section', 50, 'section'],
     ['Day', 80, 'day'], ['Time', 150, 'time'], ['Instructor', 170, 'instructor'], ['Room', 80, 'room']
   ];
+  // Shrink the columns proportionally so the whole table fits across one landscape page.
+  const pageWidth = doc.page.width - doc.page.margins.left - doc.page.margins.right;
+  const scale = pageWidth / cols.reduce((sum, c) => sum + c[1], 0);
+  cols.forEach((c) => { c[1] = c[1] * scale; });
   const x0 = doc.page.margins.left, rowH = 20, bottom = doc.page.height - doc.page.margins.bottom;
   let y = doc.y;
   const drawRow = (vals, bold) => {
