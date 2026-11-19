@@ -395,7 +395,18 @@
     $('asgSubjHint').hidden = ready;
   }
   $('asgFaculty').addEventListener('change', updateSubjectsEnabled);
-  $('asgProgram').addEventListener('change', updateSubjectsEnabled);   // Live search: ignores capitals and spaces ("gec101" = "GEC 101")   function applySubjectSearch() {     var q = $('asgSubjSearch').value.toLowerCase().replace(/\s+/g, '');     document.querySelectorAll('#asgSubjects > label').forEach(function (lbl) {       var t = lbl.textContent.toLowerCase().replace(/\s+/g, '');       lbl.style.display = (!q || t.indexOf(q) !== -1) ? '' : 'none';     });   }   $('asgSubjSearch').addEventListener('input', applySubjectSearch);
+  $('asgProgram').addEventListener('change', updateSubjectsEnabled);
+
+  // Live search: ignores capitals and spaces ("gec101" matches "GEC 101")
+  function applySubjectSearch() {
+    var q = $('asgSubjSearch').value.toLowerCase().replace(/\s+/g, '');
+    document.querySelectorAll('#asgSubjects > label').forEach(function (lbl) {
+      var t = lbl.textContent.toLowerCase().replace(/\s+/g, '');
+      lbl.style.display = (!q || t.indexOf(q) !== -1) ? '' : 'none';
+    });
+  }
+  $('asgSubjSearch').addEventListener('input', applySubjectSearch);
+
   function loadSubjects() {
     return api('/api/registrar/subject-catalog').then(function (res) {
       if (!res.ok) return;
