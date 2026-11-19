@@ -3701,6 +3701,27 @@ app.get('/api/registrar/curriculum-codes', requireRegistrar, async (req, res) =>
   res.json({ codes: hit ? [...new Set(hit.codes)] : [], known: [] });
 });
 
+// Turns the assignment day text ("MWF", "TTH", "Mon/Wed", "F") into the schedule's codes ("MON WED FRI").
+const SCHED_DAY_ORDER = ['MON', 'TUE', 'WED', 'THU', 'FRI', 'SAT', 'SUN'];
+function schDayCodes(text) {
+  const src = String(text || '').toUpperCase().replace(/[^A-Z]/g, '');
+  if (!src || src === 'TBA') return '';
+  const found = new Set();
+  let i = 0;
+  while (i < src.length) {
+    const three = src.slice(i, i + 3);
+    const two = src.slice(i, i + 2);
+    if (SCHED_DAY_ORDER.includes(three)) { found.add(three); i += 3; continue; }
+    if (two === 'TH') { found.add('THU'); i += 2; continue; }
+    if (two === 'SU') { found.add('SUN'); i += 2; continue; }
+    if (two === 'SA') { found.add('SAT'); i += 2; continue; }
+    const one = { M: 'MON', T: 'TUE', W: 'WED', F: 'FRI', S: 'SAT' }[src[i]];
+    if (one) found.add(one);
+    i += 1;
+  }
+  return SCHED_DAY_ORDER.filter((d) => found.has(d)).join(' ');
+}
+
 app.post('/api/registrar/subject-assignments', requireRegistrar, async (req, res) => {
   const college = regCollege(req, (req.body || {}).college || req.query.college);
   if (!college) return res.status(403).json({ error: 'Choose a college.' });
@@ -3748,7 +3769,7 @@ app.post('/api/registrar/subject-assignments', requireRegistrar, async (req, res
     }
     // Also fill the Subject Scheduling table (reg_schedules) for each year and section picked.
     // Only blank days/times are filled; a schedule that already has a value keeps it.
-    const schDays = /^TBA$/i.test(dayLabel) ? '' : dayLabel.toUpperCase().replace(/\s+/g, '').slice(0, 20);
+    const schDays = schDayCodes(dayLabel).slice(0, 20);
     const tm = /^(\d{1,2}):(\d{2})\s*(AM|PM)\s*-\s*(\d{1,2}):(\d{2})\s*(AM|PM)$/i.exec(timeSlot);
     const to24 = (h, mi, ap) => String((Number(h) % 12) + (/PM/i.test(ap) ? 12 : 0)).padStart(2, '0') + ':' + mi;
     const schStart = tm ? to24(tm[1], tm[2], tm[3]) : '';
