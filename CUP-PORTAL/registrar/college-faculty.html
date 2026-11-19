@@ -133,9 +133,7 @@
       <label class="text-xs font-bold text-slate-700">Section
         <select id="asgSection" class="block mt-1 w-full px-2 py-1.5 rounded border border-slate-300 text-xs bg-white"><option value="">Choose a section</option><option value="A">A</option><option value="B">B</option><option value="C">C</option><option value="ALL">All sections</option></select></label>
     </div>
-    <div class="grid grid-cols-1 md:grid-cols-5 gap-4">
-      <label class="text-xs font-bold text-slate-700">Group
-        <select id="asgGroup" class="block mt-1 w-full px-2 py-1.5 rounded border border-slate-300 text-xs bg-white"><option value="">None</option><option value="1">1</option><option value="2">2</option><option value="3">3</option><option value="4">4</option><option value="5">5</option><option value="6">6</option><option value="7">7</option><option value="8">8</option><option value="9">9</option><option value="10">10</option><option value="11">11</option><option value="12">12</option><option value="13">13</option><option value="14">14</option><option value="15">15</option><option value="16">16</option><option value="17">17</option><option value="18">18</option><option value="19">19</option><option value="20">20</option></select></label>
+    <div class="grid grid-cols-1 md:grid-cols-4 gap-4">
       <label class="text-xs font-bold text-slate-700">Day
         <input id="asgDay" type="text" maxlength="40" placeholder="e.g. MWF or TTH" class="block mt-1 w-full px-2 py-1.5 rounded border border-slate-300 text-xs bg-white"></label>
       <label class="text-xs font-bold text-slate-700">Start time
@@ -362,7 +360,6 @@
       var secs = a.sections || [];
       $('asgSection').value = secs.length > 1 ? 'ALL' : (secs[0] || '');
       var g = asgNextGroup(a.course_code);
-      $('asgGroup').value = g ? String(g) : '';
       $('asgDay').value = ''; $('asgStart').value = ''; $('asgEnd').value = ''; $('asgRoom').value = '';
       $('asgMsg').textContent = g ? 'New group G' + g + ' for ' + a.course_code + '. Set its day, time and room, then save.' : 'All 20 groups of ' + a.course_code + ' are used.';
       $('asgSave').scrollIntoView({ behavior: 'smooth', block: 'center' });
@@ -483,7 +480,6 @@
     var years = Array.prototype.slice.call(document.querySelectorAll('.asg-year:checked')).map(function (c) { return Number(c.value); });
     var codes = Array.prototype.slice.call(document.querySelectorAll('.asg-subj:checked')).map(function (c) { return c.value; });
     var sec = $('asgSection').value;
-    var group = $('asgGroup').value ? 'G' + $('asgGroup').value : '';
     // Times come from the time pickers (24-hour) and are saved as e.g. "7:00 AM - 8:30 AM".
     var st = $('asgStart').value, en = $('asgEnd').value;
     function fmt12(t) { var p = t.split(':'), hh = Number(p[0]); return (hh % 12 || 12) + ':' + p[1] + ' ' + (hh >= 12 ? 'PM' : 'AM'); }
@@ -491,7 +487,7 @@
     if (st && en && en <= st) { msg.textContent = 'The end time must be after the start time.'; return; }
     var time = st ? fmt12(st) + ' - ' + fmt12(en) : '';
     var body = { faculty_id: $('asgFaculty').value, subject_college: COLLEGE, program: $('asgProgram').value, course_codes: codes, years: years,
-      sections: sec === 'ALL' ? ['A', 'B', 'C'] : (sec ? [sec] : []), group_label: group, day_label: $('asgDay').value.trim() || 'TBA', time_slot: time || 'TBA', room: $('asgRoom').value.trim() };
+      sections: sec === 'ALL' ? ['A', 'B', 'C'] : (sec ? [sec] : []), group_label: '', day_label: $('asgDay').value.trim() || 'TBA', time_slot: time || 'TBA', room: $('asgRoom').value.trim() };
     if (!body.faculty_id) { msg.textContent = 'Choose a faculty member.'; return; }
     if (!body.program) { msg.textContent = 'Choose a program.'; return; }
     if (!body.course_codes.length) { msg.textContent = 'Choose at least one subject.'; return; }
@@ -501,7 +497,7 @@
       if (!res.ok) { msg.textContent = res.j.error || 'Could not save.'; return; }
       msg.textContent = 'Saved.';
       document.querySelectorAll('.asg-year, .asg-subj').forEach(function (c) { c.checked = false; });
-      $('asgGroup').value = ''; $('asgSection').value = ''; $('asgDay').value = ''; $('asgStart').value = ''; $('asgEnd').value = ''; $('asgRoom').value = '';
+      $('asgSection').value = ''; $('asgDay').value = ''; $('asgStart').value = ''; $('asgEnd').value = ''; $('asgRoom').value = '';
       loadAssignments();
     });
   });
