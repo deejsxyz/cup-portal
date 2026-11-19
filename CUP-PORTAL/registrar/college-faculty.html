@@ -462,7 +462,10 @@
       raw = a.day_label && a.day_label !== 'TBA' ? a.day_label : '';
       st = t[0]; et = t[1]; room = a.room || '';
     }
-    return { a: a, days: asgDaySet(raw), st: st, et: et, room: String(room || '').trim().toUpperCase(), yrs: a.years || [], secs: a.sections || [] };
+    var toMin = function (t) { var m = /^(\d{1,2}):(\d{2})/.exec(t || ''); return m ? Number(m[1]) * 60 + Number(m[2]) : null; };
+    var s0 = toMin(st), e0 = toMin(et);
+    if (s0 !== null && e0 !== null && e0 <= s0) e0 += 1440; // overnight: ends the next day
+    return { a: a, days: asgDaySet(raw), st: st, et: et, s: s0, e: e0, room: String(room || '').trim().toUpperCase(), yrs: a.years || [], secs: a.sections || [] };
   }
   function asgConflicts() {
     var cur = asgRows.map(asgCurrent);
@@ -474,7 +477,9 @@
         var p = cur[i], q = cur[j];
         if (!p.st || !p.et || !q.st || !q.et) continue;
         if (!p.days.some(function (d) { return q.days.indexOf(d) !== -1; })) continue;
-        if (!(p.st < q.et && q.st < p.et)) continue;
+        var overlap = false;
+        [-1440, 0, 1440].forEach(function (sh) { if (p.s < q.e + sh && q.s + sh < p.e) overlap = true; });
+        if (!overlap) continue;
         var when = p.days.join('') + ' ' + p.st + '–' + p.et;
         var sameYear = p.yrs.some(function (y) { return q.yrs.indexOf(y) !== -1; });
         var sameSec = p.secs.some(function (s) { return q.secs.indexOf(s) !== -1; });
@@ -538,7 +543,7 @@
     if (!years.length) { msg.textContent = 'Choose at least one year level.'; return; }
     if (!group) { msg.textContent = 'Enter a group, for example G1.'; return; }
     if (!!st !== !!en) { msg.textContent = 'Set both the start and end time, or leave both blank.'; return; }
-    if (st && en && en <= st) { msg.textContent = 'The end time must be after the start time.'; return; }
+    // End earlier than start = runs past midnight (e.g. 6:00 PM - 2:00 AM); allowed.
     var time = st ? asgFmt12(st) + ' - ' + asgFmt12(en) : '';
     msg.textContent = 'Saving…';
     post('/api/registrar/subject-assignments/' + id + '/update', {
@@ -680,7 +685,7 @@
     var st = $('asgStart').value, en = $('asgEnd').value;
     function fmt12(t) { var p = t.split(':'), hh = Number(p[0]); return (hh % 12 || 12) + ':' + p[1] + ' ' + (hh >= 12 ? 'PM' : 'AM'); }
     if (!!st !== !!en) { msg.textContent = 'Set both the start and end time, or leave both blank.'; return; }
-    if (st && en && en <= st) { msg.textContent = 'The end time must be after the start time.'; return; }
+    // End earlier than start = runs past midnight (e.g. 6:00 PM - 2:00 AM); allowed.
     var time = st ? fmt12(st) + ' - ' + fmt12(en) : '';
     var body = { faculty_id: $('asgFaculty').value, subject_college: COLLEGE, program: $('asgProgram').value, course_codes: codes, years: years,
       sections: sec === 'ALL' ? ['A', 'B', 'C'] : (sec ? [sec] : []), group_label: '', day_label: $('asgDay').value.trim() || 'TBA', time_slot: time || 'TBA', room: $('asgRoom').value.trim() };
