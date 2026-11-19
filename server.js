@@ -3914,6 +3914,81 @@ app.post('/api/registrar/subject-assignments/:id/schedule', requireRegistrar, as
   res.json({ ok: true });
 });
 
+// Edit one saved assignment: faculty, years, sections, group, day, time and room. Rebuilds its Subject schedule rows.
+app.post('/api/registrar/subject-assignments/:id/update', requireRegistrar, async (req, res) => {
+  const b = req.body || {};
+  const college = regCollege(req, b.college || req.query.college);
+  if (!college) return res.status(403).json({ error: 'Choose a college.' });
+  const set = await pool.query("SELECT key, value FROM reg_settings WHERE key IN ('grading_semester','grading_ay')");
+  const m = Object.fromEntries(set.rows.map((r) => [r.key, r.value]));
+  if (!m.grading_semester || !m.grading_ay) return res.status(400).json({ error: 'Set the grading period first.' });
+  const row = await pool.query(
+    'SELECT id, course_code, group_label, years, sections FROM reg_subject_assignments WHERE id = $1 AND college = $2 AND term = $3 AND academic_year = $4',
+    [Number(req.params.id), college, m.grading_semester, m.grading_ay]);
+  if (!row.rows.length) return res.status(404).json({ error: 'That assignment was not found.' });
+  const a = row.rows[0];
+  const userId = Number(b.faculty_id);
+  const f = await pool.query("SELECT id FROM reg_users WHERE id = $1 AND role = 'faculty' AND college = $2 AND archived_at IS NULL", [userId, college]);
+  if (!f.rows.length) return res.status(400).json({ error: 'Choose a faculty member from this college.' });
+  const years = (Array.isArray(b.years) ? b.years : []).map(Number).filter((y) => [1, 2, 3, 4].includes(y));
+  let sections = (Array.isArray(b.sections) ? b.sections : []).map((s) => String(s).trim()).filter((s) => ['A', 'B', 'C'].includes(s));
+  let groupLabel = String(b.group_label || '').trim().toUpperCase().slice(0, 30);
+  if (/^\d{1,2}$/.test(groupLabel)) groupLabel = 'G' + groupLabel;
+  if (!groupLabel) return res.status(400).json({ error: 'Enter a group, for example G1.' });
+  if (!(/^G\d{1,2}$/.test(groupLabel) || (/^G\d{1,2}[A-C]$/.test(groupLabel) && sections.includes(groupLabel.slice(-1))))) {
+    return res.status(400).json({ error: 'Group must look like G1 (all selected sections) or G1A (section A must be selected).' });
+  }
+  const gsec = /^G\d{1,2}([A-C])$/.exec(groupLabel);
+  if (gsec) sections = [gsec[1]];
+  if (!years.length || !sections.length) return res.status(400).json({ error: 'Choose at least one year level and one section.' });
+  const dayLabel = String(b.day_label || '').trim().slice(0, 40) || 'TBA';
+  const timeSlot = String(b.time_slot || '').trim().slice(0, 40) || 'TBA';
+  const roomText = String(b.room || '').trim().slice(0, 40);
+  const tm = /^(\d{1,2}):(\d{2})\s*(AM|PM)\s*-\s*(\d{1,2}):(\d{2})\s*(AM|PM)$/i.exec(timeSlot);
+  const to24 = (h, mi, ap) => String((Number(h) % 12) + (/PM/i.test(ap) ? 12 : 0)).padStart(2, '0') + ':' + mi;
+  const schStart = tm ? to24(tm[1], tm[2], tm[3]) : '';
+  const schEnd = tm ? to24(tm[4], tm[5], tm[6]) : '';
+  if (tm && schEnd <= schStart) return res.status(400).json({ error: 'The end time must be after the start time.' });
+  const schDays = dayLabel === 'TBA' ? '' : schDayCodes(dayLabel).slice(0, 20);
+  const client = await pool.connect();
+  try {
+    await client.query('BEGIN');
+    const dup = await client.query(
+      'SELECT 1 FROM reg_subject_assignments WHERE college=$1 AND term=$2 AND academic_year=$3 AND course_code=$4 AND group_label=$5 AND id<>$6 LIMIT 1',
+      [college, m.grading_semester, m.grading_ay, a.course_code, groupLabel, a.id]);
+    if (dup.rows.length) {
+      await client.query('ROLLBACK');
+      return res.status(400).json({ error: groupLabel + ' is already used for ' + a.course_code + '.' });
+    }
+    // Remove the old schedule rows for this subject and group, then write the new ones.
+    await client.query(
+      'DELETE FROM reg_schedules WHERE college=$1 AND course_code=$2 AND term=$3 AND academic_year=$4 AND group_label=$5',
+      [college, a.course_code, m.grading_semester, m.grading_ay, a.group_label]);
+    await client.query(
+      'UPDATE reg_subject_assignments SET user_id=$1, years=$2, sections=$3, group_label=$4, day_label=$5, time_slot=$6 WHERE id=$7',
+      [userId, years, sections, groupLabel, dayLabel, timeSlot, a.id]);
+    for (const y of years) {
+      for (const sec of sections) {
+        await client.query(
+          `INSERT INTO reg_schedules (college, course_code, term, academic_year, year_level, section, group_label, days, start_time, end_time, room)
+           VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11)
+           ON CONFLICT (college, course_code, term, academic_year, year_level, section, group_label)
+           DO UPDATE SET days = EXCLUDED.days, start_time = EXCLUDED.start_time, end_time = EXCLUDED.end_time, room = EXCLUDED.room`,
+          [college, a.course_code, m.grading_semester, m.grading_ay, y, sec, groupLabel, schDays, schStart, schEnd, roomText]);
+      }
+    }
+    await client.query('COMMIT');
+  } catch (err) {
+    await client.query('ROLLBACK').catch(() => {});
+    console.error(err);
+    return res.status(500).json({ error: 'Could not update the assignment.' });
+  } finally {
+    client.release();
+  }
+  logAction(req, college + ' registrar', 'assignment edited', a.course_code + ' ' + groupLabel);
+  res.json({ ok: true });
+});
+
 app.post('/api/registrar/subject-assignments/:id/remove', requireRegistrar, async (req, res) => {
   const college = regCollege(req, (req.body || {}).college || req.query.college);
   if (!college) return res.status(403).json({ error: 'Choose a college.' });
