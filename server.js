@@ -3033,7 +3033,7 @@ app.get('/api/registrar/coe/:no', requireRegistrar, async (req, res) => {
     const name = [s.last_name, [s.first_name, s.middle_name, s.name_extension].filter((v) => v && String(v).trim()).join(' ')].filter(Boolean).join(', ');
     ws.getCell('A8').value = cogTermLabel(t.term) + ', A.Y. ' + t.ay;
     ws.getCell('F10').value = s.student_no;
-    ws.getCell('Q10').value = String(e.year_level) + String(e.section || '');
+    ws.getCell('Q10').value = String(e.year_level) + '-' + String(e.section || '');
     ws.getCell('AB10').value = prior.rows.length ? 'OLD' : 'NEW';
     ws.getCell('F11').value = name.toUpperCase();
     ws.getCell('AB11').value = COE_STANDING_ABBR[standing && standing.status] || (standing && standing.status) || 'REG';
