@@ -3448,7 +3448,7 @@ app.get('/api/registrar/schedules', requireRegistrar, async (req, res) => {
   if (!college) return res.status(403).json({ error: 'Choose a college.' });
   const year = [1, 2, 3, 4].includes(Number(req.query.year_level)) ? Number(req.query.year_level) : 0; // 0 = all years
   const section = String(req.query.section || '').trim().toUpperCase(); // '' = all sections
-  const course = String(req.query.course || '').trim(); // the subject picked; '' = all
+  const course = String(req.query.course || '').trim(); // subjects on the table, separated by |; '' = all
   const t = await gradingTerm();
   if (!t.term || !t.ay) return res.json({ term: t.term, academic_year: t.ay, rows: [] });
   // Every subject of the college (optionally one year level) for the active term.
@@ -3460,7 +3460,7 @@ app.get('/api/registrar/schedules', requireRegistrar, async (req, res) => {
          SELECT course_code FROM reg_subject_assignments WHERE college = $1 AND term = $3 AND academic_year = $4 AND ($2 = 0 OR $2 = ANY(years))
        ) x
        LEFT JOIN LATERAL (SELECT descriptive_title, units, year_level FROM reg_courses rc WHERE rc.course_code = x.course_code ORDER BY (rc.college = $1) DESC, rc.year_level LIMIT 1) c ON true
-      WHERE ($5 = '' OR x.course_code = $5)
+      WHERE ($5 = '' OR x.course_code = ANY(string_to_array($5, '|')))
       ORDER BY COALESCE(c.year_level, 0), x.course_code`,
     [college, year, t.term, t.ay, course]);
   const asg = await pool.query(

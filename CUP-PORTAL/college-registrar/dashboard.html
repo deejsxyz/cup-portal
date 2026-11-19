@@ -380,10 +380,11 @@
           <p class="hint">Subjects of the active term load automatically. Pick the group, days, time and room. The instructor comes from Subject Assignments. Leave Section blank to save to every section of the year level. This shows on the student's advising slip and Certificate of Enrollment.</p>
           <div style="display:flex;gap:10px;flex-wrap:wrap;align-items:flex-end">
             <label>Year level <select id="sch-year"><option value="">All years</option><option>1</option><option>2</option><option>3</option><option>4</option></select></label>
+          <label>Section <select id="sch-section"><option value="">All sections</option><option>A</option><option>B</option><option>C</option></select></label>
+          
             <label>Subject <input id="sch-subject" list="sch-subject-list" placeholder="Type to search" autocomplete="off" style="width:300px"></label><datalist id="sch-subject-list"></datalist>
           <button type="button" id="sch-add-row">Add group row</button>
-          <label>Section <select id="sch-section"><option value="">All sections</option><option>A</option><option>B</option><option>C</option></select></label>
-          </div>
+                    </div>
           <div id="sch-list" style="margin-top:10px;overflow-x:auto"></div>
           <div id="sch-conflicts" class="hint" style="margin-top:8px"></div>
           <p class="hint" id="sch-msg"></p>
@@ -1498,11 +1499,11 @@
     safeOn('#al-load', 'click', loadActivity);
     // Subjects and units (college registrar: own college; University Registrar: any college)
     // Subject schedule: the active term's subjects load on open; the year and section filters update the table.
-    var schSubject = '', schRows = [], schPage = 1, schSize = 10, schConf = {}, schCheckTimer = null, schDirty = false;
+    var schSubject = '', schSubjects = [], schRows = [], schPage = 1, schSize = 10, schConf = {}, schCheckTimer = null, schDirty = false;
     var SCH_DAYS = ['MON', 'TUE', 'WED', 'THU', 'FRI', 'SAT', 'SUN'];
-    function schCollectParams() {
+    function schCollectParams(courses) {
       var p = 'year_level=' + encodeURIComponent($('#sch-year').value) + '&section=' + encodeURIComponent($('#sch-section').value);
-      p += '&course=' + encodeURIComponent(schSubject);
+      p += '&course=' + encodeURIComponent(courses === undefined ? schSubjects.join('|') : courses);
       if (me.role === 'superadmin') p += '&college=' + encodeURIComponent(sjCollege());
       return p;
     }
@@ -1621,7 +1622,7 @@
     }
     // Loads the subjects of the active term for the chosen filters (both optional).
     function schLoad(silent) {
-      if (!schSubject) { schRows = []; $('#sch-list').innerHTML = '<p class="hint">Choose a subject to show its schedule.</p>'; $('#sch-conflicts').innerHTML = ''; return; }
+      if (!schSubjects.length) { schRows = []; $('#sch-list').innerHTML = '<p class="hint">Choose a subject to show its schedule.</p>'; $('#sch-conflicts').innerHTML = ''; return; }
       if (!silent) schDirty = false;
       fetch('/api/registrar/schedules?' + schCollectParams(), { credentials: 'same-origin' }).then(function (r) { return r.json(); }).then(function (j) {
         schRows = (j.rows || []).map(function (r) { r.tba_day = !r.days; r.tba_time = !(r.start_time && r.end_time); r.edited = false; return r; });
@@ -1649,23 +1650,39 @@
       }).catch(function () {});
     }
     // Picking a subject from the search box loads its rows. Picking it again reloads them, so nothing is added twice.
+    // Each subject picked is added to the table; several subjects can be on it and saved together.
     function schPickSubject(text) {
       var code = String(text || '').split(' — ')[0].trim();
       var ok = schMajor.some(function (x) { return x.course_code === code; });
-      if (!ok) { schSubject = ''; schRows = []; $('#sch-list').innerHTML = '<p class="hint">Choose a subject from the list.</p>'; $('#sch-conflicts').innerHTML = ''; return; }
+      $('#sch-subject').value = '';
+      if (!ok) { $('#sch-msg').textContent = 'Choose a subject from the list.'; return; }
       var picked = schMajor.filter(function (x) { return x.course_code === code; })[0];
       if (picked && Number(picked.year_level)) $('#sch-year').value = String(picked.year_level);
-      schSubject = code; schPage = 1; schLoad();
+      schSubject = code;
+      if (schSubjects.indexOf(code) !== -1) { $('#sch-msg').textContent = code + ' is already on the table.'; return; }
+      schSubjects.push(code);
+      $('#sch-msg').textContent = '';
+      schAppend(code);
+    }
+    // Adds one subject's rows to the table without reloading the rows already there (their unsaved edits stay).
+    function schAppend(code) {
+      fetch('/api/registrar/schedules?' + schCollectParams(code), { credentials: 'same-origin' }).then(function (r) { return r.json(); }).then(function (j) {
+        schCapture();
+        var add = (j.rows || []).map(function (r) { r.tba_day = !r.days; r.tba_time = !(r.start_time && r.end_time); r.edited = false; return r; });
+        schRows = schRows.concat(add);
+        schRender();
+        schCheck();
+      }).catch(function () { $('#sch-msg').textContent = 'Could not add the subject.'; });
     }
     $('#sch-subject').onchange = function () { schPickSubject(this.value); };
     function schOpen() {
       schLoadMajor();
-      if (!schSubject) $('#sch-list').innerHTML = '<p class="hint">Choose a subject to show its schedule.</p>';
+      if (!schSubjects.length) $('#sch-list').innerHTML = '<p class="hint">Choose a subject to show its schedule.</p>';
     }
     // Live update: every 10 seconds the table re-reads the active term (Subject Assignments and schedules saved elsewhere). Paused while there are unsaved edits.
     setInterval(function () {
       var panel = document.getElementById('schedule-section');
-      if (!schDirty && schSubject && panel && panel.classList.contains('on')) schLoad(true);
+      if (!schDirty && schSubjects.length && panel && panel.classList.contains('on')) schLoad(true);
     }, 10000);
     $('#sch-year').onchange = function () { schLoad(); };
     $('#sch-section').onchange = function () { schLoad(); };
