@@ -3992,8 +3992,19 @@ app.post('/api/registrar/subject-assignments/:id/update', requireRegistrar, asyn
 app.post('/api/registrar/subject-assignments/:id/remove', requireRegistrar, async (req, res) => {
   const college = regCollege(req, (req.body || {}).college || req.query.college);
   if (!college) return res.status(403).json({ error: 'Choose a college.' });
-  const r = await pool.query('DELETE FROM reg_subject_assignments WHERE id = $1 AND college = $2', [Number(req.params.id), college]);
+  const r = await pool.query('DELETE FROM reg_subject_assignments WHERE id = $1 AND college = $2 RETURNING course_code, group_label, term, academic_year', [Number(req.params.id), college]);
   if (!r.rowCount) return res.status(404).json({ error: 'Assignment not found.' });
+  // If no other assignment uses this subject and group, its Subject Schedule rows go too, so the schedule updates with it.
+  const g = r.rows[0];
+  const still = await pool.query(
+    'SELECT 1 FROM reg_subject_assignments WHERE college=$1 AND term=$2 AND academic_year=$3 AND course_code=$4 AND group_label=$5 LIMIT 1',
+    [college, g.term, g.academic_year, g.course_code, g.group_label]);
+  if (!still.rows.length) {
+    await pool.query(
+      'DELETE FROM reg_schedules WHERE college=$1 AND term=$2 AND academic_year=$3 AND course_code=$4 AND group_label=$5',
+      [college, g.term, g.academic_year, g.course_code, g.group_label]);
+  }
+  logAction(req, college + ' registrar', 'assignment removed', g.course_code + ' ' + g.group_label);
   res.json({ ok: true });
 });
 
