@@ -2041,7 +2041,7 @@ app.get('/api/faculty/sheet', requirePortal('faculty'), async (req, res) => {
     const t = await activeTerm();
     if (!(await facultyCanTeach(req.portal.id, college, code, year, section, t.term, t.ay))) return res.status(403).json({ error: 'This subject is not assigned to you for this year level and section.' });
     const r = await pool.query(
-      `SELECT s.student_no, s.last_name, s.first_name, s.middle_name, e.year_level, e.section,
+      `SELECT s.student_no, s.last_name, s.first_name, s.middle_name, s.program, e.year_level, e.section,,
               g.final_grade, g.remarks,
               (SELECT u.name FROM reg_subject_assignments sa JOIN reg_users u ON u.id = sa.user_id WHERE sa.user_id = $8::int AND sa.college = $4 AND sa.course_code = $1 AND sa.term = $2 AND sa.academic_year = $3 AND $5 = ANY(sa.years) AND $6 = ANY(sa.sections) LIMIT 1) AS instructor
          FROM reg_enrollments e
@@ -2464,7 +2464,7 @@ app.get('/api/faculty/report-of-grades.pdf', requirePortal('faculty'), async (re
 
     // A4 PDF, one page per sheet, with the same layout as the Official Report of Grades form.
     const doc = new PDFDocument({ size: 'A4', margin: 0, autoFirstPage: false,
-      info: { Title: 'Official Report of Grades - ' + code + ' BSN-' + year + section, Author: 'City University of Pasay' } });
+      info: { Title: 'Official Report of Grades - ' + code + ' ' + progAbbr + '-' + year + section, Author: 'City University of Pasay' } });
     res.setHeader('Content-Type', 'application/pdf');
     res.setHeader('Content-Disposition', 'attachment; filename="Official_Report_of_Grades_' + code + '_' + year + section + '.pdf"');
     doc.pipe(res);
