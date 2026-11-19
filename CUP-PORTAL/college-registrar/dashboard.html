@@ -1653,6 +1653,8 @@
       var code = String(text || '').split(' — ')[0].trim();
       var ok = schMajor.some(function (x) { return x.course_code === code; });
       if (!ok) { schSubject = ''; schRows = []; $('#sch-list').innerHTML = '<p class="hint">Choose a subject from the list.</p>'; $('#sch-conflicts').innerHTML = ''; return; }
+      var picked = schMajor.filter(function (x) { return x.course_code === code; })[0];
+      if (picked && Number(picked.year_level)) $('#sch-year').value = String(picked.year_level);
       schSubject = code; schPage = 1; schLoad();
     }
     $('#sch-subject').onchange = function () { schPickSubject(this.value); };
