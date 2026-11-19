@@ -2689,7 +2689,7 @@ app.get('/api/student/grades', requirePortal('student'), async (req, res) => {
 
 // ---- Student status (Retention Policies, section 4.17) ----
 // Failure % = units of failed subjects / units enrolled in the term. Failed: 5.00, INC (incomplete), X (absent from examination), W (dropped).
-const RETENTION_FAIL = ['5.00', 'INC', 'X', 'W'];
+const RETENTION_FAIL = ['5.00', 'INC', 'X', 'W', '4.00', '4'];
 function termOrder(term, ay) {
   const rank = /^1st/.test(term) ? 1 : /^2nd/.test(term) ? 2 : 3;
   return ay + '|' + rank;
