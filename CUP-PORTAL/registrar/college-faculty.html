@@ -373,7 +373,7 @@
   var NON_MAJOR = /^(GEC|NSTP|PHE|PE|RIZ|COR)(?=\s|\d|$)/i;   function isMajorSubject(code) { return !NON_MAJOR.test(String(code || '').trim()); }   function fillSubjectSelect() {
     var seen = {};
     var mine = (catalog.courses || []).filter(function (c) {
-      if (c.college !== COLLEGE || seen[c.course_code]) return false;
+      if (c.college !== COLLEGE || !isMajorSubject(c.course_code) || seen[c.course_code]) return false;
       seen[c.course_code] = true;
       return true;
     }).sort(function (a, b) { return String(a.course_code).localeCompare(String(b.course_code)); });
