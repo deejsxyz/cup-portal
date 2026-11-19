@@ -1563,12 +1563,16 @@
     }
     function renderSubjects(c) {
       var rows = sjYear ? sjRows.filter(function (r) { return String(r.year_level) === sjYear; }) : sjRows;
-      var slice = rows;
+      var pages = Math.max(1, Math.ceil(rows.length / sjSize));
+      if (sjPage > pages) sjPage = pages;
+      if (sjPage < 1) sjPage = 1;
+      var slice = rows.slice((sjPage - 1) * sjSize, sjPage * sjSize);
       var th = 'text-align:left;border-bottom:1px solid #7fa37f;padding:6px';
       var td = 'padding:6px;border-bottom:1px solid #d5e2d5';
       var html = '<p class="hint">' + sjRows.length + ' subject(s) for ' + esc(c) + '.</p>' +
         '<div style="display:flex;gap:10px;align-items:center;flex-wrap:wrap;margin-bottom:8px">' +
-        '<label>Year level <select id="sj-filter-year"><option value="">All</option><option value="1">1</option><option value="2">2</option><option value="3">3</option><option value="4">4</option></select></label></div>';
+        '<label>Year level <select id="sj-filter-year"><option value="">All</option><option value="1">1</option><option value="2">2</option><option value="3">3</option><option value="4">4</option></select></label>' +
+        '<label>Rows per page <select id="sj-size"><option>10</option><option>25</option><option>50</option></select></label></div>';
       if (!rows.length) {
         html += '<p class="hint">No subjects' + (sjYear ? ' for year ' + esc(sjYear) : '') + ' yet.</p>';
       } else {
@@ -1578,11 +1582,19 @@
             return '<tr>' + [r.course_code, r.descriptive_title, r.units, r.year_level == null ? '' : r.year_level, r.semester || ''].map(function (v) {
               return '<td style="' + td + '">' + esc(v) + '</td>';
             }).join('') + '</tr>';
-          }).join('') + '</tbody></table>';
+          }).join('') + '</tbody></table>' +
+          '<div style="display:flex;gap:10px;align-items:center;margin-top:10px">' +
+          '<button type="button" id="sj-prev"' + (sjPage <= 1 ? ' disabled' : '') + '>Previous</button>' +
+          '<span class="hint">Page ' + sjPage + ' of ' + pages + '</span>' +
+          '<button type="button" id="sj-next"' + (sjPage >= pages ? ' disabled' : '') + '>Next</button></div>';
       }
       $('#sj-list').innerHTML = html;
       $('#sj-filter-year').value = sjYear;
+      $('#sj-size').value = String(sjSize);
       $('#sj-filter-year').onchange = function () { sjYear = this.value; sjPage = 1; renderSubjects(c); };
+      $('#sj-size').onchange = function () { sjSize = Number(this.value) || 10; sjPage = 1; renderSubjects(c); };
+      if ($('#sj-prev')) $('#sj-prev').onclick = function () { sjPage--; renderSubjects(c); };
+      if ($('#sj-next')) $('#sj-next').onclick = function () { sjPage++; renderSubjects(c); };
     }
     safeOn('#sj-college', 'change', loadSubjects);
     safeOn('#sj-tpl', 'click', function (e) {
