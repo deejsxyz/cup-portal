@@ -31,8 +31,7 @@
   <div id="viewStudentSection" data-sec="view" class="bg-white rounded-xl shadow-sm border border-slate-200 p-5 space-y-4">
     <div id="viewListView" class="space-y-4">
       <div class="flex flex-col lg:flex-row lg:items-center justify-between gap-3">
-        <h3 class="text-sm font-bold uppercase tracking-wider text-emerald-900">View Students</h3>
-        <div class="flex flex-wrap gap-2">
+        <div class="flex flex-wrap items-center gap-2">
           <input id="viewStudentSearch" type="text" autocomplete="off" placeholder="Search student number or name" class="w-full sm:w-64 px-3 py-2 rounded-lg border border-slate-300 text-xs">
           <button type="button" id="viewAllBtn" class="px-4 py-2 rounded-lg bg-indigo-600 hover:bg-indigo-700 text-white text-xs font-bold shadow-sm">View All Students</button>
           <button type="button" id="viewPrintListBtn" class="px-4 py-2 rounded-lg bg-slate-700 hover:bg-slate-800 text-white text-xs font-bold shadow-sm">🖨️ Print Student List</button>
@@ -41,6 +40,9 @@
             <option value="">All Sections</option>
             <option value="A">Section A</option><option value="B">Section B</option><option value="C">Section C</option>
           </select>
+          <label class="inline-flex items-center gap-2 px-3 py-2 rounded-lg border border-slate-300 text-xs font-bold cursor-pointer select-none">
+            <input id="viewEnrolledToggle" type="checkbox" class="accent-emerald-700"> Show Enrolled Students
+          </label>
         </div>
       </div>
       <div class="overflow-x-auto rounded-lg border border-slate-200">
@@ -327,7 +329,7 @@
     });
   }
   /* ----- View Student ----- */
-  function listActive() { return showAll || $('viewStudentSearch').value.trim() !== '' || $('viewYearFilter').value !== '' || $('viewSecFilter').value !== ''; }
+  function listActive() { return showAll || $('viewEnrolledToggle').checked || $('viewStudentSearch').value.trim() !== '' || $('viewYearFilter').value !== '' || $('viewSecFilter').value !== ''; }
   function filtered() {
     if (!listActive()) return [];
     var q = $('viewStudentSearch').value.trim().toLowerCase();
@@ -335,6 +337,7 @@
     return all.filter(function (s) {
       if (yr && String(s.year_level) !== yr) return false;
       if (sec && s.section !== sec) return false;
+      if ($('viewEnrolledToggle').checked && s.status !== 'enrolled') return false;
       if (!q) return true;
       return s.student_no.toLowerCase().indexOf(q) !== -1 || fullName(s).toLowerCase().indexOf(q) !== -1;
     });
@@ -379,6 +382,7 @@
   $('viewStudentSearch').addEventListener('keydown', function (e) { if (e.key === 'Enter') { e.preventDefault(); page = 1; renderList(); } });
   $('viewYearFilter').addEventListener('change', function () { page = 1; renderList(); });
   $('viewSecFilter').addEventListener('change', function () { page = 1; renderList(); });
+  $('viewEnrolledToggle').addEventListener('change', function () { page = 1; renderList(); });
   $('viewAllBtn').addEventListener('click', function () { showAll = !showAll; page = 1; renderList(); });
   $('viewPrevBtn').addEventListener('click', function () { page--; renderList(); });
   $('viewNextBtn').addEventListener('click', function () { page++; renderList(); });
