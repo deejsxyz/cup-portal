@@ -147,6 +147,7 @@
       <button type="button" id="asgSave" class="px-5 py-2 bg-indigo-700 hover:bg-indigo-800 text-white rounded-lg text-xs font-bold shadow-md cursor-pointer">Save assignment</button>
       <span id="asgMsg" class="text-xs text-slate-600"></span>
     </div>
+    <div id="asgConflicts" class="text-xs"></div>
     <div class="overflow-x-auto border border-slate-300 rounded">
       <table class="w-full text-xs border-collapse">
         <thead class="bg-slate-100">
@@ -395,7 +396,7 @@
       room = esc(a.room || '');
       act = '<button type="button" data-act="edit" data-id="' + a.id + '" class="px-2 py-1 bg-indigo-700 hover:bg-indigo-800 text-white rounded text-[11px] font-bold cursor-pointer">Edit</button>';
     }
-    return '<tr' + (editing ? ' data-editing="1"' : '') + '>' +
+    return '<tr data-row-id="' + a.id + '"' + (editing ? ' data-editing="1"' : '') + '>' +
       '<td class="border border-slate-300 px-1 py-1.5 text-center"><button type="button" data-add-group="' + a.id + '" title="Add a group for this subject" class="text-emerald-800 font-black text-lg leading-none cursor-pointer">+</button></td>' +
       '<td ' + td + '>' + esc(a.course_code) + ' — ' + esc(a.descriptive_title || '') + '</td>' +
       '<td ' + td + '>' + esc(a.program || '') + '</td>' +
@@ -408,8 +409,89 @@
       '<td class="border border-slate-300 px-2 py-1.5 text-center">' + act + '</td>' +
       '<td class="border border-slate-300 px-1 py-1.5 text-center"><button type="button" data-remove="' + a.id + '" title="Remove this assignment" class="text-red-700 font-black text-lg leading-none cursor-pointer">×</button></td></tr>';
   }
+  // Live conflict check for the table: section, instructor and room overlaps. The row being edited
+  // uses the values typed in its fields; other rows use their saved values. Saving is not blocked.
+  function asgDaySet(str) {
+    var t = String(str || '').toUpperCase();
+    if (t.indexOf('TBA') !== -1) return [];
+    var toks = [['MON', 'MON'], ['TUES', 'TUE'], ['TUE', 'TUE'], ['WED', 'WED'], ['THURS', 'THU'], ['THUR', 'THU'], ['THU', 'THU'],
+      ['FRI', 'FRI'], ['SAT', 'SAT'], ['SUN', 'SUN'], ['TH', 'THU'], ['SU', 'SUN'], ['M', 'MON'], ['T', 'TUE'], ['W', 'WED'], ['F', 'FRI'], ['S', 'SAT']];
+    var out = [], i = 0;
+    while (i < t.length) {
+      var hit = false;
+      for (var k = 0; k < toks.length; k++) {
+        if (t.indexOf(toks[k][0], i) === i) {
+          if (out.indexOf(toks[k][1]) === -1) out.push(toks[k][1]);
+          i += toks[k][0].length; hit = true; break;
+        }
+      }
+      if (!hit) i++;
+    }
+    return out;
+  }
+  function asgCurrent(a) {
+    var tr = $('asgBody').querySelector('tr[data-row-id="' + a.id + '"][data-editing="1"]');
+    var raw, st, et, room;
+    if (tr) {
+      raw = tr.querySelector('[data-f="day"]').value;
+      st = tr.querySelector('[data-f="start"]').value;
+      et = tr.querySelector('[data-f="end"]').value;
+      room = tr.querySelector('[data-f="room"]').value;
+    } else {
+      var t = asgParseTime(a.time_slot);
+      raw = a.day_label && a.day_label !== 'TBA' ? a.day_label : '';
+      st = t[0]; et = t[1]; room = a.room || '';
+    }
+    return { a: a, days: asgDaySet(raw), st: st, et: et, room: String(room || '').trim().toUpperCase(), yrs: a.years || [], secs: a.sections || [] };
+  }
+  function asgConflicts() {
+    var cur = asgRows.map(asgCurrent);
+    var byRow = {}, lines = [];
+    var label = function (x) { return x.a.course_code + (x.a.group_label ? ' ' + x.a.group_label : ''); };
+    var add = function (i, m) { (byRow[i] = byRow[i] || []).push(m); };
+    for (var i = 0; i < cur.length; i++) {
+      for (var j = i + 1; j < cur.length; j++) {
+        var p = cur[i], q = cur[j];
+        if (!p.st || !p.et || !q.st || !q.et) continue;
+        if (!p.days.some(function (d) { return q.days.indexOf(d) !== -1; })) continue;
+        if (!(p.st < q.et && q.st < p.et)) continue;
+        var when = p.days.join('') + ' ' + p.st + '–' + p.et;
+        var sameYear = p.yrs.some(function (y) { return q.yrs.indexOf(y) !== -1; });
+        var sameSec = p.secs.some(function (s) { return q.secs.indexOf(s) !== -1; });
+        if (sameYear && sameSec) {
+          var m1 = 'Section conflict: ' + label(q) + ' is at this time in the same year and section.';
+          add(i, m1); add(j, 'Section conflict: ' + label(p) + ' is at this time in the same year and section.');
+          lines.push(esc(label(p) + ' and ' + label(q) + ': same section, ' + when + '.'));
+        }
+        if (p.a.user_id === q.a.user_id) {
+          add(i, 'Instructor conflict: ' + (p.a.faculty || 'this instructor') + ' also teaches ' + label(q) + ' at this time.');
+          add(j, 'Instructor conflict: ' + (q.a.faculty || 'this instructor') + ' also teaches ' + label(p) + ' at this time.');
+          lines.push(esc(label(p) + ' and ' + label(q) + ': same instructor, ' + when + '.'));
+        }
+        if (p.room && p.room === q.room) {
+          add(i, 'Room conflict: ' + p.room + ' is used by ' + label(q) + ' at this time.');
+          add(j, 'Room conflict: ' + q.room + ' is used by ' + label(p) + ' at this time.');
+          lines.push(esc(label(p) + ' and ' + label(q) + ': same room ' + p.room + ', ' + when + '.'));
+        }
+      }
+    }
+    return { byRow: byRow, lines: lines };
+  }
+  function asgMarkConflicts() {
+    if (!$('asgConflicts')) return;
+    var res = asgConflicts();
+    $('asgBody').querySelectorAll('tr[data-row-id]').forEach(function (tr) {
+      var id = tr.getAttribute('data-row-id');
+      var idx = asgRows.findIndex(function (r) { return String(r.id) === id; });
+      tr.style.background = res.byRow[idx] && res.byRow[idx].length ? '#fde8e8' : '';
+    });
+    $('asgConflicts').innerHTML = res.lines.length
+      ? '<strong style="color:#b91c1c">Conflicts (' + res.lines.length + '):</strong><br>' + res.lines.join('<br>')
+      : (asgRows.length ? '<span class="text-slate-500">No conflicts.</span>' : '');
+  }
   function asgRender() {
     $('asgBody').innerHTML = asgRows.length ? asgRows.map(asgRowHtml).join('') : '<tr><td colspan="12" class="border border-slate-300 px-2 py-4 text-center text-slate-500">No subject assignments yet.</td></tr>';
+    asgMarkConflicts();
   }
   function loadAssignments() {
     return api('/api/registrar/subject-assignments').then(function (res) {
@@ -468,6 +550,7 @@
   $('asgBody').addEventListener('input', function (e) {
     var tr = e.target.closest ? e.target.closest('tr[data-editing="1"]') : null;
     if (!tr) return;
+    asgMarkConflicts();
     var btn = tr.querySelector('[data-act]');
     if (!btn) return;
     btn.setAttribute('data-act', 'save');
