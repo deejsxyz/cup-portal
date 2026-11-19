@@ -97,6 +97,16 @@
     });
   }
 
+  // Live update: re-read the student list every 10 seconds, so a CSC payment or other change shows without reloading.
+  function refreshLive() {
+    getJson('/api/registrar/students?college=' + encodeURIComponent(COLLEGE)).then(function (res) {
+      if (!res.ok) return;
+      students = res.j.students || [];
+      if (current) open(current.student_no);
+    }).catch(function () {});
+  }
+  setInterval(refreshLive, 10000);
+
   q.addEventListener('input', function () {
     var v = q.value.trim().toLowerCase();
     qMsg.textContent = '';
