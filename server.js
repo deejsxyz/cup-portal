@@ -3644,16 +3644,20 @@ app.post('/api/registrar/subject-assignments', requireRegistrar, async (req, res
   const codes = [...new Set((Array.isArray(b.course_codes) ? b.course_codes : [b.course_code])
     .map((c) => String(c || '').trim()).filter(Boolean))];
   // Schedule group: any label (G1 ... G12 and beyond), day and time as typed. Not limited in number.
-  const groupLabel = String(b.group_label || '').trim().toUpperCase().slice(0, 30);
+  let groupLabel = String(b.group_label || '').trim().toUpperCase().slice(0, 30);
+  if (/^\d{1,2}$/.test(groupLabel)) groupLabel = 'G' + groupLabel; // a bare number means G<number>
   const dayLabel = String(b.day_label || '').trim().slice(0, 40);
   const timeSlot = String(b.time_slot || '').trim().slice(0, 40);
   const years = (Array.isArray(b.years) ? b.years : []).map(Number).filter((y) => [1, 2, 3, 4].includes(y));
-  const sections = (Array.isArray(b.sections) ? b.sections : []).map((s) => String(s).trim()).filter((s) => ['A', 'B', 'C'].includes(s));
+  let sections = (Array.isArray(b.sections) ? b.sections : []).map((s) => String(s).trim()).filter((s) => ['A', 'B', 'C'].includes(s));
   if (!codes.length) return res.status(400).json({ error: 'Choose at least one subject.' });
   // Group label: G<number> (for all selected sections), or G<number><section> such as G1A, where that section must be selected.
   if (groupLabel && !(/^G\d{1,2}$/.test(groupLabel) || (/^G\d{1,2}[A-C]$/.test(groupLabel) && sections.includes(groupLabel.slice(-1))))) {
     return res.status(400).json({ error: 'Group must look like G1 (all selected sections) or G1A (section A must be selected).' });
   }
+  // G1A applies to Section A only, whatever else is ticked.
+  const gsec = /^G\d{1,2}([A-C])$/.exec(groupLabel);
+  if (gsec) sections = [gsec[1]];
   if (!years.length || !sections.length) return res.status(400).json({ error: 'Choose at least one year level and one section.' });
   const client = await pool.connect();
   try {
