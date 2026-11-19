@@ -3873,7 +3873,7 @@ app.post('/api/registrar/subject-assignments', requireRegistrar, async (req, res
     // No group chosen: each subject takes its next free group (G1, G2 ...). Adding a group for a subject works this way.
     const groupFor = {};
     for (const code of codes) {
-      groupFor[code] = groupLabel || await nextSubjectGroup(client, college, m.grading_semester, m.grading_ay, code);
+      groupFor[code] = groupLabel; // blank = no group yet; the + button gives groups (G1, then G2 ...)
       await client.query(
         'INSERT INTO reg_subject_assignments (user_id, college, course_code, term, academic_year, years, sections, subject_college, program, group_label, day_label, time_slot) VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12)',
         [userId, college, code, m.grading_semester, m.grading_ay, years, sections, subjectCollege, program, groupFor[code], dayLabel, timeSlot]);
