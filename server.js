@@ -3973,6 +3973,7 @@ app.post('/api/registrar/subject-assignments/:id/update', requireRegistrar, asyn
           [college, a.course_code, m.grading_semester, m.grading_ay, y, sec, groupLabel, schDays, schStart, schEnd, roomText]);
       }
     }
+    await cleanOrphanSchedules(client, college, m.grading_semester, m.grading_ay);
     await client.query('COMMIT');
   } catch (err) {
     await client.query('ROLLBACK').catch(() => {});
@@ -3985,23 +3986,39 @@ app.post('/api/registrar/subject-assignments/:id/update', requireRegistrar, asyn
   res.json({ ok: true });
 });
 
+// Deletes Subject schedule rows that no saved assignment supports (same subject, group, year and section, term and A.Y.).
+async function cleanOrphanSchedules(db, college, term, ay) {
+  await db.query(
+    `DELETE FROM reg_schedules s
+      WHERE s.college = $1 AND s.term = $2 AND s.academic_year = $3
+        AND NOT EXISTS (
+          SELECT 1 FROM reg_subject_assignments a
+           WHERE a.college = s.college AND a.term = s.term AND a.academic_year = s.academic_year
+             AND a.course_code = s.course_code AND a.group_label = s.group_label
+             AND s.year_level = ANY(a.years) AND s.section = ANY(a.sections))`,
+    [college, term, ay]);
+}
+
 app.post('/api/registrar/subject-assignments/:id/remove', requireRegistrar, async (req, res) => {
   const college = regCollege(req, (req.body || {}).college || req.query.college);
   if (!college) return res.status(403).json({ error: 'Choose a college.' });
-  const r = await pool.query('DELETE FROM reg_subject_assignments WHERE id = $1 AND college = $2 RETURNING course_code, group_label, term, academic_year', [Number(req.params.id), college]);
-  if (!r.rowCount) return res.status(404).json({ error: 'Assignment not found.' });
-  // If no other assignment uses this subject and group, its Subject Schedule rows go too, so the schedule updates with it.
-  const g = r.rows[0];
-  const still = await pool.query(
-    'SELECT 1 FROM reg_subject_assignments WHERE college=$1 AND term=$2 AND academic_year=$3 AND course_code=$4 AND group_label=$5 LIMIT 1',
-    [college, g.term, g.academic_year, g.course_code, g.group_label]);
-  if (!still.rows.length) {
-    await pool.query(
-      'DELETE FROM reg_schedules WHERE college=$1 AND term=$2 AND academic_year=$3 AND course_code=$4 AND group_label=$5',
-      [college, g.term, g.academic_year, g.course_code, g.group_label]);
+  const client = await pool.connect();
+  try {
+    await client.query('BEGIN');
+    const r = await client.query('DELETE FROM reg_subject_assignments WHERE id = $1 AND college = $2 RETURNING course_code, group_label, term, academic_year', [Number(req.params.id), college]);
+    if (!r.rowCount) { await client.query('ROLLBACK'); return res.status(404).json({ error: 'Assignment not found.' }); }
+    const g = r.rows[0];
+    await cleanOrphanSchedules(client, college, g.term, g.academic_year);
+    await client.query('COMMIT');
+    logAction(req, college + ' registrar', 'assignment removed', g.course_code + ' ' + g.group_label);
+    res.json({ ok: true });
+  } catch (err) {
+    await client.query('ROLLBACK').catch(() => {});
+    console.error(err);
+    res.status(500).json({ error: 'Could not remove the assignment.' });
+  } finally {
+    client.release();
   }
-  logAction(req, college + ' registrar', 'assignment removed', g.course_code + ' ' + g.group_label);
-  res.json({ ok: true });
 });
 
 // Subject slots on a faculty profile: the list of subjects taught this term. A new slot takes the subject's year level and all sections.
@@ -4030,6 +4047,7 @@ app.put('/api/registrar/faculty/:id/subjects', requireRegistrar, async (req, res
         'INSERT INTO reg_subject_assignments (user_id, college, course_code, term, academic_year, years, sections) VALUES ($1,$2,$3,$4,$5,$6,$7)',
         [userId, college, code, m.grading_semester, m.grading_ay, year ? [year] : [1, 2, 3, 4], ['A', 'B', 'C']]);
     }
+    await cleanOrphanSchedules(client, college, m.grading_semester, m.grading_ay);
     await client.query('COMMIT');
     logAction(req, college + ' registrar', 'faculty subjects saved', String(userId));
     res.json({ ok: true });
