@@ -147,7 +147,7 @@
           ['pr-email', 'pr-contact', 'pr-civil'].forEach(function (id) { $(id).disabled = done; });
           $('pr-actions').hidden = done;
           if (done) {
-            $('pr-state').innerHTML = '<span class="pr-status">Pre-registered for A.Y. ' + j.term.ay + ', ' + j.term.semester + '.</span> This cannot be undone. The Registrar can now see your records.';
+            $('pr-state').innerHTML = '<span class="pr-status">Pre-registered for A.Y. ' + j.term.ay + ', ' + j.term.term + '.</span> This cannot be undone. The Registrar can now see your records.';
             $('pr-state').className = 'msg ok'; $('pr-state').hidden = false;
           } else {
             $('pr-state').textContent = 'Check your information, then submit. Once you submit, you cannot change it.';
