@@ -6563,6 +6563,32 @@ app.post('/api/admin/portal', requireAdmin, async (req, res) => {
 });
 
 // Student: profile, term, curriculum for the program and year, and current selections.
+// Enrollment procedure for the logged-in student, from the same step records the registrar uses.
+app.get('/api/student/enrollment-steps', requireStudent, async (req, res) => {
+  try {
+    const p = await pool.query('SELECT student_number FROM student_profiles WHERE account_id = $1', [req.studentId]);
+    const no = p.rowCount ? p.rows[0].student_number : '';
+    const r = no ? (await pool.query(
+      `SELECT student_no, status, year_level, COALESCE(nstp_subject, '') AS nstp_subject, nstp_enrolled_at, step1_status,
+              step2_evaluated_at, step2_advised_at, step2_sectioned_at, csc_paid_at, advising_slip_at
+         FROM reg_students WHERE student_no = $1`, [no])).rows[0] : null;
+    const row = r || {};
+    const step2 = !!(row.step2_evaluated_at && row.step2_advised_at && row.step2_sectioned_at);
+    const nstpRequired = Number(row.year_level) <= 2 || !!row.nstp_subject;
+    const steps = [
+      { n: 1, label: 'Evaluation', note: 'Grades verified by the Registrar', done: row.step1_status === 'verified' },
+      { n: 2, label: "Dean's Office", note: 'Evaluation, advising and section', done: step2 },
+      { n: 3, label: 'NSTP enrollment', note: nstpRequired ? 'NSTP subject' : 'Not required for your year level', done: !nstpRequired || !!row.nstp_enrolled_at },
+      { n: 4, label: 'Official CUP ID', note: 'Student number issued', done: !!String(row.student_no || '').trim() },
+      { n: 5, label: 'CSC Fee payment', note: 'CSC fee (R407)', done: !!row.csc_paid_at },
+      { n: 6, label: 'Registrar Office', note: 'Advising slip and Certificate of Enrollment', done: !!row.advising_slip_at },
+    ];
+    res.json({ steps, officiallyEnrolled: row.status === 'enrolled' });
+  } catch (err) {
+    console.error(err);
+    res.status(500).json({ error: 'Could not load your enrollment steps.' });
+  }
+});
 app.get('/api/student/me', requireStudent, async (req, res) => {
   try {
     const p = await pool.query(

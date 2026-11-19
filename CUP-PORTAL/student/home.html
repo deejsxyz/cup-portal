@@ -20,6 +20,15 @@
   header .who { font-size: .92rem; opacity: .92; }
   header button { background: rgba(255,255,255,.18); color: #fff; border: 1px solid rgba(255,255,255,.6); border-radius: 4px; padding: 7px 14px; font: inherit; cursor: pointer; }
   main { max-width: 900px; margin: 0 auto; padding: 22px 16px 60px; }
+  .proc { list-style: none; margin: 0; padding: 0; }
+  .proc li { position: relative; display: grid; grid-template-columns: 36px 1fr; gap: 14px; padding-bottom: 20px; }
+  .proc li:not(:last-child)::before { content: ""; position: absolute; left: 17px; top: 38px; bottom: 0; width: 2px; background: #cfd3d8; }
+  .proc .num { width: 36px; height: 36px; border-radius: 50%; background: #9aa1a9; color: #fff; display: flex; align-items: center; justify-content: center; font-weight: 700; position: relative; z-index: 1; }
+  .proc li.done .num { background: var(--gold); color: var(--dg); }
+  .proc li.cur .num { background: var(--green); color: #fff; }
+  .proc h3 { font-size: 1rem; font-weight: 600; margin: 6px 0 2px; }
+  .proc p { margin: 0; color: #6b7280; font-size: .92rem; }
+  .proc li.done h3 { color: var(--dg); }
   .card { background: #fff; border: 1px solid var(--line); border-radius: 8px; padding: 18px; margin-bottom: 18px; }
   .info { display: grid; grid-template-columns: repeat(auto-fit, minmax(180px, 1fr)); gap: 12px 18px; }
   .info .k { font-size: .8rem; text-transform: uppercase; color: #5b6b5b; letter-spacing: .04em; }
@@ -62,6 +71,12 @@
 </header>
 <main>
   <section class="card">
+    <h2>Enrollment Procedure</h2>
+    <ol class="proc" id="proc"><li><p>Loading…</p></li></ol>
+    <p class="msg" id="proc-note" hidden></p>
+  </section>
+
+  <section class="card">
     <div class="info">
       <div><div class="k">Student number</div><div class="v" id="s-num">—</div></div>
       <div><div class="k">Program</div><div class="v" id="s-prog">—</div></div>
@@ -96,6 +111,19 @@
     function $(id) { return document.getElementById(id); }
     var state = null;
 
+    function loadProcedure() {
+      fetch('/api/student/enrollment-steps', { credentials: 'same-origin' }).then(function (r) { return r.json().then(function (j) { return { ok: r.ok, j: j }; }); })
+        .then(function (res) {
+          if (!res.ok) { $('proc').innerHTML = '<li><p>' + (res.j.error || 'Could not load.') + '</p></li>'; return; }
+          var firstOpen = res.j.steps.filter(function (s) { return !s.done; })[0];
+          $('proc').innerHTML = res.j.steps.map(function (s) {
+            var cls = s.done ? 'done' : (firstOpen && firstOpen.n === s.n ? 'cur' : '');
+            return '<li class="' + cls + '"><span class="num">' + s.n + '</span><div><h3>' + s.label + '</h3><p>' + s.note + '</p></div></li>';
+          }).join('');
+          if (res.j.officiallyEnrolled) { var n = $('proc-note'); n.textContent = 'You are officially enrolled for this term.'; n.className = 'msg ok'; n.hidden = false; }
+        }).catch(function () { $('proc').innerHTML = '<li><p>Could not load your enrollment steps.</p></li>'; });
+    }
+    loadProcedure();
     function say(t, ok) { var m = $('msg'); m.textContent = t; m.className = 'msg ' + (ok ? 'ok' : 'bad'); m.hidden = false; }
     function checked() {
       return Array.prototype.filter.call(document.querySelectorAll('#rows input[type=checkbox]'), function (c) { return c.checked; })
