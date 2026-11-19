@@ -54,6 +54,10 @@
         <button type="button" class="btn s6" data-task="coe" disabled>PRINT COE</button>
       </div>
       <p id="s6Msg" class="hint" style="margin:6px 0 0"></p>
+      <div id="coeProg" hidden style="margin-top:8px;max-width:360px">
+        <div style="height:10px;background:#e5e7eb;border-radius:6px;overflow:hidden"><div id="coeBar" style="height:100%;width:0%;background:#4f46e5;transition:width .15s linear"></div></div>
+        <p id="coeTxt" class="hint" style="margin:4px 0 0"></p>
+      </div>
     </div>
     <div style="margin-top:14px;display:flex;gap:12px;align-items:center;flex-wrap:wrap">
       <button type="button" class="btn" id="enrollBtn">ENROLL STUDENT</button>
@@ -203,13 +207,39 @@
       : (curStatus !== 'enrolled' ? 'PRINT COE is available once the student is officially enrolled.' : '');
   }
   // Certificate of Enrollment: downloads the COE filled from the Excel template for the current student.
+  // Downloads the COE with a progress bar under the button.
   function printCoe() {
     var s = current;
     if (!s) return false;
-    var a = document.createElement('a');
-    a.href = '/api/registrar/coe/' + encodeURIComponent(s.student_no) + '?college=' + encodeURIComponent(COLLEGE);
-    a.download = '';
-    document.body.appendChild(a); a.click(); a.remove();
+    var box = document.getElementById('coeProg'), bar = document.getElementById('coeBar'), txt = document.getElementById('coeTxt');
+    var url = '/api/registrar/coe/' + encodeURIComponent(s.student_no) + '?college=' + encodeURIComponent(COLLEGE);
+    box.hidden = false; bar.style.width = '0%'; txt.textContent = 'Preparing certificate…';
+    fetch(url, { credentials: 'same-origin' }).then(function (r) {
+      if (!r.ok) return r.json().then(function (j) { throw new Error(j.error || 'Could not build the certificate.'); });
+      var total = Number(r.headers.get('Content-Length')) || 0;
+      var got = 0, chunks = [];
+      var reader = r.body.getReader();
+      function pump() {
+        return reader.read().then(function (res) {
+          if (res.done) return;
+          chunks.push(res.value); got += res.value.length;
+          if (total) { var pct = Math.min(100, Math.round(got * 100 / total)); bar.style.width = pct + '%'; txt.textContent = 'Downloading… ' + pct + '%'; }
+          else { txt.textContent = 'Downloading… ' + Math.round(got / 1024) + ' KB'; }
+          return pump();
+        });
+      }
+      return pump().then(function () { return new Blob(chunks, { type: r.headers.get('Content-Type') || 'application/octet-stream' }); });
+    }).then(function (blob) {
+      bar.style.width = '100%'; txt.textContent = 'Download complete.';
+      var a = document.createElement('a');
+      a.href = URL.createObjectURL(blob);
+      a.download = 'COE_' + s.student_no + '.xlsx';
+      document.body.appendChild(a); a.click(); a.remove();
+      setTimeout(function () { URL.revokeObjectURL(a.href); box.hidden = true; }, 1500);
+    }).catch(function (err) {
+      txt.textContent = err.message || 'Could not download the certificate.';
+      bar.style.width = '0%';
+    });
     return true;
   }
   document.getElementById('step6').addEventListener('click', function (e) {
