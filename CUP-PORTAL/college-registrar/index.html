@@ -122,7 +122,6 @@
   (function () {
     var form = document.getElementById('login'), msg = document.getElementById('msg'), btn = document.getElementById('go');
     // No auto-redirect: a session in this browser is shared, so the login form always opens.
-    }).catch(function () {});
     form.addEventListener('submit', function (e) {
       e.preventDefault();
       msg.textContent = '';
