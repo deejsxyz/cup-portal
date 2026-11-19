@@ -3419,7 +3419,10 @@ app.get('/api/registrar/subject-assignments', requireRegistrar, async (req, res)
             COALESCE(c.descriptive_title, (SELECT rc.descriptive_title FROM reg_courses rc WHERE rc.course_code = sa.course_code LIMIT 1), '') AS descriptive_title,
             sa.years, sa.sections,
             COALESCE(NULLIF(sa.subject_college, ''), sa.college) AS subject_college, sa.program,
-            sa.group_label, sa.day_label, sa.time_slot
+            sa.group_label, sa.day_label, sa.time_slot,
+            (SELECT rs.room FROM reg_schedules rs WHERE rs.college = sa.college AND rs.course_code = sa.course_code
+               AND rs.term = sa.term AND rs.academic_year = sa.academic_year AND rs.group_label = sa.group_label
+               AND rs.year_level = ANY(sa.years) AND rs.section = ANY(sa.sections) ORDER BY rs.year_level, rs.section LIMIT 1) AS room
        FROM reg_subject_assignments sa
        JOIN reg_users u ON u.id = sa.user_id
        LEFT JOIN reg_courses c ON c.college = COALESCE(NULLIF(sa.subject_college, ''), sa.college) AND c.course_code = sa.course_code
@@ -3857,6 +3860,54 @@ app.post('/api/registrar/subject-assignments', requireRegistrar, async (req, res
   } finally {
     client.release();
   }
+});
+
+// Edit the schedule (day, time, room) of one saved assignment. Updates its row and the Subject schedule table.
+app.post('/api/registrar/subject-assignments/:id/schedule', requireRegistrar, async (req, res) => {
+  const b = req.body || {};
+  const college = regCollege(req, b.college || req.query.college);
+  if (!college) return res.status(403).json({ error: 'Choose a college.' });
+  const set = await pool.query("SELECT key, value FROM reg_settings WHERE key IN ('grading_semester','grading_ay')");
+  const m = Object.fromEntries(set.rows.map((r) => [r.key, r.value]));
+  if (!m.grading_semester || !m.grading_ay) return res.status(400).json({ error: 'Set the grading period first.' });
+  const row = await pool.query(
+    'SELECT id, course_code, group_label, years, sections FROM reg_subject_assignments WHERE id = $1 AND college = $2 AND term = $3 AND academic_year = $4',
+    [Number(req.params.id), college, m.grading_semester, m.grading_ay]);
+  if (!row.rows.length) return res.status(404).json({ error: 'That assignment was not found.' });
+  const a = row.rows[0];
+  const dayLabel = String(b.day_label || '').trim().slice(0, 40) || 'TBA';
+  const timeSlot = String(b.time_slot || '').trim().slice(0, 40) || 'TBA';
+  const roomText = String(b.room || '').trim().slice(0, 40);
+  const tm = /^(\d{1,2}):(\d{2})\s*(AM|PM)\s*-\s*(\d{1,2}):(\d{2})\s*(AM|PM)$/i.exec(timeSlot);
+  const to24 = (h, mi, ap) => String((Number(h) % 12) + (/PM/i.test(ap) ? 12 : 0)).padStart(2, '0') + ':' + mi;
+  const schStart = tm ? to24(tm[1], tm[2], tm[3]) : '';
+  const schEnd = tm ? to24(tm[4], tm[5], tm[6]) : '';
+  if (tm && schEnd <= schStart) return res.status(400).json({ error: 'The end time must be after the start time.' });
+  const schDays = dayLabel === 'TBA' ? '' : schDayCodes(dayLabel).slice(0, 20);
+  const client = await pool.connect();
+  try {
+    await client.query('BEGIN');
+    await client.query('UPDATE reg_subject_assignments SET day_label = $1, time_slot = $2 WHERE id = $3', [dayLabel, timeSlot, a.id]);
+    for (const y of a.years) {
+      for (const sec of a.sections) {
+        await client.query(
+          `INSERT INTO reg_schedules (college, course_code, term, academic_year, year_level, section, group_label, days, start_time, end_time, room)
+           VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11)
+           ON CONFLICT (college, course_code, term, academic_year, year_level, section, group_label)
+           DO UPDATE SET days = EXCLUDED.days, start_time = EXCLUDED.start_time, end_time = EXCLUDED.end_time, room = EXCLUDED.room`,
+          [college, a.course_code, m.grading_semester, m.grading_ay, y, sec, a.group_label, schDays, schStart, schEnd, roomText]);
+      }
+    }
+    await client.query('COMMIT');
+  } catch (err) {
+    await client.query('ROLLBACK').catch(() => {});
+    console.error(err);
+    return res.status(500).json({ error: 'Could not update the schedule.' });
+  } finally {
+    client.release();
+  }
+  logAction(req, college + ' registrar', 'schedule edited', a.course_code + ' ' + a.group_label);
+  res.json({ ok: true });
 });
 
 app.post('/api/registrar/subject-assignments/:id/remove', requireRegistrar, async (req, res) => {
