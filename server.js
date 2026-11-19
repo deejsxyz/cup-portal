@@ -3075,9 +3075,10 @@ app.get('/api/registrar/coe/:no', requireRegistrar, async (req, res) => {
       if (!v) return;
       const base = (cell.font && cell.font.size) || 11;
       const W = spanWidth(from, to);
-      const need = v.length * 1.1; // uppercase text is wide
+      const need = v.length * 1.35; // uppercase text is wide; be conservative
       const fit = base * W / need;
-      cell.alignment = Object.assign({}, cell.alignment, { wrapText: false, vertical: 'middle' });
+      // Excel also shrinks the text to fit the cell, so it stays on one line.
+      cell.alignment = Object.assign({}, cell.alignment, { wrapText: false, vertical: 'middle', shrinkToFit: true });
       if (fit < base) cell.font = Object.assign({}, cell.font, { size: Math.max(6, Math.floor(fit * 2) / 2) });
     };
     const wrapBody = (addr, from, to, row) => {
@@ -3096,7 +3097,7 @@ app.get('/api/registrar/coe/:no', requireRegistrar, async (req, res) => {
     [['F10', 'F', 'L'], ['Q10', 'Q', 'V'], ['AB10', 'AB', 'AG'], ['F11', 'F', 'V'], ['AB11', 'AB', 'AG'], ['F12', 'F', 'S'], ['W12', 'W', 'AG'], ['A8', 'A', 'AG']]
       .forEach(([a, f, t2]) => fitHeader(a, f, t2));
     // Student ID, student type and status stay at 9pt.
-    ['F10', 'AB10', 'AB11'].forEach((addr) => { const c = ws.getCell(addr); c.font = Object.assign({}, c.font, { size: 9 }); });
+    ['F10', 'AB10', 'AB11'].forEach((addr) => { const c = ws.getCell(addr); c.font = Object.assign({}, c.font, { size: 9 }); c.alignment = Object.assign({}, c.alignment, { shrinkToFit: false }); });
     for (let row = 15; row <= 15 + Math.min(subs.length, 41) - 1; row++) {
       wrapBody('B' + row, 'B', 'F', row);
       wrapBody('G' + row, 'G', 'I', row);
