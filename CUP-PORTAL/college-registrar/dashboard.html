@@ -379,11 +379,10 @@
           <h3 style="margin:0 0 6px">Subject schedule</h3>
           <p class="hint">Subjects of the active term load automatically. Pick the group, days, time and room. The instructor comes from Subject Assignments. Leave Section blank to save to every section of the year level. This shows on the student's advising slip and Certificate of Enrollment.</p>
           <div style="display:flex;gap:10px;flex-wrap:wrap;align-items:flex-end">
-            <label>Year level <select id="sch-year"><option value="">All years</option><option>1</option><option>2</option><option>3</option><option>4</option></select></label>
-          <label>Section <select id="sch-section"><option value="">All sections</option><option>A</option><option>B</option><option>C</option></select></label>
-          
             <label>Subject <input id="sch-subject" list="sch-subject-list" placeholder="Type to search" autocomplete="off" style="width:300px"></label><datalist id="sch-subject-list"></datalist>
           <button type="button" id="sch-add-row">Add group row</button>
+          <label>Year level <select id="sch-year"><option value="">All years</option><option>1</option><option>2</option><option>3</option><option>4</option></select></label>
+          <label>Section <select id="sch-section"><option value="">All sections</option><option>A</option><option>B</option><option>C</option></select></label>
                     </div>
           <div id="sch-list" style="margin-top:10px;overflow-x:auto"></div>
           <div id="sch-conflicts" class="hint" style="margin-top:8px"></div>
