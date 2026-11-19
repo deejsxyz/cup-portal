@@ -3664,8 +3664,11 @@ app.post('/api/registrar/schedules/check', requireRegistrar, async (req, res) =>
       for (let c = a + 1; c < items.length; c++) {
         const p = items[a], q = items[c];
         if (!schOverlaps(p, q)) continue;
-        add(p.i, 'Section conflict: ' + label(q) + ' is on ' + when(q) + ' in this section.');
-        add(q.i, 'Section conflict: ' + label(p) + ' is on ' + when(p) + ' in this section.');
+        // Groups of the same subject (G1, G2 ...) are alternatives, so they do not clash with each other.
+        if (p.code !== q.code) {
+          add(p.i, 'Section conflict: ' + label(q) + ' is on ' + when(q) + ' in this section.');
+          add(q.i, 'Section conflict: ' + label(p) + ' is on ' + when(p) + ' in this section.');
+        }
         for (const ip of p.instructors) {
           if (q.instructors.some((iq) => iq.user_id === ip.user_id)) {
             add(p.i, 'Instructor conflict: ' + ip.name + ' also teaches ' + label(q) + ' at this time.');
@@ -3681,7 +3684,8 @@ app.post('/api/registrar/schedules/check', requireRegistrar, async (req, res) =>
       [college, t.term, t.ay, year, section]);
     for (const x of items) {
       for (const sv of sec.rows) {
-        if (sv.course_code === x.code && sv.group_label === x.group) continue;
+        // Groups of the same subject do not clash with each other, saved or on the grid.
+        if (sv.course_code === x.code) continue;
         if (gridKeys.has(sv.course_code + '|' + (sv.group_label || ''))) continue;
         const o = { days: sv.days, st: sv.start_time, et: sv.end_time };
         if (schOverlaps(x, o)) add(x.i, 'Section conflict: ' + sv.course_code + (sv.group_label ? ' ' + sv.group_label : '') + ' is saved on ' + sv.days + ' ' + sv.start_time + '–' + sv.end_time + '.');
