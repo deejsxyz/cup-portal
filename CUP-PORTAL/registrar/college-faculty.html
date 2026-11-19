@@ -138,8 +138,10 @@
         <select id="asgGroup" class="block mt-1 w-full px-2 py-1.5 rounded border border-slate-300 text-xs bg-white"><option value="">None</option><option value="1">1</option><option value="2">2</option><option value="3">3</option><option value="4">4</option><option value="5">5</option><option value="6">6</option><option value="7">7</option><option value="8">8</option><option value="9">9</option><option value="10">10</option><option value="11">11</option><option value="12">12</option><option value="13">13</option><option value="14">14</option><option value="15">15</option><option value="16">16</option><option value="17">17</option><option value="18">18</option><option value="19">19</option><option value="20">20</option></select></label>
       <label class="text-xs font-bold text-slate-700">Day
         <input id="asgDay" type="text" maxlength="40" placeholder="e.g. MWF or TTH" class="block mt-1 w-full px-2 py-1.5 rounded border border-slate-300 text-xs bg-white"></label>
-      <label class="text-xs font-bold text-slate-700">Time
-        <input id="asgTime" type="text" maxlength="40" placeholder="e.g. 7:00-8:30 AM" class="block mt-1 w-full px-2 py-1.5 rounded border border-slate-300 text-xs bg-white"></label>
+      <label class="text-xs font-bold text-slate-700">Start time
+        <input id="asgStart" type="time" class="block mt-1 w-full px-2 py-1.5 rounded border border-slate-300 text-xs bg-white"></label>
+      <label class="text-xs font-bold text-slate-700">End time
+        <input id="asgEnd" type="time" class="block mt-1 w-full px-2 py-1.5 rounded border border-slate-300 text-xs bg-white"></label>
     </div>
     <div class="flex flex-wrap items-center gap-3">
       <button type="button" id="asgSave" class="px-5 py-2 bg-indigo-700 hover:bg-indigo-800 text-white rounded-lg text-xs font-bold shadow-md cursor-pointer">Save assignment</button>
@@ -413,8 +415,14 @@
     var codes = Array.prototype.slice.call(document.querySelectorAll('.asg-subj:checked')).map(function (c) { return c.value; });
     var sec = $('asgSection').value;
     var group = $('asgGroup').value ? 'G' + $('asgGroup').value : '';
+    // Times come from the time pickers (24-hour) and are saved as e.g. "7:00 AM - 8:30 AM".
+    var st = $('asgStart').value, en = $('asgEnd').value;
+    function fmt12(t) { var p = t.split(':'), hh = Number(p[0]); return (hh % 12 || 12) + ':' + p[1] + ' ' + (hh >= 12 ? 'PM' : 'AM'); }
+    if (!!st !== !!en) { msg.textContent = 'Set both the start and end time, or leave both blank.'; return; }
+    if (st && en && en <= st) { msg.textContent = 'The end time must be after the start time.'; return; }
+    var time = st ? fmt12(st) + ' - ' + fmt12(en) : '';
     var body = { faculty_id: $('asgFaculty').value, subject_college: COLLEGE, program: $('asgProgram').value, course_codes: codes, years: years,
-      sections: sec ? [sec] : [], group_label: group, day_label: $('asgDay').value.trim(), time_slot: $('asgTime').value.trim() };
+      sections: sec ? [sec] : [], group_label: group, day_label: $('asgDay').value.trim(), time_slot: time };
     if (!body.faculty_id) { msg.textContent = 'Choose a faculty member.'; return; }
     if (!body.program) { msg.textContent = 'Choose a program.'; return; }
     if (!body.course_codes.length) { msg.textContent = 'Choose at least one subject.'; return; }
@@ -424,7 +432,7 @@
       if (!res.ok) { msg.textContent = res.j.error || 'Could not save.'; return; }
       msg.textContent = 'Saved.';
       document.querySelectorAll('.asg-year, .asg-subj').forEach(function (c) { c.checked = false; });
-      $('asgGroup').value = ''; $('asgSection').value = ''; $('asgDay').value = ''; $('asgTime').value = '';
+      $('asgGroup').value = ''; $('asgSection').value = ''; $('asgDay').value = ''; $('asgStart').value = ''; $('asgEnd').value = '';
       loadAssignments();
     });
   });
