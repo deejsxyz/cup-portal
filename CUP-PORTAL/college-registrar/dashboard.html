@@ -1508,18 +1508,7 @@
       return p;
     }
     // Keep what is picked on the current page before switching pages, filters or saving.
-    function schCapture() {
-      document.querySelectorAll('#sch-list tr[data-row]').forEach(function (tr) {
-        var r = schRows[Number(tr.getAttribute('data-row'))];
-        if (!r) return;
-        r.group_label = tr.querySelector('[data-f="group_label"]').value;
-        r.section = tr.querySelector('[data-f="section"]').value;
-        r.start_time = tr.querySelector('[data-f="start_time"]').value;
-        r.end_time = tr.querySelector('[data-f="end_time"]').value;
-        r.room = tr.querySelector('[data-f="room"]').value.trim();
-        r.days = Array.prototype.slice.call(tr.querySelectorAll('[data-day]:checked')).map(function (c) { return c.getAttribute('data-day'); }).join(' ');
-      });
-    }
+    function schCapture() { /* read-only table: nothing to capture */ }
     // Empty table with headers and five blank rows, shown until a subject is picked.
     function schEmptyTable() {
       var th = 'text-align:left;border-bottom:1px solid #7fa37f;padding:6px';
@@ -1531,64 +1520,47 @@
         '</tr></thead><tbody>' + blank + blank + blank + blank + blank + '</tbody></table>' +
         '<p class="hint" style="margin-top:8px">Choose a subject to show its schedule.</p>';
     }
+    function schFmt12(t) { var m = /^(\d{1,2}):(\d{2})/.exec(t || ''); if (!m) return ''; var h = Number(m[1]); return (h % 12 || 12) + ':' + m[2] + ' ' + (h >= 12 ? 'PM' : 'AM'); }
+    function schDayText(days) { return String(days || '').split(' ').filter(Boolean).map(function (d) { return d.charAt(0) + d.slice(1).toLowerCase(); }).join(' '); }
+    // Plain-text spreadsheet view: no inputs, dropdowns, buttons or checkboxes. Values update from the live reload.
     function schRender() {
-      var q = '';
       var view = [];
-      schRows.forEach(function (r, i) {
-        if (!q || (r.course_code + ' ' + r.descriptive_title).toLowerCase().indexOf(q) !== -1) view.push(i);
-      });
+      schRows.forEach(function (r, i) { view.push(i); });
       var pages = Math.max(1, Math.ceil(view.length / schSize));
       if (schPage > pages) schPage = pages;
       if (schPage < 1) schPage = 1;
       var from = (schPage - 1) * schSize;
       var th = 'text-align:left;border-bottom:1px solid #7fa37f;padding:6px';
       var td = 'padding:6px;border-bottom:1px solid #d5e2d5;vertical-align:middle';
-      var narrow = 'padding:6px 2px;border-bottom:1px solid #d5e2d5;width:22px;white-space:nowrap;vertical-align:middle';
       var rowsHtml = view.slice(from, from + schSize).map(function (i) {
         var r = schRows[i];
-        var groups = '<option value="">-</option>';
-        for (var g = 1; g <= 20; g++) groups += '<option value="G' + g + '"' + (r.group_label === 'G' + g ? ' selected' : '') + '>G' + g + '</option>';
-        var picked = (r.days || '').split(' ');
-        var days = '<div style="display:grid;grid-template-columns:repeat(4,max-content);gap:2px 10px">' + SCH_DAYS.map(function (d) {
-          return '<label style="margin-right:6px;white-space:nowrap"><input type="checkbox" data-day="' + d + '"' + (picked.indexOf(d) !== -1 ? ' checked' : '') + '> ' + d.charAt(0) + d.slice(1).toLowerCase() + '</label>';
-        }).join('') + '</div>';
-        return '<tr data-row="' + i + '"' + '>' +
-          '<td style="' + td + '">' +
-          esc(r.course_code) + '</td>' +
+        var day = r.days ? schDayText(r.days) : 'TBA';
+        var time = (r.start_time && r.end_time) ? (schFmt12(r.start_time) + ' - ' + schFmt12(r.end_time)) : 'TBA';
+        return '<tr>' +
+          '<td style="' + td + '">' + esc(r.course_code) + '</td>' +
           '<td style="' + td + '">' + esc(r.descriptive_title) + '</td>' +
-          '<td style="' + td + '"><select data-f="group_label" disabled title="Set automatically by the + button" style="background:#e5e7eb;color:#6b7280;cursor:not-allowed">' + groups + '</select></td>' +
-          '<td style="' + td + '"><select data-f="section"><option value="">-</option>' + ['A', 'B', 'C'].map(function (x) { return '<option value="' + x + '"' + (r.section === x ? ' selected' : '') + '>' + x + '</option>'; }).join('') + '</select></td>' +
-          '<td style="' + td + '">' + days + '<div class="hint" data-tba-day style="font-size:.8rem;display:' + (r.tba_day && !r.edited ? '' : 'none') + '">TBA</div></td>' +
-          '<td style="' + td + ';white-space:nowrap"><input type="time" data-f="start_time" value="' + esc(r.start_time) + '"><br>to <input type="time" data-f="end_time" value="' + esc(r.end_time) + '"><div class="hint" data-tba-time style="font-size:.8rem;display:' + (r.tba_time && !r.edited ? '' : 'none') + '">TBA</div></td>' +
+          '<td style="' + td + '">' + esc(r.group_label || '-') + '</td>' +
+          '<td style="' + td + '">' + esc(r.section || '-') + '</td>' +
+          '<td style="' + td + '">' + esc(day) + '</td>' +
+          '<td style="' + td + ';white-space:nowrap">' + esc(time) + '</td>' +
           '<td style="' + td + '">' + esc(r.instructor || 'TBA') + '</td>' +
-          '<td style="' + td + '"><input data-f="room" value="' + esc(r.room) + '" maxlength="40" style="width:80px;box-sizing:border-box"></td>' +
+          '<td style="' + td + '">' + esc(r.room || '') + '</td>' +
           '</tr>';
       }).join('');
       $('#sch-list').innerHTML = '<div style="display:flex;gap:10px;align-items:center;flex-wrap:wrap;margin-bottom:8px">' +
         '<label>Rows per page <select id="sch-size"><option>10</option><option>25</option><option>50</option></select></label>' +
         '<span class="hint">' + view.length + ' subject(s)</span></div>' +
-        '<div style="display:flex;gap:6px;align-items:flex-start">' +
-        '<table id="sch-gl" style="border-collapse:collapse;font-size:.9rem;width:34px"><thead><tr><th></th></tr></thead><tbody>' + view.slice(from, from + schSize).map(function (i) {
-          return '<tr><td style="padding:0 2px;vertical-align:middle"><button type="button" data-add="' + i + '" title="Add a group row for this subject" style="border:0;background:none;color:#166534;font-weight:900;font-size:1.3rem;line-height:1;cursor:pointer;padding:0">+</button></td></tr>';
-        }).join('') + '</tbody></table>' +
-        '<div style="flex:1;min-width:0;overflow-x:auto"><table style="width:100%;border-collapse:collapse;font-size:.9rem"><thead><tr>' +
+        '<div style="overflow-x:auto"><table style="width:100%;border-collapse:collapse;font-size:.9rem"><thead><tr>' +
         ['Code', 'Descriptive title', 'Group', 'Section', 'Day', 'Time', 'Instructor', 'Room'].map(function (t) { return '<th style="' + th + '">' + t + '</th>'; }).join('') +
         '</tr></thead><tbody>' + rowsHtml + '</tbody></table></div>' +
-        '<table id="sch-gr" style="border-collapse:collapse;font-size:.9rem;width:34px"><thead><tr><th></th></tr></thead><tbody>' + view.slice(from, from + schSize).map(function (i) {
-          return '<tr><td style="padding:0 2px;vertical-align:middle"><button type="button" data-x="' + i + '" title="Remove this subject from the table" style="border:0;background:none;color:#b91c1c;font-weight:900;font-size:1.3rem;line-height:1;cursor:pointer;padding:0 4px">×</button></td></tr>';
-        }).join('') + '</tbody></table></div>' +
         '<div style="display:flex;gap:10px;align-items:center;margin-top:10px">' +
         '<button type="button" id="sch-prev"' + (schPage <= 1 ? ' disabled' : '') + '>Previous</button>' +
         '<span class="hint">Page ' + schPage + ' of ' + pages + '</span>' +
-        '<button type="button" id="sch-next"' + (schPage >= pages ? ' disabled' : '') + '>Next</button></div>' +
-        '<button type="button" id="sch-save" style="margin-top:10px">Save schedule</button>';
+        '<button type="button" id="sch-next"' + (schPage >= pages ? ' disabled' : '') + '>Next</button></div>';
       $('#sch-size').value = String(schSize);
-      $('#sch-size').onchange = function () { schCapture(); schSize = Number(this.value) || 10; schPage = 1; schRender(); };
-      $('#sch-prev').onclick = function () { schCapture(); schPage--; schRender(); };
-      $('#sch-next').onclick = function () { schCapture(); schPage++; schRender(); };
-      $('#sch-save').onclick = schSave;
-      schLock();
-      schSyncGutters();
+      $('#sch-size').onchange = function () { schSize = Number(this.value) || 10; schPage = 1; schRender(); };
+      $('#sch-prev').onclick = function () { schPage--; schRender(); };
+      $('#sch-next').onclick = function () { schPage++; schRender(); };
     }
     // Read-only view: no inputs, no + / × gutters, no Save button.
     function schLock() {
