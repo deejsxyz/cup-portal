@@ -35,7 +35,7 @@
           <input id="viewStudentSearch" type="text" autocomplete="off" placeholder="Search student number or name" class="w-full sm:w-64 px-3 py-2 rounded-lg border border-slate-300 text-xs">
           <button type="button" id="viewAllBtn" class="px-4 py-2 rounded-lg bg-indigo-600 hover:bg-indigo-700 text-white text-xs font-bold shadow-sm">View All Students</button>
           <button type="button" id="viewPrintListBtn" class="px-4 py-2 rounded-lg bg-slate-700 hover:bg-slate-800 text-white text-xs font-bold shadow-sm">🖨️ Print Student List</button>
-          <select id="viewYearFilter" class="bg-white px-3 py-2 rounded-lg border border-slate-300 text-xs font-bold"><option value="">All Year Levels</option><option value="1">BSN1</option><option value="2">BSN2</option><option value="3">BSN3</option><option value="4">BSN4</option></select>
+          <select id="viewYearFilter" class="bg-white px-3 py-2 rounded-lg border border-slate-300 text-xs font-bold"><option value="">All Year Levels</option><option value="1">Year 1</option><option value="2">Year 2</option><option value="3">Year 3</option><option value="4">Year 4</option></select>
           <select id="viewSecFilter" class="bg-white px-3 py-2 rounded-lg border border-slate-300 text-xs font-bold">
             <option value="">All Sections</option>
             <option value="A">Section A</option><option value="B">Section B</option><option value="C">Section C</option>
@@ -101,7 +101,7 @@
           <div><label class="block text-[10px] uppercase font-bold text-slate-500 mb-1">Email Address</label><input type="email" name="email" required maxlength="254" pattern="[A-Za-z0-9._%+\-]+@[A-Za-z0-9\-]+(\.[A-Za-z0-9\-]+)*\.[A-Za-z]{2,}" title="Enter a valid email address, for example name@example.com" class="w-full px-3 py-2 rounded-lg border border-slate-300 text-sm"></div>
           <div><label class="block text-[10px] uppercase font-bold text-slate-500 mb-1">Contact Number</label><input type="tel" name="contact_number" required inputmode="numeric" maxlength="13" pattern="(09[0-9]{9}|\+639[0-9]{9})" title="Philippine mobile number: 09XXXXXXXXX or +639XXXXXXXXX" placeholder="09171234567" class="w-full px-3 py-2 rounded-lg border border-slate-300 text-sm"></div>
           <div><label class="block text-[10px] uppercase font-bold text-slate-500 mb-1">Student Year Level</label>
-            <select name="year_level" class="bg-white w-full px-3 py-2 rounded-lg border border-slate-300 text-sm"><option value="1">BSN1</option><option value="2">BSN2</option><option value="3">BSN3</option><option value="4">BSN4</option></select></div>
+            <select name="year_level" class="bg-white w-full px-3 py-2 rounded-lg border border-slate-300 text-sm"><option value="1">BSN1</option><option value="2">Year 2</option><option value="3">Year 3</option><option value="4">Year 4</option></select></div>
           <div><label class="block text-[10px] uppercase font-bold text-slate-500 mb-1">Section</label>
             <select name="section" class="bg-white w-full px-3 py-2 rounded-lg border border-slate-300 text-sm"><option>A</option><option>B</option><option>C</option></select></div>
           <div class="col-span-2 md:col-span-4 flex gap-2 justify-end">
@@ -115,7 +115,7 @@
           <div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
             <div><label class="block text-[10px] uppercase font-bold text-slate-500 mb-1">Student Year Level</label>
               <select id="ex_year_select" class="w-full px-3 py-2 rounded-lg border border-slate-300 bg-white text-xs font-bold text-indigo-900 cursor-pointer">
-                <option value="1">BSN1</option><option value="2">BSN2</option><option value="3">BSN3</option><option value="4">BSN4</option></select></div>
+                <option value="1">BSN1</option><option value="2">Year 2</option><option value="3">Year 3</option><option value="4">Year 4</option></select></div>
             <div><label class="block text-[10px] uppercase font-bold text-slate-500 mb-1">Section</label>
               <select id="ex_section" class="w-full px-3 py-2 rounded-lg border border-slate-300 bg-white text-xs font-bold text-indigo-900 cursor-pointer">
                 <option value="A" selected>A</option><option value="B">B</option><option value="C">C</option></select></div>
@@ -177,7 +177,7 @@
             <span id="regAy">—</span><span class="text-[10px] font-semibold text-slate-500">🔒 Auto</span></div></div>
         <div><label class="block text-[10px] uppercase font-bold text-slate-500 mb-1">Student Year Level</label>
           <select name="year_level" id="reg_year_select" class="w-full px-3 py-2 rounded-lg border border-slate-300 bg-white text-xs font-bold text-indigo-900 cursor-pointer">
-            <option value="1">BSN1</option><option value="2" selected>BSN2</option><option value="3">BSN3</option><option value="4">BSN4</option></select></div>
+            <option value="1">BSN1</option><option value="2" selected>Year 2</option><option value="3">Year 3</option><option value="4">Year 4</option></select></div>
         <div><label class="block text-[10px] uppercase font-bold text-slate-500 mb-1">Section</label>
           <select name="section" required class="w-full px-3 py-2 rounded-lg border border-slate-300 bg-white text-xs font-bold text-indigo-900 cursor-pointer">
             <option value="A" selected>A</option><option value="B">B</option><option value="C">C</option></select></div>
@@ -359,7 +359,7 @@
           cell(esc(s.last_name), 'px-4 py-2 uppercase font-bold text-slate-800') +
           cell(esc(s.first_name), 'px-4 py-2 uppercase text-slate-800') +
           cell(esc(s.middle_name || '—'), 'px-4 py-2 uppercase text-slate-800') +
-          cell('BSN' + esc(s.year_level), 'px-4 py-2 font-bold text-slate-600') +
+          cell(progAbbrOf(s.program) + esc(s.year_level), 'px-4 py-2 font-bold text-slate-600') +
           cell(esc(s.section), 'px-4 py-2 font-bold text-slate-600') +
           cell(esc(s.contact_number || '—'), 'px-4 py-2 font-mono text-slate-700') + '</tr>';
       }).join('');
@@ -391,13 +391,14 @@
     var w = window.open('', '_blank');
     if (!w) return;
     w.document.write('<!doctype html><html><head><meta charset="utf-8"><title>' + COLLEGE + ' Student List</title><style>body{font-family:Arial,sans-serif;margin:24px}table{width:100%;border-collapse:collapse;font-size:12px}th,td{border:1px solid #888;padding:4px 6px;text-align:left}</style></head><body><h2>' + COLLEGE + ' | Student List</h2><p>' + rows.length + ' student(s)</p><table><thead><tr><th>Student ID</th><th>Last Name</th><th>First Name</th><th>Middle Name</th><th>Year Level</th><th>Section</th><th>Contact Number</th></tr></thead><tbody>' +
-      rows.map(function (s) { return '<tr><td>' + esc(s.student_no) + '</td><td>' + esc(s.last_name) + '</td><td>' + esc(s.first_name) + '</td><td>' + esc(s.middle_name) + '</td><td>BSN' + esc(s.year_level) + '</td><td>' + esc(s.section) + '</td><td>' + esc(s.contact_number) + '</td></tr>'; }).join('') +
+      rows.map(function (s) { return '<tr><td>' + esc(s.student_no) + '</td><td>' + esc(s.last_name) + '</td><td>' + esc(s.first_name) + '</td><td>' + esc(s.middle_name) + '</td><td>' + esc(progAbbrOf(s.program)) + esc(s.year_level) + '</td><td>' + esc(s.section) + '</td><td>' + esc(s.contact_number) + '</td></tr>'; }).join('') +
       '</tbody></table></body></html>');
     w.document.close(); w.focus(); w.print();
   });
 
   /* ----- Existing Student ----- */
-  var YEARS = { 1: 'BSN1', 2: 'BSN2', 3: 'BSN3', 4: 'BSN4' };
+  var YEARS = { 1: 'Year 1', 2: 'Year 2', 3: 'Year 3', 4: 'Year 4' };
+function progAbbrOf(p) { var m = /\(([^)]+)\)\s*$/.exec(p || ''); return m ? m[1] : ''; }
   function labelled(label, value) {
     return '<div><span class="block text-[10px] uppercase font-bold text-slate-500">' + label + '</span><span class="font-semibold text-slate-900 break-all">' + esc(value || '—') + '</span></div>';
   }
