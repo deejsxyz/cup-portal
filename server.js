@@ -2775,10 +2775,13 @@ function retentionNext(state, warns, pct) {
 // IRREGULAR (retention policy): completed units as a share of the college's total curriculum units
 // must match the student's year level: under 25% = 1st, 25-50% = 2nd, 51-75% = 3rd, over 75% = 4th.
 async function irregularByBand(studentNo, college, yearLevel) {
-  const tot = await pool.query('SELECT COALESCE(SUM(units), 0) AS total FROM reg_courses WHERE college = $1', [college]);
-  const total = Number(tot.rows[0].total) || 0;
+  // The total is the student's whole program curriculum (all year levels and terms), not the college's subjects.
+  const pr = await pool.query('SELECT program FROM reg_students WHERE student_no = $1', [studentNo]);
+  const program = pr.rows.length ? pr.rows[0].program : '';
+  if (!program) return false;
+  const cu = await pool.query('SELECT code AS course_code, units FROM curriculum_subjects WHERE program = $1', [program]);
+  const total = cu.rows.reduce((sum, c) => sum + (Number(c.units) || 0), 0);
   if (!total) return false;
-  const cu = await pool.query('SELECT course_code, units FROM reg_courses WHERE college = $1', [college]);
   const units = new Map(cu.rows.map((c) => [c.course_code, Number(c.units) || 0]));
   const gr = await pool.query('SELECT course_code, final_grade FROM reg_grades WHERE student_no = $1 AND college = $2', [studentNo, college]);
   const notPassed = ['', 'NG', '-', '4.00', '4', ...RETENTION_FAIL];
