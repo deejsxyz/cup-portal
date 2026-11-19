@@ -30,15 +30,16 @@
   nav.tabs button { background: none; border: 0; padding: 14px 22px; font-weight: 700; cursor: pointer; color: #4b5b4b; border-bottom: 4px solid transparent; }
   nav.tabs button.on { color: var(--g); border-bottom-color: var(--gold); }
   main { max-width: 980px; margin: 0 auto; padding: 22px 16px 60px; }
-  .proc { list-style: none; margin: 0; padding: 0; }
-  .proc li { position: relative; display: grid; grid-template-columns: 36px 1fr; gap: 14px; padding-bottom: 20px; }
-  .proc li:not(:last-child)::before { content: ""; position: absolute; left: 17px; top: 38px; bottom: 0; width: 2px; background: #cfd3d8; }
-  .proc .num { width: 36px; height: 36px; border-radius: 50%; background: #9aa1a9; color: #fff; display: flex; align-items: center; justify-content: center; font-weight: 700; position: relative; z-index: 1; }
+  .proc { list-style: none; margin: 0; padding: 0; display: flex; align-items: flex-start; }
+  .proc li { position: relative; flex: 1 1 0; min-width: 0; display: flex; flex-direction: column; align-items: center; text-align: center; padding: 0 4px; }
+  .proc li:not(:last-child)::before { content: ""; position: absolute; top: 17px; left: calc(50% + 22px); right: calc(-50% + 22px); height: 2px; background: #cfd3d8; }
+  .proc .num { width: 36px; height: 36px; border-radius: 50%; background: #9aa1a9; color: #fff; display: flex; align-items: center; justify-content: center; font-weight: 700; position: relative; z-index: 1; flex: none; }
   .proc li.done .num { background: var(--gold); color: var(--dg); }
   .proc li.cur .num { background: var(--g); color: #fff; }
-  .proc h3 { font-size: 1rem; font-weight: 600; margin: 6px 0 2px; }
-  .proc p { margin: 0; color: #6b7280; font-size: .92rem; }
+  .proc h3 { font-size: .95rem; font-weight: 600; margin: 10px 0 2px; }
+  .proc p { margin: 0; color: #6b7280; font-size: .85rem; line-height: 1.35; }
   .proc li.done h3 { color: var(--dg); }
+  @media (max-width: 640px) { .proc { flex-wrap: wrap; } .proc li { flex: 1 1 33%; padding-bottom: 16px; } .proc li:not(:last-child)::before { display: none; } }
   .pr-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); gap: 12px; margin-bottom: 14px; }
   .pr-grid label { display: block; font-size: .78rem; font-weight: 700; color: #475569; text-transform: uppercase; letter-spacing: .03em; }
   .pr-grid input, .pr-grid select { display: block; width: 100%; margin-top: 4px; padding: 9px 10px; border: 1px solid #cbd5e1; border-radius: 6px; font: inherit; font-size: .95rem; background: #fff; }
