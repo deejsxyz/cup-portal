@@ -110,14 +110,14 @@
       <p class="text-xs text-slate-500">Assign a faculty member to a subject for each year level and section. Students in those sections get that instructor automatically from the batch enrollment and New Student.</p>
       <p id="asgTerm" class="text-xs font-bold text-slate-700 mt-2"></p>
     </div>
-    <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+        <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+      <div class="text-xs font-bold text-slate-700 md:col-span-2">Subjects <span class="font-normal text-slate-500">(select one or more)</span>
+        <input id="asgSubjSearch" type="search" placeholder="Search subject, e.g. GEC 101 or gec101" autocomplete="off" class="mt-1 block w-full px-2 py-1.5 rounded border border-slate-300 text-xs bg-white font-normal">         <div id="asgSubjects" class="mt-1 max-h-56 overflow-y-auto border border-slate-300 rounded bg-white p-2 grid grid-cols-1 md:grid-cols-2 gap-x-4 gap-y-1 transition-opacity"></div>
+                <p id="asgSubjHint" class="text-[11px] font-normal text-slate-500 mt-1">Choose a faculty member and a program first.</p></div>
       <label class="text-xs font-bold text-slate-700">Faculty member
         <select id="asgFaculty" class="block mt-1 w-full px-2 py-1.5 rounded border border-slate-300 text-xs bg-white"></select></label>
       <label class="text-xs font-bold text-slate-700">Program
         <select id="asgProgram" class="block mt-1 w-full px-2 py-1.5 rounded border border-slate-300 text-xs bg-white"></select></label>
-      <div class="text-xs font-bold text-slate-700 md:col-span-2">Subjects <span class="font-normal text-slate-500">(select one or more)</span>
-        <input id="asgSubjSearch" type="search" placeholder="Search subject, e.g. GEC 101 or gec101" autocomplete="off" class="mt-1 block w-full px-2 py-1.5 rounded border border-slate-300 text-xs bg-white font-normal">         <div id="asgSubjects" class="mt-1 max-h-56 overflow-y-auto border border-slate-300 rounded bg-white p-2 grid grid-cols-1 md:grid-cols-2 gap-x-4 gap-y-1 transition-opacity"></div>
-        <p id="asgSubjHint" class="text-[11px] font-normal text-slate-500 mt-1">Choose a faculty member and a program first.</p></div>
     </div>
     <p class="text-[11px] text-slate-500">Only subjects of this college are listed. Pick the program, then tick one or more subjects.</p>
     <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
