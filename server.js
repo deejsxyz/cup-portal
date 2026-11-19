@@ -3790,7 +3790,7 @@ app.post('/api/registrar/subject-assignments', requireRegistrar, async (req, res
   if (/^\d{1,2}$/.test(groupLabel)) groupLabel = 'G' + groupLabel; // a bare number means G<number>
   const dayLabel = String(b.day_label || '').trim().slice(0, 40);
   const timeSlot = String(b.time_slot || '').trim().slice(0, 40);
-  const roomText = String(b.room || '').trim().slice(0, 40);
+  const roomText = String(b.room || '').trim().slice(0, 40) || 'TBA';
   const years = (Array.isArray(b.years) ? b.years : []).map(Number).filter((y) => [1, 2, 3, 4].includes(y));
   let sections = (Array.isArray(b.sections) ? b.sections : []).map((s) => String(s).trim()).filter((s) => ['A', 'B', 'C'].includes(s));
   if (!codes.length) return res.status(400).json({ error: 'Choose at least one subject.' });
@@ -3880,7 +3880,7 @@ app.post('/api/registrar/subject-assignments/:id/schedule', requireRegistrar, as
   const a = row.rows[0];
   const dayLabel = String(b.day_label || '').trim().slice(0, 40) || 'TBA';
   const timeSlot = String(b.time_slot || '').trim().slice(0, 40) || 'TBA';
-  const roomText = String(b.room || '').trim().slice(0, 40);
+  const roomText = String(b.room || '').trim().slice(0, 40) || 'TBA';
   const tm = /^(\d{1,2}):(\d{2})\s*(AM|PM)\s*-\s*(\d{1,2}):(\d{2})\s*(AM|PM)$/i.exec(timeSlot);
   const to24 = (h, mi, ap) => String((Number(h) % 12) + (/PM/i.test(ap) ? 12 : 0)).padStart(2, '0') + ':' + mi;
   const schStart = tm ? to24(tm[1], tm[2], tm[3]) : '';
@@ -3942,7 +3942,7 @@ app.post('/api/registrar/subject-assignments/:id/update', requireRegistrar, asyn
   if (!years.length || !sections.length) return res.status(400).json({ error: 'Choose at least one year level and one section.' });
   const dayLabel = String(b.day_label || '').trim().slice(0, 40) || 'TBA';
   const timeSlot = String(b.time_slot || '').trim().slice(0, 40) || 'TBA';
-  const roomText = String(b.room || '').trim().slice(0, 40);
+  const roomText = String(b.room || '').trim().slice(0, 40) || 'TBA';
   const tm = /^(\d{1,2}):(\d{2})\s*(AM|PM)\s*-\s*(\d{1,2}):(\d{2})\s*(AM|PM)$/i.exec(timeSlot);
   const to24 = (h, mi, ap) => String((Number(h) % 12) + (/PM/i.test(ap) ? 12 : 0)).padStart(2, '0') + ':' + mi;
   const schStart = tm ? to24(tm[1], tm[2], tm[3]) : '';
