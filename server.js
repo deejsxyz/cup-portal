@@ -1707,6 +1707,9 @@ app.post('/api/registrar/portal-users/delete', requireSuperAdmin, async (req, re
     if (!keep.length) { await client.query('ROLLBACK'); return res.status(400).json({ error: 'Only archived accounts can be deleted.' }); }
     await client.query('DELETE FROM reg_assignments WHERE user_id = ANY($1::int[])', [keep]);
     await client.query('DELETE FROM reg_subject_assignments WHERE user_id = ANY($1::int[])', [keep]);
+    // Students whose NSTP instructor was deleted lose that link, and schedule rows of their subjects are cleared.
+    await client.query('UPDATE reg_students SET nstp_instructor_id = NULL WHERE nstp_instructor_id = ANY($1::int[])', [keep]);
+    await cleanAllOrphanSchedules(client);
     const r = await client.query('DELETE FROM reg_users WHERE id = ANY($1::int[])', [keep]);
     await client.query('COMMIT');
     logAction(req, 'University Registrar', 'accounts deleted', r.rowCount + ' account(s): ' + target.rows.map((x) => x.username).join(', ').slice(0, 300));
@@ -3986,6 +3989,16 @@ app.post('/api/registrar/subject-assignments/:id/update', requireRegistrar, asyn
   res.json({ ok: true });
 });
 
+// Same cleanup for every college, term and year (used when accounts are deleted).
+async function cleanAllOrphanSchedules(db) {
+  await db.query(
+    `DELETE FROM reg_schedules s
+      WHERE NOT EXISTS (
+          SELECT 1 FROM reg_subject_assignments a
+           WHERE a.college = s.college AND a.term = s.term AND a.academic_year = s.academic_year
+             AND a.course_code = s.course_code AND a.group_label = s.group_label
+             AND s.year_level = ANY(a.years) AND s.section = ANY(a.sections))`);
+}
 // Deletes Subject schedule rows that no saved assignment supports (same subject, group, year and section, term and A.Y.).
 async function cleanOrphanSchedules(db, college, term, ay) {
   await db.query(
