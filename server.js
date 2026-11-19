@@ -3667,18 +3667,38 @@ app.get('/api/registrar/subject-catalog', requireRegistrar, async (req, res) => 
   res.json({ colleges: REG_COLLEGES, programs: REG_PROGRAM_COLLEGES, courses: r.rows });
 });
 
-// Subject codes of one program, from the curriculum import (Program filter in Subject schedule).
-// Matches the program name ignoring spaces, case and punctuation, or the abbreviation in brackets, e.g. (ACT).
+const cc = (p, ...n) => n.map((x) => p + ' ' + x);
+// Major subjects per program (GEC, NSTP, PHE and RIZ are not majors). Used by the Program filter in Subject schedule.
+const BSBA_BASE = [...cc('CBM', 101, 302), ...cc('ECO', 101), ...cc('MGT', 101, 201, 301), ...cc('FIN', 101), ...cc('LAW', 201), ...cc('TAX', 201), ...cc('RES', 301), 'GEL 201', 'GEL 202', 'GEL 301', 'FEL 301', 'FEL 401', 'PRC 401'];
+const BSED_EDU = cc('EDU', 101, 102, 201, 202, 301, 302, 303, 304, 401, 402, 403, 404);
+const CURRICULUM_PROGRAMS = [
+  { label: 'Bachelor of Science in Office Administration (BSOA)', college: 'COACS', codes: [...cc('OAD', 101, 102, 103, 104, 201, 202, 203, 301, 302, 303, 304, 305, 306, 401, 402), ...cc('CBM', 201, 301), 'GEL 201', 'GEL 202', 'GEL 301', 'FEL 301', 'FEL 302', 'FEL 401'] },
+  { label: 'Associate in Computer Technology (ACT)', college: 'COACS', codes: [...cc('ITE', 101, 102, 103, 104, 105, 201, 202, 203, 204, 205), ...cc('ACT', 201, 202, 203)] },
+  { label: 'Bachelor of Arts in Political Science (ABPS)', college: 'CAS', codes: [...cc('POL', 101, 102, 201, 202, 301, 302, 303, 401, 402), ...cc('POE', 301, 302, 303, 401), 'GEL 201', 'GEL 202', 'GEL 301', 'FEL 301', 'FEL 302', 'FEL 401', 'FEL 402'] },
+  { label: 'Bachelor of Science in Nursing (BSN)', college: 'CONM', codes: [...cc('MC', 1, 2, 3), ...cc('NCM', 100, 101, 102, 103, 104, 105, 106, 107, 108, 110, 111, 112, 113, 114, 115, 116, 117, 118, 119, 121, 122), ...cc('CA', 1, 2)] },
+  { label: 'Bachelor in Elementary Education (BEEd)', college: 'COED', codes: [...BSED_EDU, ...cc('BED', 201, 202, 203, 204, 301, 302, 303, 304, 305, 306, 401, 402)] },
+  { label: 'Bachelor in Secondary Education (BSEd) - English', college: 'COED', codes: [...BSED_EDU, ...cc('ENG', 101, 102, 201, 202, 203, 204, 301, 302, 303, 304, 401)] },
+  { label: 'Bachelor in Secondary Education (BSEd) - Filipino', college: 'COED', codes: [...BSED_EDU, ...cc('FIL', 101, 102, 201, 202, 203, 204, 301, 302, 303, 304, 401)] },
+  { label: 'Bachelor in Secondary Education (BSEd) - Mathematics', college: 'COED', codes: [...BSED_EDU, ...cc('MAT', 101, 102, 201, 202, 203, 204, 301, 302, 303, 304, 401)] },
+  { label: 'Bachelor in Secondary Education (BSEd) - Science', college: 'COED', codes: [...BSED_EDU, ...cc('SCI', 101, 102, 201, 202, 203, 204, 301, 302, 303, 304, 401)] },
+  { label: 'Bachelor in Secondary Education (BSEd) - Social Studies', college: 'COED', codes: [...BSED_EDU, ...cc('SOC', 101, 102, 201, 202, 203, 204, 301, 302, 303, 304, 401)] },
+  { label: 'Bachelor of Science in Business Administration (BSBA) - Financial Management', college: 'COBM', codes: [...BSBA_BASE, ...cc('FMA', 301, 302, 303, 304, 305, 401, 402)] },
+  { label: 'Bachelor of Science in Business Administration (BSBA) - Human Resource', college: 'COBM', codes: [...BSBA_BASE, ...cc('HRM', 301, 302, 303, 304, 305, 401, 402)] },
+  { label: 'Bachelor of Science in Business Administration (BSBA) - Operations Management', college: 'COBM', codes: [...BSBA_BASE, ...cc('OPM', 301, 302, 303, 304, 305, 401, 402)] },
+  { label: 'Bachelor of Science in Business Administration (BSBA) - Marketing Management', college: 'COBM', codes: [...BSBA_BASE, ...cc('MKT', 301, 302, 303, 304, 305, 401, 402, 403)] },
+  { label: 'Juris Doctor (J.D.)', college: 'LAW', codes: [...cc('LAW', 101, 102, 103, 104, 105, 106, 107, 108, 109, 110, 111, 201, 202, 203, 204, 205, 206, 207, 208, 209, 301, 302, 303, 304, 305, 306, 307, 308, 401, 402, 403, 404, 405, 406, 407, 408, 409)] },
+];
+// Programs for a college (labels), for the Program dropdown.
+app.get('/api/registrar/curriculum-programs', requireRegistrar, async (req, res) => {
+  const college = regCollege(req, req.query.college);
+  if (!college) return res.json({ programs: [] });
+  res.json({ programs: CURRICULUM_PROGRAMS.filter((x) => x.college === college).map((x) => x.label) });
+});
+// Subject codes of one program (exact label from curriculum-programs).
 app.get('/api/registrar/curriculum-codes', requireRegistrar, async (req, res) => {
   const program = String(req.query.program || '').trim();
-  const all = await pool.query('SELECT program, code FROM curriculum_subjects');
-  const known = [...new Set(all.rows.map((r) => r.program))].sort();
-  if (!program) return res.json({ codes: [], known });
-  const norm = (v) => String(v || '').toLowerCase().replace(/[^a-z0-9]/g, '');
-  const abbr = ((program.match(/\(([^)]+)\)\s*$/) || [])[1] || '').toLowerCase();
-  const names = known.filter((k) => norm(k) === norm(program) || (abbr && new RegExp('(^|[^a-z0-9])' + abbr.replace(/[^a-z0-9]/g, '') + '($|[^a-z0-9])', 'i').test(k)));
-  const codes = [...new Set(all.rows.filter((r) => names.includes(r.program)).map((r) => r.code))].sort();
-  res.json({ codes, matched: names, known });
+  const hit = CURRICULUM_PROGRAMS.find((x) => x.label === program);
+  res.json({ codes: hit ? [...new Set(hit.codes)] : [], known: [] });
 });
 
 app.post('/api/registrar/subject-assignments', requireRegistrar, async (req, res) => {

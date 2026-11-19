@@ -1693,8 +1693,8 @@
     function schFillPrograms() {
       var c = sjCollege();
       if (!c) return;
-      fetch('/api/registrar/subject-catalog', { credentials: 'same-origin' }).then(function (r) { return r.json(); }).then(function (j) {
-        var progs = (j.programs && j.programs[c]) || [];
+      fetch('/api/registrar/curriculum-programs?college=' + encodeURIComponent(c), { credentials: 'same-origin' }).then(function (r) { return r.json(); }).then(function (j) {
+        var progs = j.programs || [];
         $('#sch-program').innerHTML = '<option value="">All programs</option>' + progs.map(function (p) { return '<option value="' + esc(p) + '">' + esc(p) + '</option>'; }).join('');
         schProgCodes = null;
         schFillSubjectList();
