@@ -2102,7 +2102,7 @@ const COG_MAX_SUBJECTS = 14; // rows 12-25 of the template; row 26 holds the GPA
 const COG_SPECIAL = new Set(['W', 'X', 'INC', 'NG', '-']);
 function cogTermLabel(t) { return ({ '1st Semester': 'First Semester', '2nd Semester': 'Second Semester' })[t] || t; }
 function cogStatus(failPct, enrolledUnits, flags) {
-  if (flags.misaligned || flags.outOfTermShare > 0.5) return 'IRREGULAR';
+  if (flags.misaligned) return 'IRREGULAR';
   if (failPct < 25) return 'REGULAR';
   if (failPct < 50) return 'WARNING';
   if (failPct < 76) return enrolledUnits >= 6 ? 'PROBATION' : 'WARNING';
@@ -2164,11 +2164,7 @@ app.get('/api/registrar/certificate-of-grades.xlsx', requireRegistrar, async (re
     // Year-level alignment: the first enrollment's year level should advance one per academic year.
     const startYr = (v) => parseInt(String(v).split('-')[0], 10);
     const first = await pool.query('SELECT academic_year, year_level FROM reg_enrollments WHERE student_no = $1 ORDER BY academic_year ASC LIMIT 1', [no]);
-    const flags = { misaligned: false };
-    if (first.rows.length) {
-      const f = first.rows[0];
-      flags.misaligned = Number(e.year_level) !== Number(f.year_level) + (startYr(ay) - startYr(f.academic_year));
-    }
+    const flags = { misaligned: await irregularByBand(no, college, e.year_level) };
     const { gpa, status } = cogCompute(rows, flags);
 
     const wb = new ExcelJS.Workbook();
@@ -2710,8 +2706,28 @@ function retentionNext(state, warns, pct) {
   }
   return { state: 'REGULAR', warns: 0 };
 }
+// IRREGULAR (retention policy): completed units as a share of the college's total curriculum units
+// must match the student's year level: under 25% = 1st, 25-50% = 2nd, 51-75% = 3rd, over 75% = 4th.
+async function irregularByBand(studentNo, college, yearLevel) {
+  const tot = await pool.query('SELECT COALESCE(SUM(units), 0) AS total FROM reg_courses WHERE college = $1', [college]);
+  const total = Number(tot.rows[0].total) || 0;
+  if (!total) return false;
+  const cu = await pool.query('SELECT course_code, units FROM reg_courses WHERE college = $1', [college]);
+  const units = new Map(cu.rows.map((c) => [c.course_code, Number(c.units) || 0]));
+  const gr = await pool.query('SELECT course_code, final_grade FROM reg_grades WHERE student_no = $1 AND college = $2', [studentNo, college]);
+  const notPassed = ['', 'NG', '-', '4.00', '4', ...RETENTION_FAIL];
+  let passed = 0;
+  gr.rows.forEach((g) => {
+    const v = String(g.final_grade == null ? '' : g.final_grade).trim();
+    if (notPassed.includes(v)) return;
+    passed += units.get(g.course_code) || 0;
+  });
+  const pct = (passed / total) * 100;
+  const band = pct < 25 ? 1 : (pct <= 50 ? 2 : (pct <= 75 ? 3 : 4));
+  return band !== Number(yearLevel);
+}
 async function studentRetentionStatus(studentNo) {
-  const st = await pool.query('SELECT college, status FROM reg_students WHERE student_no = $1', [studentNo]);
+  const st = await pool.query('SELECT college, status, year_level FROM reg_students WHERE student_no = $1', [studentNo]);
   if (!st.rows.length) return null;
   const college = st.rows[0].college;
   const set = await pool.query("SELECT key, value FROM reg_settings WHERE key IN ('grading_semester','grading_ay')");
@@ -2723,24 +2739,7 @@ async function studentRetentionStatus(studentNo) {
   const course = new Map(cu.rows.map((c) => [c.course_code, c]));
   const grade = new Map(gr.rows.map((g) => [g.term + '|' + g.academic_year + '|' + g.course_code, g.final_grade]));
   const terms = en.rows.slice().sort((a, b) => (termOrder(a.term, a.academic_year) < termOrder(b.term, b.academic_year) ? -1 : 1));
-  // IRREGULAR: more than half of the term's units are from another year level or semester,
-  // or the recorded year level does not match the first enrollment's year level plus the years passed.
-  const irregular = new Map();
-  const first = terms[0];
-  terms.forEach((t) => {
-    const subs = Array.isArray(t.subjects) ? t.subjects : [];
-    const total = subs.reduce((n, x) => n + (units.get(x.course_code) || 0), 0);
-    const other = subs.reduce((n, x) => {
-      const c = course.get(x.course_code);
-      if (!c) return n;
-      const mismatch = (c.year_level != null && Number(c.year_level) !== Number(t.year_level)) || (c.semester && c.semester !== t.term);
-      return mismatch ? n + (units.get(x.course_code) || 0) : n;
-    }, 0);
-    const passed = parseInt(t.academic_year, 10) - parseInt(first.academic_year, 10);
-    const expectedYear = Number(first.year_level) + passed;
-    const misaligned = Number(t.year_level) !== expectedYear;
-    irregular.set(t.term + '|' + t.academic_year, (total > 0 && other * 2 > total) || misaligned);
-  });
+  const irrBand = await irregularByBand(studentNo, college, st.rows[0].year_level);
   let state = 'REGULAR', warns = 0, last = null, enteringNow = null;
   const currentKey = m.grading_semester && m.grading_ay ? m.grading_semester + '|' + m.grading_ay : '';
   for (const t of terms) {
@@ -2757,7 +2756,7 @@ async function studentRetentionStatus(studentNo) {
     last = { term: t.term, academic_year: t.academic_year, pct, status: state };
   }
   const enrolledNow = terms.some((t) => t.term === m.grading_semester && t.academic_year === m.grading_ay);
-  const isIrr = (t, ay) => irregular.get(t + '|' + ay) === true;
+  const isIrr = () => irrBand;
   if (enrolledNow && enteringNow !== null && !(last && last.term === m.grading_semester && last.academic_year === m.grading_ay)) {
     const irr = isIrr(m.grading_semester, m.grading_ay);
     return { status: irr ? 'IRREGULAR' : enteringNow, basis: 'current', term: m.grading_semester, academic_year: m.grading_ay, enrolled_now: true };
