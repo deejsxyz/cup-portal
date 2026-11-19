@@ -1580,6 +1580,11 @@
           }).catch(function () {});
       }, 400);
     }
+    // Opening Subject Schedule loads the active term's subjects straight away (1st year, all sections by default).
+    function schOpen() {
+      if (!$('#sch-year').value) $('#sch-year').value = '1';
+      schLoad(true);
+    }
     function schLoad(keepMsg) {
       var msg = $('#sch-msg'); if (!keepMsg) msg.textContent = '';
       if (!$('#sch-year').value) { msg.textContent = 'Choose a year level first.'; return; }
@@ -1881,6 +1886,7 @@
       $$('.menu > .tab').forEach(function (t) { t.setAttribute('aria-expanded', 'false'); });
     }
     function showPanel(id) {
+      if (id === 'schedule-section') schOpen();
       $$('.panel').forEach(function (p) { p.classList.toggle('on', p.id === id); });
       $$('.tab').forEach(function (t) { t.classList.remove('active'); });
       var item = $('.dd button[data-panel="' + id + '"]');
