@@ -4100,6 +4100,16 @@ app.post('/api/registrar/subject-assignments/:id/update', requireRegistrar, asyn
   const gsec = /^G\d{1,2}([A-C])$/.exec(groupLabel);
   if (gsec) sections = [gsec[1]];
   if (!years.length || !sections.length) return res.status(400).json({ error: 'Choose at least one year level and one section.' });
+  // A group is needed only when another row has the same subject, section, year level, day and time.
+  if (!groupLabel) {
+    const dupDay = String(b.day_label || '').trim().slice(0, 40) || 'TBA';
+    const dupTime = String(b.time_slot || '').trim().slice(0, 40) || 'TBA';
+    const dup = await pool.query(
+      `SELECT 1 FROM reg_subject_assignments WHERE college = $1 AND term = $2 AND academic_year = $3 AND id <> $4
+          AND course_code = $5 AND day_label = $6 AND time_slot = $7 AND years && $8::int[] AND sections && $9::text[] LIMIT 1`,
+      [college, m.grading_semester, m.grading_ay, a.id, a.course_code, dupDay, dupTime, years, sections]);
+    if (dup.rows.length) return res.status(400).json({ error: 'Enter a group. Another row has this subject, section, year level, day and time.' });
+  }
   const dayLabel = String(b.day_label || '').trim().slice(0, 40) || 'TBA';
   const timeSlot = String(b.time_slot || '').trim().slice(0, 40) || 'TBA';
   const roomText = String(b.room || '').trim().slice(0, 40) || 'TBA';
