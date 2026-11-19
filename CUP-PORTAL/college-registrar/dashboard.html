@@ -380,8 +380,8 @@
           <p class="hint">Subjects of the active term load automatically. Pick the group, days, time and room. The instructor comes from Subject Assignments. Leave Section blank to save to every section of the year level. This shows on the student's advising slip and Certificate of Enrollment.</p>
           <div style="display:flex;gap:10px;flex-wrap:wrap;align-items:flex-end">
             <label>Year level <select id="sch-year"><option value="">All years</option><option>1</option><option>2</option><option>3</option><option>4</option></select></label>
-            <label>Add another group for <select id="sch-add-subject" style="max-width:260px"><option value="">Choose a major subject</option></select></label>
-          <button type="button" id="sch-add-row">Add row</button>
+            <label>Subject <input id="sch-subject" list="sch-subject-list" placeholder="Type to search" autocomplete="off" style="width:300px"></label><datalist id="sch-subject-list"></datalist>
+          <button type="button" id="sch-add-row">Add group row</button>
           <label>Section <select id="sch-section"><option value="">All sections</option><option>A</option><option>B</option><option>C</option></select></label>
           </div>
           <div id="sch-list" style="margin-top:10px;overflow-x:auto"></div>
@@ -1498,10 +1498,11 @@
     safeOn('#al-load', 'click', loadActivity);
     // Subjects and units (college registrar: own college; University Registrar: any college)
     // Subject schedule: the active term's subjects load on open; the year and section filters update the table.
-    var schRows = [], schPage = 1, schSize = 10, schConf = {}, schCheckTimer = null, schDirty = false;
+    var schSubject = '', schRows = [], schPage = 1, schSize = 10, schConf = {}, schCheckTimer = null, schDirty = false;
     var SCH_DAYS = ['MON', 'TUE', 'WED', 'THU', 'FRI', 'SAT', 'SUN'];
     function schCollectParams() {
       var p = 'year_level=' + encodeURIComponent($('#sch-year').value) + '&section=' + encodeURIComponent($('#sch-section').value);
+      p += '&course=' + encodeURIComponent(schSubject);
       if (me.role === 'superadmin') p += '&college=' + encodeURIComponent(sjCollege());
       return p;
     }
@@ -1620,6 +1621,7 @@
     }
     // Loads the subjects of the active term for the chosen filters (both optional).
     function schLoad(silent) {
+      if (!schSubject) { schRows = []; $('#sch-list').innerHTML = '<p class="hint">Choose a subject to show its schedule.</p>'; $('#sch-conflicts').innerHTML = ''; return; }
       if (!silent) schDirty = false;
       fetch('/api/registrar/schedules?' + schCollectParams(), { credentials: 'same-origin' }).then(function (r) { return r.json(); }).then(function (j) {
         schRows = (j.rows || []).map(function (r) { r.tba_day = !r.days; r.tba_time = !(r.start_time && r.end_time); r.edited = false; return r; });
@@ -1641,25 +1643,34 @@
           seen[x.course_code] = true;
           return true;
         }).sort(function (a, b) { return String(a.course_code).localeCompare(String(b.course_code)); });
-        var cur = $('#sch-add-subject').value;
-        $('#sch-add-subject').innerHTML = '<option value="">Choose a major subject</option>' + schMajor.map(function (x) {
-          return '<option value="' + esc(x.course_code) + '">' + esc(x.course_code + ' — ' + x.descriptive_title) + '</option>';
+        $('#sch-subject-list').innerHTML = schMajor.map(function (x) {
+          return '<option value="' + esc(x.course_code + ' — ' + x.descriptive_title) + '"></option>';
         }).join('');
-        $('#sch-add-subject').value = cur;
       }).catch(function () {});
     }
-    function schOpen() { schLoad(); schLoadMajor(); }
+    // Picking a subject from the search box loads its rows. Picking it again reloads them, so nothing is added twice.
+    function schPickSubject(text) {
+      var code = String(text || '').split(' — ')[0].trim();
+      var ok = schMajor.some(function (x) { return x.course_code === code; });
+      if (!ok) { schSubject = ''; schRows = []; $('#sch-list').innerHTML = '<p class="hint">Choose a subject from the list.</p>'; $('#sch-conflicts').innerHTML = ''; return; }
+      schSubject = code; schPage = 1; schLoad();
+    }
+    $('#sch-subject').onchange = function () { schPickSubject(this.value); };
+    function schOpen() {
+      schLoadMajor();
+      if (!schSubject) $('#sch-list').innerHTML = '<p class="hint">Choose a subject to show its schedule.</p>';
+    }
     // Live update: every 10 seconds the table re-reads the active term (Subject Assignments and schedules saved elsewhere). Paused while there are unsaved edits.
     setInterval(function () {
       var panel = document.getElementById('schedule-section');
-      if (!schDirty && panel && panel.classList.contains('on')) schLoad(true);
+      if (!schDirty && schSubject && panel && panel.classList.contains('on')) schLoad(true);
     }, 10000);
     $('#sch-year').onchange = function () { schLoad(); };
     $('#sch-section').onchange = function () { schLoad(); };
     $('#sch-list').oninput = schTouch;
     $('#sch-list').onchange = schTouch;
     $('#sch-add-row').onclick = function () {
-      var code = $('#sch-add-subject').value;
+      var code = schSubject;
       if (!code) return;
       var c = schMajor.filter(function (x) { return x.course_code === code; })[0];
       if (!c) return;
