@@ -3508,6 +3508,8 @@ app.get('/api/registrar/schedules', requireRegistrar, async (req, res) => {
 });
 
 // Save the schedule. Blank section = every section (A, B, C) of each row's year level.
+// 24-hour "13:00" to the assignment list's "1:00 PM" style.
+const fmt12Sched = (hhmm) => { const [hh, mi] = String(hhmm).split(':'); const h = Number(hh); return (h % 12 || 12) + ':' + mi + ' ' + (h >= 12 ? 'PM' : 'AM'); };
 app.post('/api/registrar/schedules', requireRegistrar, async (req, res) => {
   const b = req.body || {};
   const college = regCollege(req, b.college || req.query.college);
@@ -3548,6 +3550,12 @@ app.post('/api/registrar/schedules', requireRegistrar, async (req, res) => {
            ON CONFLICT (college, course_code, term, academic_year, year_level, section, group_label)
            DO UPDATE SET days = EXCLUDED.days, start_time = EXCLUDED.start_time, end_time = EXCLUDED.end_time, room = EXCLUDED.room`,
           [college, code, t.term, t.ay, year, sec, group, days, st, et, room]);
+        // Keep the Subject Assignments list in step with the schedule.
+        await client.query(
+          `UPDATE reg_subject_assignments SET day_label = $1, time_slot = $2
+            WHERE college = $3 AND term = $4 AND academic_year = $5 AND course_code = $6 AND group_label = $7
+              AND $8 = ANY(years) AND $9 = ANY(sections)`,
+          [days || 'TBA', st && et ? fmt12Sched(st) + ' - ' + fmt12Sched(et) : 'TBA', college, t.term, t.ay, code, group, year, sec]);
       }
     }
     await client.query('COMMIT');
