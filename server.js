@@ -3885,7 +3885,7 @@ app.post('/api/registrar/subject-assignments/:id/schedule', requireRegistrar, as
   const to24 = (h, mi, ap) => String((Number(h) % 12) + (/PM/i.test(ap) ? 12 : 0)).padStart(2, '0') + ':' + mi;
   const schStart = tm ? to24(tm[1], tm[2], tm[3]) : '';
   const schEnd = tm ? to24(tm[4], tm[5], tm[6]) : '';
-  if (tm && schEnd <= schStart) return res.status(400).json({ error: 'The end time must be after the start time.' });
+  // An end time earlier than the start time means the duty runs past midnight (e.g. 6:00 PM - 2:00 AM).
   const schDays = dayLabel === 'TBA' ? '' : schDayCodes(dayLabel).slice(0, 20);
   const client = await pool.connect();
   try {
@@ -3947,7 +3947,7 @@ app.post('/api/registrar/subject-assignments/:id/update', requireRegistrar, asyn
   const to24 = (h, mi, ap) => String((Number(h) % 12) + (/PM/i.test(ap) ? 12 : 0)).padStart(2, '0') + ':' + mi;
   const schStart = tm ? to24(tm[1], tm[2], tm[3]) : '';
   const schEnd = tm ? to24(tm[4], tm[5], tm[6]) : '';
-  if (tm && schEnd <= schStart) return res.status(400).json({ error: 'The end time must be after the start time.' });
+  // An end time earlier than the start time means the duty runs past midnight (e.g. 6:00 PM - 2:00 AM).
   const schDays = dayLabel === 'TBA' ? '' : schDayCodes(dayLabel).slice(0, 20);
   const client = await pool.connect();
   try {
