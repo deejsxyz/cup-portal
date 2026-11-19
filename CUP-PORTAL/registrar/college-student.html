@@ -72,8 +72,10 @@
   <!-- EXISTING STUDENT -->
   <div id="studentManageSection" data-sec="existing" hidden class="space-y-4">
     <div class="bg-white p-5 rounded-xl shadow-sm border border-slate-200">
-      <label class="block text-[10px] font-bold uppercase text-slate-500 mb-1" for="studentSearchInput">Search Student by ID Number:</label>
-      <input type="text" id="studentSearchInput" inputmode="numeric" maxlength="17" placeholder="xxxx-x-xxxxxxx-xx" autocomplete="off" class="w-full px-3 py-2 rounded-lg border text-sm font-mono border-slate-300">
+      <div style="position:relative" class="max-w-xl">
+        <input type="text" id="studentSearchInput" placeholder="Search student number or name" autocomplete="off" class="w-full px-3 py-2 rounded-lg border border-slate-300 text-xs">
+        <div id="stuSuggest" hidden style="position:absolute;left:0;right:0;top:100%;margin-top:4px;z-index:30;background:#fff;border:1px solid #cbd5e1;border-radius:8px;max-height:280px;overflow:auto;box-shadow:0 8px 20px rgba(0,0,0,.12)"></div>
+      </div>
       <p id="stuSearchMsg" class="text-xs font-semibold text-rose-600 mt-2"></p>
     </div>
 
@@ -199,8 +201,10 @@
   <!-- MANAGE GRADE -->
   <div id="manageGradeSection" data-sec="grades" hidden class="space-y-4">
     <div class="bg-white rounded-xl shadow-sm border border-slate-200 p-5">
-      <label class="block text-[10px] font-bold uppercase text-slate-500 mb-1" for="gradeSearchInput">Search Student by ID Number:</label>
-      <input type="text" id="gradeSearchInput" inputmode="numeric" maxlength="17" placeholder="xxxx-x-xxxxxxx-xx" autocomplete="off" class="w-full px-3 py-2 rounded-lg border border-slate-300 text-sm font-mono">
+      <div style="position:relative" class="max-w-xl">
+        <input type="text" id="gradeSearchInput" placeholder="Search student number or name" autocomplete="off" class="w-full px-3 py-2 rounded-lg border border-slate-300 text-xs">
+        <div id="gradeSuggest" hidden style="position:absolute;left:0;right:0;top:100%;margin-top:4px;z-index:30;background:#fff;border:1px solid #cbd5e1;border-radius:8px;max-height:280px;overflow:auto;box-shadow:0 8px 20px rgba(0,0,0,.12)"></div>
+      </div>
       <p id="gradeSearchMsg" class="text-xs font-semibold text-rose-600 mt-2"></p>
     </div>
     <div id="gradeRecordArea" hidden>
@@ -301,6 +305,27 @@
       .then(function (res) { all = res.ok ? (res.j.students || []) : []; });
   }
 
+  /* ----- Live suggestions for the ID / name boxes ----- */
+  function stuMask(v) { return /[a-zA-Z]/.test(v) ? v : maskStuNo(v); }
+  function stuSuggest(box, text, pick) {
+    var t = (text || '').trim(), v = t.toLowerCase();
+    var list = v && !validId(t) ? all.filter(function (s) {
+      return String(s.student_no).toLowerCase().indexOf(v) !== -1 || fullName(s).toLowerCase().indexOf(v) !== -1;
+    }).slice(0, 8) : [];
+    if (!list.length) { box.hidden = true; box.innerHTML = ''; return; }
+    box.innerHTML = list.map(function (s, i) {
+      return '<div data-i="' + i + '" style="padding:8px 10px;cursor:pointer;font-size:12px;border-bottom:1px solid #eef2f7">' +
+        '<span style="font-family:monospace">' + esc(s.student_no) + '</span> — ' + esc(fullName(s)) + '</div>';
+    }).join('');
+    box.hidden = false;
+    box.querySelectorAll('[data-i]').forEach(function (el) {
+      el.addEventListener('mousedown', function (e) {
+        e.preventDefault();
+        box.hidden = true;
+        pick(list[Number(el.getAttribute('data-i'))].student_no);
+      });
+    });
+  }
   /* ----- View Student ----- */
   function listActive() { return showAll || $('viewStudentSearch').value.trim() !== '' || $('viewYearFilter').value !== '' || $('viewSecFilter').value !== ''; }
   function filtered() {
@@ -473,15 +498,21 @@
     $('exToggleSubjectsLabel').textContent = w.hidden ? '▼ Show standard curriculum subjects & instructors' : '▲ Hide standard curriculum subjects & instructors';
   });
   $('studentSearchInput').addEventListener('input', function (e) {
-    e.target.value = maskStuNo(e.target.value);
+    e.target.value = stuMask(e.target.value);
     var v = e.target.value.trim();
-    if (validId(v)) openStudent(v);
-    else { $('enrollRecordArea').hidden = true; $('stuSearchMsg').textContent = ''; }
+    if (validId(v)) { $('stuSuggest').hidden = true; openStudent(v); }
+    else {
+      $('enrollRecordArea').hidden = true; $('stuSearchMsg').textContent = '';
+      stuSuggest($('stuSuggest'), v, function (no) { $('studentSearchInput').value = no; openStudent(no); });
+    }
   });
+  $('studentSearchInput').addEventListener('blur', function () { setTimeout(function () { $('stuSuggest').hidden = true; }, 150); });
   $('studentSearchInput').addEventListener('keydown', function (e) {
     if (e.key === 'Enter') {
       e.preventDefault();
-      e.target.value = maskStuNo(e.target.value);
+      e.target.value = stuMask(e.target.value);
+      var first = $('stuSuggest').querySelector('[data-i]');
+      if (!validId(e.target.value.trim()) && first) { first.dispatchEvent(new MouseEvent('mousedown')); return; }
       openStudent(e.target.value.trim());
     }
   });
@@ -837,15 +868,21 @@
     });
   }
   $('gradeSearchInput').addEventListener('input', function (e) {
-    e.target.value = maskStuNo(e.target.value);
+    e.target.value = stuMask(e.target.value);
     var v = e.target.value.trim();
-    if (validId(v)) gradeOpenStudent(v);
-    else { $('gradeRecordArea').hidden = true; $('gradeSearchMsg').textContent = ''; }
+    if (validId(v)) { $('gradeSuggest').hidden = true; gradeOpenStudent(v); }
+    else {
+      $('gradeRecordArea').hidden = true; $('gradeSearchMsg').textContent = '';
+      stuSuggest($('gradeSuggest'), v, function (no) { $('gradeSearchInput').value = no; gradeOpenStudent(no); });
+    }
   });
+  $('gradeSearchInput').addEventListener('blur', function () { setTimeout(function () { $('gradeSuggest').hidden = true; }, 150); });
   $('gradeSearchInput').addEventListener('keydown', function (e) {
     if (e.key === 'Enter') {
       e.preventDefault();
-      e.target.value = maskStuNo(e.target.value);
+      e.target.value = stuMask(e.target.value);
+      var first = $('gradeSuggest').querySelector('[data-i]');
+      if (!validId(e.target.value.trim()) && first) { first.dispatchEvent(new MouseEvent('mousedown')); return; }
       gradeOpenStudent(e.target.value.trim());
     }
   });
