@@ -3478,6 +3478,13 @@ app.get('/api/registrar/schedules', requireRegistrar, async (req, res) => {
     const k = x.course_code + '|' + x.group_label + '|' + x.year_level;
     if (!schFirst.has(k) && (!section || x.section === section)) schFirst.set(k, x);
   });
+  // Sections saved for each subject, group and year: one saved section shows as that section, several show as all.
+  const secOf = new Map();
+  sch.rows.forEach((x) => {
+    const k = x.course_code + '|' + x.group_label + '|' + x.year_level;
+    if (!secOf.has(k)) secOf.set(k, new Set());
+    secOf.get(k).add(x.section);
+  });
   const rows = [];
   courses.rows.forEach((c) => {
     const yr = c.year_level || year;
@@ -3492,7 +3499,8 @@ app.get('/api/registrar/schedules', requireRegistrar, async (req, res) => {
       const x = schFirst.get(c.course_code + '|' + g + '|' + yr) || {};
       rows.push({
         course_code: c.course_code, descriptive_title: c.descriptive_title, units: c.units, year_level: yr, group_label: g,
-        instructor: names.join(', '), days: x.days || '', start_time: x.start_time || '', end_time: x.end_time || '', room: x.room || ''
+        instructor: names.join(', '), days: x.days || '', start_time: x.start_time || '', end_time: x.end_time || '', room: x.room || '',
+        section: section || (secOf.get(c.course_code + '|' + g + '|' + yr) && secOf.get(c.course_code + '|' + g + '|' + yr).size === 1 ? [...secOf.get(c.course_code + '|' + g + '|' + yr)][0] : '')
       });
     });
   });
@@ -3524,7 +3532,10 @@ app.post('/api/registrar/schedules', requireRegistrar, async (req, res) => {
       const label = code + (group ? ' ' + group : '');
       if ((st && !SCHED_TIME_RE.test(st)) || (et && !SCHED_TIME_RE.test(et))) throw new Error('Time must be set for ' + label + '.');
       if (st && et && et <= st) throw new Error('End time must be after start time for ' + label + '.');
-      const secs = section ? [section] : ['A', 'B', 'C'];
+      // A row can name its own section; blank means every section of the year level.
+      const itSec = String(it.section || '').trim().toUpperCase();
+      if (itSec && !['A', 'B', 'C'].includes(itSec)) throw new Error('Section must be A, B or C.');
+      const secs = itSec ? [itSec] : (section ? [section] : ['A', 'B', 'C']);
       for (const sec of secs) {
         if (!days && !st && !et && !room) {
           await client.query('DELETE FROM reg_schedules WHERE college=$1 AND course_code=$2 AND term=$3 AND academic_year=$4 AND year_level=$5 AND section=$6 AND group_label=$7',

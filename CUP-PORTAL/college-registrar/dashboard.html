@@ -1511,6 +1511,7 @@
         var r = schRows[Number(tr.getAttribute('data-row'))];
         if (!r) return;
         r.group_label = tr.querySelector('[data-f="group_label"]').value;
+        r.section = tr.querySelector('[data-f="section"]').value;
         r.start_time = tr.querySelector('[data-f="start_time"]').value;
         r.end_time = tr.querySelector('[data-f="end_time"]').value;
         r.room = tr.querySelector('[data-f="room"]').value.trim();
@@ -1542,10 +1543,11 @@
           esc(r.course_code) + '</td>' +
           '<td style="' + td + '">' + esc(r.descriptive_title) + '</td>' +
           '<td style="' + td + '"><select data-f="group_label">' + groups + '</select></td>' +
+          '<td style="' + td + '"><select data-f="section"><option value="">-</option>' + ['A', 'B', 'C'].map(function (x) { return '<option value="' + x + '"' + (r.section === x ? ' selected' : '') + '>' + x + '</option>'; }).join('') + '</select></td>' +
           '<td style="' + td + '">' + days + '<div class="hint" data-tba-day style="font-size:.8rem;display:' + (r.tba_day && !r.edited ? '' : 'none') + '">TBA</div></td>' +
           '<td style="' + td + ';white-space:nowrap"><input type="time" data-f="start_time" value="' + esc(r.start_time) + '"> to <input type="time" data-f="end_time" value="' + esc(r.end_time) + '"><div class="hint" data-tba-time style="font-size:.8rem;display:' + (r.tba_time && !r.edited ? '' : 'none') + '">TBA</div></td>' +
           '<td style="' + td + '">' + esc(r.instructor || 'TBA') + '</td>' +
-          '<td style="' + td + '"><input data-f="room" value="' + esc(r.room) + '" maxlength="40" style="width:100%;box-sizing:border-box"></td>' +
+          '<td style="' + td + '"><input data-f="room" value="' + esc(r.room) + '" maxlength="40" style="width:80px;box-sizing:border-box"></td>' +
           '<td style="' + td + '"><button type="button" data-x="' + i + '" title="Remove this subject from the table" style="border:0;background:none;color:#b91c1c;font-weight:700;cursor:pointer;padding:0 4px">×</button></td>' +
           '</tr>';
       }).join('');
@@ -1553,7 +1555,7 @@
         '<label>Rows per page <select id="sch-size"><option>10</option><option>25</option><option>50</option></select></label>' +
         '<span class="hint">' + view.length + ' subject(s)</span></div>' +
         '<table style="width:100%;border-collapse:collapse;font-size:.9rem"><thead><tr>' +
-        ['Code', 'Descriptive title', 'Group', 'Day', 'Time', 'Instructor', 'Room', ''].map(function (t) { return '<th style="' + th + '">' + t + '</th>'; }).join('') +
+        ['Code', 'Descriptive title', 'Group', 'Section', 'Day', 'Time', 'Instructor', 'Room', ''].map(function (t) { return '<th style="' + th + '">' + t + '</th>'; }).join('') +
         '</tr></thead><tbody>' + rowsHtml + '</tbody></table>' +
         '<div style="display:flex;gap:10px;align-items:center;margin-top:10px">' +
         '<button type="button" id="sch-prev"' + (schPage <= 1 ? ' disabled' : '') + '>Previous</button>' +
@@ -1593,7 +1595,8 @@
         var jobs = [];
         Object.keys(byYear).forEach(function (y) {
           secs.forEach(function (sec) {
-            var idx = byYear[y];
+            var idx = byYear[y].filter(function (i) { return !schRows[i].section || schRows[i].section === sec; });
+            if (!idx.length) return;
             var body = { year_level: y, section: sec, items: idx.map(function (i) {
               var r = schRows[i];
               return { course_code: r.course_code, group_label: r.group_label || '', days: r.days || '', start_time: r.start_time || '', end_time: r.end_time || '' };
@@ -1712,17 +1715,21 @@
     });
     $('#sch-list').onchange = schTouch;
     // + before a code: a new group row for that subject, placed right under this row.
+    // + : the clicked row becomes G1 if it has no group yet, and the new row takes the next free group.
     function schAddGroup(refIdx) {
       schCapture();
       var ref = schRows[refIdx];
       if (!ref) return;
       var used = {};
-      schRows.forEach(function (r) { if (r.course_code === ref.course_code) used[r.group_label] = true; });
-      var free = '';
-      for (var g = 1; g <= 20 && !free; g++) if (!used['G' + g]) free = 'G' + g;
+      schRows.forEach(function (r) { if (r.course_code === ref.course_code && r.group_label) used[r.group_label] = true; });
+      function nextFree() {
+        for (var g = 1; g <= 20; g++) if (!used['G' + g]) { used['G' + g] = true; return 'G' + g; }
+        return '';
+      }
+      if (!ref.group_label) ref.group_label = nextFree();
       var nr = { course_code: ref.course_code, descriptive_title: ref.descriptive_title, units: ref.units,
-        year_level: ref.year_level || Number($('#sch-year').value) || 1, group_label: free, instructor: '',
-        days: '', start_time: '', end_time: '', room: '', tba_day: true, tba_time: true, edited: true };
+        year_level: ref.year_level || Number($('#sch-year').value) || 1, group_label: nextFree(), section: ref.section || '',
+        instructor: '', days: '', start_time: '', end_time: '', room: '', tba_day: true, tba_time: true, edited: true };
       schRows.splice(refIdx + 1, 0, nr);
       schDirty = true;
       schRender();
@@ -1732,7 +1739,7 @@
       var msg = $('#sch-msg'); msg.textContent = '';
       schCapture();
       var items = schRows.map(function (r) {
-        return { course_code: r.course_code, year_level: r.year_level, group_label: r.group_label || '', days: r.days || '', start_time: r.start_time || '', end_time: r.end_time || '', room: r.room || '' };
+        return { course_code: r.course_code, year_level: r.year_level, group_label: r.group_label || '', section: r.section || '', days: r.days || '', start_time: r.start_time || '', end_time: r.end_time || '', room: r.room || '' };
       });
       var bad = items.filter(function (x) { return (x.start_time && !x.end_time) || (!x.start_time && x.end_time); });
       if (bad.length) { msg.textContent = 'Set both start and end time for ' + bad[0].course_code + '.'; return; }
