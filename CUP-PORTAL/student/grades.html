@@ -459,16 +459,18 @@
       if (lastSnap === null) { lastSnap = snap; return; }
       if (snap === lastSnap) return;
       lastSnap = snap;
-      var ay = $('aySelect').value, sem = $('semSelect').value;
-      loadProfile();
-      loadStatus();
-      loadGrades().then(function () {
-        if (Array.prototype.some.call($('aySelect').options, function (o) { return o.value === ay; })) $('aySelect').value = ay;
-        fillSemesters($('aySelect').value);
-        if (sem) $('semSelect').value = sem;
-        renderGrades();
-      });
-      if (window.cupRefreshEnroll) window.cupRefreshEnroll();
+      try { if (window.cupRefreshEnroll) window.cupRefreshEnroll(); } catch (e) {}
+      try { loadProfile(); } catch (e) {}
+      try { loadStatus(); } catch (e) {}
+      try {
+        var ay = $('aySelect').value, sem = $('semSelect').value;
+        loadGrades().then(function () {
+          if (Array.prototype.some.call($('aySelect').options, function (o) { return o.value === ay; })) $('aySelect').value = ay;
+          fillSemesters($('aySelect').value);
+          if (sem) $('semSelect').value = sem;
+          renderGrades();
+        }).catch(function () {});
+      } catch (e) {}
     }).catch(function () {});
   }
   setInterval(liveTick, 5000);
