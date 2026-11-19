@@ -3592,6 +3592,9 @@ app.post('/api/registrar/schedules/check', requireRegistrar, async (req, res) =>
   const t = await gradingTerm();
   // A conflict check needs one section; ALL is not checked.
   if (!t.term || !t.ay || !(year >= 1 && year <= 4) || !section || section === 'ALL') return res.json({ conflicts: {} });
+  // Subject+group keys on the grid. The grid holds the live values, so saved rows with these keys are not compared.
+  const gridKeys = new Set((Array.isArray(b.items) ? b.items : []).slice(0, 500).map((it) =>
+    String(it.course_code || '').trim().slice(0, 40) + '|' + String(it.group_label || '').trim().toUpperCase().slice(0, 30)));
   const items = (Array.isArray(b.items) ? b.items : []).slice(0, 500).map((it, i) => ({
     i, code: String(it.course_code || '').trim().slice(0, 40), group: String(it.group_label || '').trim().toUpperCase().slice(0, 30),
     days: String(it.days || '').trim().toUpperCase(), st: String(it.start_time || '').trim(), et: String(it.end_time || '').trim()
@@ -3631,6 +3634,7 @@ app.post('/api/registrar/schedules/check', requireRegistrar, async (req, res) =>
     for (const x of items) {
       for (const sv of sec.rows) {
         if (sv.course_code === x.code && sv.group_label === x.group) continue;
+        if (gridKeys.has(sv.course_code + '|' + (sv.group_label || ''))) continue;
         const o = { days: sv.days, st: sv.start_time, et: sv.end_time };
         if (schOverlaps(x, o)) add(x.i, 'Section conflict: ' + sv.course_code + (sv.group_label ? ' ' + sv.group_label : '') + ' is saved on ' + sv.days + ' ' + sv.start_time + '–' + sv.end_time + '.');
       }
