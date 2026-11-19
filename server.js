@@ -2112,7 +2112,7 @@ function cogStatus(failPct, enrolledUnits, flags) {
 // flags: { misaligned }. outOfTerm marks subjects that do not belong to this year level and semester.
 // GPA rule: every subject with a grade counts, weighted by units.
 // Numeric grades use their value. X, W, INC, NG and a dash count as 5.00.
-// Failed grades follow the retention policy: 5.00, INC, X, W. Everything else with a grade passes (including 4.00).
+// Failed grades: 5.00, INC, X, W (retention policy) and 4.00. Everything else with a grade passes.
 // GPA shows only when the counted units and the passed units are each at least 9.
 function cogCompute(rows, flags) {
   let enrolled = 0, failed = 0, counted = 0, passed = 0, sumGU = 0, outUnits = 0;
@@ -2124,7 +2124,7 @@ function cogCompute(rows, flags) {
     if (!g) return; // no grade entered yet
     const numeric = /^\d+(\.\d+)?$/.test(g) && !COG_SPECIAL.has(g);
     const n = numeric ? Number(g) : 5;
-    const isPass = !RETENTION_FAIL.includes(g); // same failed-grade list as the student standing (5.00, INC, X, W)
+    const isPass = !RETENTION_FAIL.includes(g) && g !== '4.00' && g !== '4'; // failed: 5.00, INC, X, W and 4.00
     counted += u; sumGU += n * u;
     if (isPass) passed += u; else failed += u;
   });
