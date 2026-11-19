@@ -4913,9 +4913,16 @@ app.get('/api/registrar/step1', requireRegistrar, async (req, res) => {
        ORDER BY last_name, first_name`, [college, pt1.term, pt1.ay]);
     const statuses = await runStep1(students.rows.map((r) => r.student_no));
     const grades = await pool.query(
-      'SELECT student_no, course_code, final_grade, remarks FROM reg_grades WHERE college = $1', [college]);
-    const issues = {};
+      'SELECT student_no, course_code, final_grade, remarks, term, academic_year FROM reg_grades WHERE college = $1', [college]);
+    // Only the latest grade of each subject is checked (a re-taken subject shows its newest grade).
+    const latestBy = new Map();
     grades.rows.forEach((g) => {
+      const k = g.student_no + '|' + g.course_code;
+      const cur = latestBy.get(k);
+      if (!cur || termOrder(g.term, g.academic_year) >= termOrder(cur.term, cur.academic_year)) latestBy.set(k, g);
+    });
+    const issues = {};
+    [...latestBy.values()].forEach((g) => {
       const computed = computeServerRemark(g.final_grade);
       if (computed !== 'PASSED' || (g.remarks && g.remarks !== computed)) {
         (issues[g.student_no] = issues[g.student_no] || []).push({ course_code: g.course_code, final_grade: g.final_grade, remark: computed || g.remarks || '' });
