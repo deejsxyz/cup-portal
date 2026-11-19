@@ -2099,7 +2099,7 @@ const XLSX_PROTECT_PASSWORD = process.env.XLSX_PROTECT_PASSWORD || '22262730';
 // ----- Certificate of Grades (registrar) -----
 const COG_TEMPLATE = path.join(__dirname, 'CUP-PORTAL', 'forms', 'Certificate_of_Grades_Template.xlsx');
 const COG_MAX_SUBJECTS = 14; // rows 12-25 of the template; row 26 holds the GPA line
-const COG_SPECIAL = new Set(['W', 'X', 'INC', 'NG', '4.00', '4', '-']);
+const COG_SPECIAL = new Set(['W', 'X', 'INC', 'NG', '-']);
 function cogTermLabel(t) { return ({ '1st Semester': 'First Semester', '2nd Semester': 'Second Semester' })[t] || t; }
 function cogStatus(failPct, enrolledUnits, flags) {
   if (flags.misaligned || flags.outOfTermShare > 0.5) return 'IRREGULAR';
@@ -2110,6 +2110,10 @@ function cogStatus(failPct, enrolledUnits, flags) {
 }
 // rows: [{ units, grade, outOfTerm }]. W, X, INC, NG, 4.00 and "-" are failed and carry no units toward GPA.
 // flags: { misaligned }. outOfTerm marks subjects that do not belong to this year level and semester.
+// GPA rule: every subject with a grade counts, weighted by units.
+// Numeric grades use their value. X, W, INC, NG and a dash count as 5.00.
+// 4.00 counts as its own value (4.00) and as passed; 3.00 and below pass; above 3.00 (other than 4.00) fail.
+// GPA shows only when the counted units and the passed units are each at least 9.
 function cogCompute(rows, flags) {
   let enrolled = 0, failed = 0, counted = 0, passed = 0, sumGU = 0, outUnits = 0;
   rows.forEach((r) => {
@@ -2118,10 +2122,11 @@ function cogCompute(rows, flags) {
     if (r.outOfTerm) outUnits += u;
     const g = String(r.grade == null ? '' : r.grade).trim();
     if (!g) return; // no grade entered yet
-    if (!/^\d+(\.\d+)?$/.test(g) || COG_SPECIAL.has(g)) { failed += u; return; }
-    const n = Number(g);
+    const numeric = /^\d+(\.\d+)?$/.test(g) && !COG_SPECIAL.has(g);
+    const n = numeric ? Number(g) : 5;
+    const isPass = (numeric && (n <= 3 || g === '4.00' || g === '4'));
     counted += u; sumGU += n * u;
-    if (n <= 3) passed += u; else failed += u;
+    if (isPass) passed += u; else failed += u;
   });
   const gpa = counted >= 9 && passed >= 9 ? (sumGU / counted).toFixed(2) : '-';
   const failPct = enrolled > 0 ? (failed / enrolled) * 100 : 0;
