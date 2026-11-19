@@ -1539,7 +1539,7 @@
           return '<label style="margin-right:6px;white-space:nowrap"><input type="checkbox" data-day="' + d + '"' + (picked.indexOf(d) !== -1 ? ' checked' : '') + '> ' + d.charAt(0) + d.slice(1).toLowerCase() + '</label>';
         }).join('');
         return '<tr data-row="' + i + '"' + (schConf[i] && schConf[i].length ? ' style="background:#fde8e8"' : '') + '>' +
-          '<td style="' + td + '">' + esc(r.course_code) + '</td>' +
+          '<td style="' + td + '"><button type="button" data-x="' + esc(r.course_code) + '" title="Remove this subject from the table" style="border:0;background:none;color:#b91c1c;font-weight:700;cursor:pointer;padding:0 6px 0 0">×</button>' + esc(r.course_code) + '</td>' +
           '<td style="' + td + '">' + esc(r.descriptive_title) + '</td>' +
           '<td style="' + td + '"><select data-f="group_label">' + groups + '</select></td>' +
           '<td style="' + td + '">' + days + '<div class="hint" data-tba-day style="font-size:.8rem;display:' + (r.tba_day && !r.edited ? '' : 'none') + '">TBA</div></td>' +
@@ -1686,6 +1686,19 @@
     $('#sch-year').onchange = function () { schLoad(); };
     $('#sch-section').onchange = function () { schLoad(); };
     $('#sch-list').oninput = schTouch;
+    // The × before a code removes that subject from the table (saved schedules stay until changed).
+    $('#sch-list').addEventListener('click', function (e) {
+      var b = e.target.closest ? e.target.closest('[data-x]') : null;
+      if (!b) return;
+      var code = b.getAttribute('data-x');
+      schCapture();
+      schRows = schRows.filter(function (r) { return r.course_code !== code; });
+      schSubjects = schSubjects.filter(function (c) { return c !== code; });
+      if (schSubject === code) schSubject = schSubjects[schSubjects.length - 1] || '';
+      if (!schRows.length) { $('#sch-list').innerHTML = '<p class="hint">Choose a subject to show its schedule.</p>'; $('#sch-conflicts').innerHTML = ''; return; }
+      schRender();
+      schCheck();
+    });
     $('#sch-list').onchange = schTouch;
     $('#sch-add-row').onclick = function () {
       var code = schSubject;
