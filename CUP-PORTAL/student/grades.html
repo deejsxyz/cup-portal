@@ -66,6 +66,7 @@
   .modal .btn { width: 100%; margin-top: 14px; }
   #printArea { display: none; }
   @media print { body > *:not(#printArea) { display: none !important; } #printArea { display: block !important; padding: 24px; color: #000; } #printArea h2 { font-size: 16pt; margin: 0 0 4px; } #printArea h3 { font-size: 11pt; margin: 14px 0 6px; } #printArea table { width: 100%; border-collapse: collapse; font-size: 10pt; } #printArea th, #printArea td { border-bottom: 1px solid #999; padding: 4px 6px; text-align: left; } }
+  .live-clock { font-size: 13px; font-weight: 700; white-space: nowrap; }
 </style>
 <link rel="stylesheet" href="/CUP-PORTAL/portal-controls.css">
 <script src="/CUP-PORTAL/portal-session.js" data-logout="/api/portal/logout" data-login="/CUP-PORTAL/student/login"></script>
@@ -80,6 +81,7 @@
     </div>
   </div>
   <div class="who">
+<span id="liveClock" class="live-clock"></span>
     <span id="whoName"></span>
     <button type="button" class="btn logout" id="logout">Log Out</button>
   </div>
@@ -416,6 +418,20 @@
     if (res.j.role !== 'student') { window.location.href = '/CUP-PORTAL/student/login'; return null; }
     return Promise.all([loadProfile(), loadGrades(), loadStatus()]);
   }).catch(function () { $('gradesTable').innerHTML = '<p class="hint">Could not load your portal. Please refresh.</p>'; });
+})();
+</script>
+<script>
+(function () {
+  var el = document.getElementById('liveClock');
+  if (!el) return;
+  var f = new Intl.DateTimeFormat('en-US', { timeZone: 'Asia/Manila', weekday: 'long', month: 'long', day: 'numeric', year: 'numeric', hour: 'numeric', minute: '2-digit', second: '2-digit', hour12: true });
+  function tick() {
+    var p = {};
+    f.formatToParts(new Date()).forEach(function (x) { p[x.type] = x.value; });
+    el.textContent = '\uD83D\uDCC5 ' + p.weekday + ', ' + p.month + ' ' + p.day + ', ' + p.year + ' at ' + p.hour + ':' + p.minute + ':' + p.second + ' ' + p.dayPeriod;
+  }
+  tick();
+  setInterval(tick, 1000);
 })();
 </script>
 </body>
