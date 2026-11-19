@@ -1681,8 +1681,11 @@
     function schFillSubjectList() {
       var keys = schProgCodes ? schProgCodes.map(schKey) : null;
       var list = schMajor.filter(function (x) { return !keys || keys.indexOf(schKey(x.course_code)) !== -1; });
-      if (keys && !list.length) $('#sch-msg').textContent = 'No curriculum subjects found for this program. Check the curriculum import.';
-      else if (!keys) $('#sch-msg').textContent = '';
+      if (keys && !list.length) {
+        // No curriculum match for this program: keep the subject box working with the college's subjects, and say why.
+        list = schMajor;
+        $('#sch-msg').textContent = 'No curriculum subjects matched this program, so all subjects of the college are shown. Check the curriculum import for this program name.';
+      } else if (!keys) $('#sch-msg').textContent = '';
       $('#sch-subject-list').innerHTML = list.map(function (x) {
         return '<option value="' + esc(x.course_code + ' — ' + x.descriptive_title) + '"></option>';
       }).join('');
