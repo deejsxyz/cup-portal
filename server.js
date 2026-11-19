@@ -3023,10 +3023,10 @@ app.get('/api/registrar/coe/:no', requireRegistrar, async (req, res) => {
     const wb = new ExcelJS.Workbook();
     await wb.xlsx.readFile(COE_TEMPLATE);
     const ws = wb.worksheets[0];
-    // Print setup: A4, 0.75 inch margins on all sides, whole certificate on one page.
+    // Print setup: A4, 0.75 inch margins (top 0.5), whole certificate on one page.
     ws.pageSetup = Object.assign({}, ws.pageSetup, {
       paperSize: 9, // A4
-      margins: { left: 0.75, right: 0.75, top: 0.75, bottom: 0.75, header: 0.3, footer: 0.3 },
+      margins: { left: 0.75, right: 0.75, top: 0.5, bottom: 0.75, header: 0.3, footer: 0.3 },
       fitToPage: true, fitToWidth: 1, fitToHeight: 1,
       printArea: 'A1:AG59'
     });
