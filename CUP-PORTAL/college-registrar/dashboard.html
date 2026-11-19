@@ -1499,37 +1499,66 @@
       if (me.role === 'superadmin') p += '&college=' + encodeURIComponent(sjCollege());
       return p;
     }
+    var schPage = 1, schSize = 10;
+    // Keep what is typed on the current page before switching pages or saving.
+    function schCapture() {
+      document.querySelectorAll('#sch-list [data-i]').forEach(function (el) {
+        var r = schRows[Number(el.getAttribute('data-i'))];
+        if (r) r[el.getAttribute('data-f')] = el.value;
+      });
+    }
+    function schRender() {
+      var pages = Math.max(1, Math.ceil(schRows.length / schSize));
+      if (schPage > pages) schPage = pages;
+      if (schPage < 1) schPage = 1;
+      var from = (schPage - 1) * schSize;
+      var th = 'text-align:left;border-bottom:1px solid #7fa37f;padding:6px';
+      var td = 'padding:6px;border-bottom:1px solid #d5e2d5';
+      var inp = 'style="width:100%;box-sizing:border-box"';
+      var rowsHtml = schRows.slice(from, from + schSize).map(function (r, k) {
+        var i = from + k;
+        return '<tr>' +
+          '<td style="' + td + '">' + esc(r.course_code) + '</td>' +
+          '<td style="' + td + '">' + esc(r.descriptive_title) + '</td>' +
+          '<td style="' + td + '">' + esc(r.instructor || '—') + '</td>' +
+          '<td style="' + td + '"><input data-i="' + i + '" data-f="days" value="' + esc(r.days) + '" placeholder="e.g. MWF" maxlength="20" ' + inp + '></td>' +
+          '<td style="' + td + '"><input type="time" data-i="' + i + '" data-f="start_time" value="' + esc(r.start_time) + '" ' + inp + '></td>' +
+          '<td style="' + td + '"><input type="time" data-i="' + i + '" data-f="end_time" value="' + esc(r.end_time) + '" ' + inp + '></td>' +
+          '<td style="' + td + '"><input data-i="' + i + '" data-f="room" value="' + esc(r.room) + '" maxlength="40" ' + inp + '></td>' +
+          '</tr>';
+      }).join('');
+      $('#sch-list').innerHTML = '<div style="display:flex;gap:10px;align-items:center;flex-wrap:wrap;margin-bottom:8px">' +
+        '<label>Rows per page <select id="sch-size"><option>10</option><option>25</option><option>50</option></select></label>' +
+        '<span class="hint">' + schRows.length + ' subject(s)</span></div>' +
+        '<table style="width:100%;border-collapse:collapse;font-size:.9rem"><thead><tr>' +
+        ['Code', 'Descriptive title', 'Instructor', 'Days', 'Start', 'End', 'Room'].map(function (t) { return '<th style="' + th + '">' + t + '</th>'; }).join('') +
+        '</tr></thead><tbody>' + rowsHtml + '</tbody></table>' +
+        '<div style="display:flex;gap:10px;align-items:center;margin-top:10px">' +
+        '<button type="button" id="sch-prev"' + (schPage <= 1 ? ' disabled' : '') + '>Previous</button>' +
+        '<span class="hint">Page ' + schPage + ' of ' + pages + '</span>' +
+        '<button type="button" id="sch-next"' + (schPage >= pages ? ' disabled' : '') + '>Next</button></div>' +
+        '<button type="button" id="sch-save" style="margin-top:10px">Save schedule</button>';
+      $('#sch-size').value = String(schSize);
+      $('#sch-size').onchange = function () { schCapture(); schSize = Number(this.value) || 10; schPage = 1; schRender(); };
+      $('#sch-prev').onclick = function () { schCapture(); schPage--; schRender(); };
+      $('#sch-next').onclick = function () { schCapture(); schPage++; schRender(); };
+      $('#sch-save').onclick = schSave;
+    }
     function schLoad(keepMsg) {
       var msg = $('#sch-msg'); if (!keepMsg) msg.textContent = '';
       if (!$('#sch-year').value || !$('#sch-section').value.trim()) { msg.textContent = 'Choose year level and section first.'; return; }
       fetch('/api/registrar/schedules?' + schCollectParams(), { credentials: 'same-origin' }).then(function (r) { return r.json(); }).then(function (j) {
         schRows = j.rows || [];
-        var th = 'text-align:left;border-bottom:1px solid #7fa37f;padding:6px';
-        var td = 'padding:6px;border-bottom:1px solid #d5e2d5';
-        var inp = 'style="width:100%;box-sizing:border-box"';
+        schPage = 1;
         if (!schRows.length) { $('#sch-list').innerHTML = '<p class="hint">No subjects for this year level yet. Add subjects first.</p>'; return; }
-        $('#sch-list').innerHTML = '<table style="width:100%;border-collapse:collapse;font-size:.9rem"><thead><tr>' +
-          ['Code', 'Descriptive title', 'Instructor', 'Days', 'Start', 'End', 'Room'].map(function (t) { return '<th style="' + th + '">' + t + '</th>'; }).join('') +
-          '</tr></thead><tbody>' + schRows.map(function (r, i) {
-            return '<tr>' +
-              '<td style="' + td + '">' + esc(r.course_code) + '</td>' +
-              '<td style="' + td + '">' + esc(r.descriptive_title) + '</td>' +
-              '<td style="' + td + '">' + esc(r.instructor || '—') + '</td>' +
-              '<td style="' + td + '"><input data-i="' + i + '" data-f="days" value="' + esc(r.days) + '" placeholder="e.g. MWF" maxlength="20" ' + inp + '></td>' +
-              '<td style="' + td + '"><input type="time" data-i="' + i + '" data-f="start_time" value="' + esc(r.start_time) + '" ' + inp + '></td>' +
-              '<td style="' + td + '"><input type="time" data-i="' + i + '" data-f="end_time" value="' + esc(r.end_time) + '" ' + inp + '></td>' +
-              '<td style="' + td + '"><input data-i="' + i + '" data-f="room" value="' + esc(r.room) + '" maxlength="40" ' + inp + '></td>' +
-              '</tr>';
-          }).join('') + '</tbody></table>' +
-          '<button type="button" id="sch-save" style="margin-top:10px">Save schedule</button>';
-        $('#sch-save').onclick = schSave;
+        schRender();
       }).catch(function () { msg.textContent = 'Could not load the schedule.'; });
     }
     function schSave() {
       var msg = $('#sch-msg'); msg.textContent = '';
-      var items = schRows.map(function (r, i) {
-        var g = function (f) { var el = document.querySelector('#sch-list [data-i="' + i + '"][data-f="' + f + '"]'); return el ? el.value : ''; };
-        return { course_code: r.course_code, days: g('days'), start_time: g('start_time'), end_time: g('end_time'), room: g('room') };
+      schCapture();
+      var items = schRows.map(function (r) {
+        return { course_code: r.course_code, days: r.days || '', start_time: r.start_time || '', end_time: r.end_time || '', room: r.room || '' };
       });
       var bad = items.filter(function (x) { return (x.start_time && !x.end_time) || (!x.start_time && x.end_time); });
       if (bad.length) { msg.textContent = 'Set both start and end time for ' + bad[0].course_code + '.'; return; }
