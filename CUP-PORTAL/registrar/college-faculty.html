@@ -130,12 +130,12 @@
           <label class="flex items-center gap-1"><input type="checkbox" class="asg-year" value="4"> 4th Year</label>
         </div>
       </fieldset>
-      <fieldset class="text-xs font-bold text-slate-700"><legend>Sections (tick every section this group applies to)</legend>
-        <div class="flex gap-4 mt-1 font-normal"><label class="flex items-center gap-1"><input type="checkbox" class="asg-sec" value="A"> A</label><label class="flex items-center gap-1"><input type="checkbox" class="asg-sec" value="B"> B</label><label class="flex items-center gap-1"><input type="checkbox" class="asg-sec" value="C"> C</label></div></fieldset>
+      <label class="text-xs font-bold text-slate-700">Section
+        <select id="asgSection" class="block mt-1 w-full px-2 py-1.5 rounded border border-slate-300 text-xs bg-white"><option value="">Choose a section</option><option value="A">A</option><option value="B">B</option><option value="C">C</option></select></label>
     </div>
     <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
       <label class="text-xs font-bold text-slate-700">Group
-        <input id="asgGroup" type="text" maxlength="12" placeholder="e.g. G9, or G1A for Section A only" class="block mt-1 w-full px-2 py-1.5 rounded border border-slate-300 text-xs bg-white"></label>
+        <select id="asgGroup" class="block mt-1 w-full px-2 py-1.5 rounded border border-slate-300 text-xs bg-white"><option value="">None</option><option value="1">1</option><option value="2">2</option><option value="3">3</option><option value="4">4</option><option value="5">5</option><option value="6">6</option><option value="7">7</option><option value="8">8</option><option value="9">9</option><option value="10">10</option><option value="11">11</option><option value="12">12</option><option value="13">13</option><option value="14">14</option><option value="15">15</option><option value="16">16</option><option value="17">17</option><option value="18">18</option><option value="19">19</option><option value="20">20</option></select></label>
       <label class="text-xs font-bold text-slate-700">Day
         <input id="asgDay" type="text" maxlength="40" placeholder="e.g. MWF or TTH" class="block mt-1 w-full px-2 py-1.5 rounded border border-slate-300 text-xs bg-white"></label>
       <label class="text-xs font-bold text-slate-700">Time
@@ -410,24 +410,21 @@
   $('asgSave').addEventListener('click', function () {
     var msg = $('asgMsg');
     var years = Array.prototype.slice.call(document.querySelectorAll('.asg-year:checked')).map(function (c) { return Number(c.value); });
-    var ticked = Array.prototype.slice.call(document.querySelectorAll('.asg-sec:checked')).map(function (c) { return c.value; });
     var codes = Array.prototype.slice.call(document.querySelectorAll('.asg-subj:checked')).map(function (c) { return c.value; });
-    var group = $('asgGroup').value.trim().toUpperCase();
-    if (/^\d{1,2}$/.test(group)) group = 'G' + group;
-    var m = /^G\d{1,2}([A-C])$/.exec(group);
-    if (m && ticked.indexOf(m[1]) === -1) { msg.textContent = 'Tick Section ' + m[1] + ' to save ' + group + '.'; return; }
+    var sec = $('asgSection').value;
+    var group = $('asgGroup').value ? 'G' + $('asgGroup').value : '';
     var body = { faculty_id: $('asgFaculty').value, subject_college: COLLEGE, program: $('asgProgram').value, course_codes: codes, years: years,
-      sections: m ? [m[1]] : ticked, group_label: group, day_label: $('asgDay').value.trim(), time_slot: $('asgTime').value.trim() };
+      sections: sec ? [sec] : [], group_label: group, day_label: $('asgDay').value.trim(), time_slot: $('asgTime').value.trim() };
     if (!body.faculty_id) { msg.textContent = 'Choose a faculty member.'; return; }
     if (!body.program) { msg.textContent = 'Choose a program.'; return; }
     if (!body.course_codes.length) { msg.textContent = 'Choose at least one subject.'; return; }
-    if (!body.sections.length) { msg.textContent = 'Tick at least one section.'; return; }
+    if (!body.sections.length) { msg.textContent = 'Choose a section.'; return; }
     msg.textContent = 'Saving…';
     post('/api/registrar/subject-assignments', body).then(function (res) {
       if (!res.ok) { msg.textContent = res.j.error || 'Could not save.'; return; }
       msg.textContent = 'Saved.';
-      document.querySelectorAll('.asg-year, .asg-subj, .asg-sec').forEach(function (c) { c.checked = false; });
-      $('asgGroup').value = ''; $('asgDay').value = ''; $('asgTime').value = '';
+      document.querySelectorAll('.asg-year, .asg-subj').forEach(function (c) { c.checked = false; });
+      $('asgGroup').value = ''; $('asgSection').value = ''; $('asgDay').value = ''; $('asgTime').value = '';
       loadAssignments();
     });
   });
