@@ -342,6 +342,7 @@
   /* Subject Assignments */
   var asgRows = [];
   var asgEditId = null;   // id of the row being edited in place (null = none)
+  var asgGroupPick = null; // group the + button chose for the next save
   function asgFmt12(t) { var p = t.split(':'), hh = Number(p[0]); return (hh % 12 || 12) + ':' + p[1] + ' ' + (hh >= 12 ? 'PM' : 'AM'); }
   // "1:00 PM - 2:00 PM" to ["13:00", "14:00"] for the time pickers.
   function asgParseTime(text) {
@@ -364,21 +365,36 @@
   // + : fills the form with this subject's faculty, program, years and section, and the next free group.
   // Day, time and room are copied from the row, so only the group changes.
   function asgAddGroup(a) {
-    $('asgFaculty').value = String(a.user_id);
-    $('asgProgram').value = a.program || '';
-    loadProgramSubjects().then(function () {
-      document.querySelectorAll('.asg-subj').forEach(function (c) { c.checked = c.value === a.course_code; });
-      document.querySelectorAll('.asg-year').forEach(function (c) { c.checked = (a.years || []).indexOf(Number(c.value)) !== -1; });
-      var secs = a.sections || [];
-      $('asgSection').value = secs.length > 1 ? 'ALL' : (secs[0] || '');
-      var g = asgNextGroup(a.course_code);
-      var t = asgParseTime(a.time_slot);
-      $('asgDay').value = a.day_label && a.day_label !== 'TBA' ? a.day_label : '';
-      $('asgStart').value = t[0];
-      $('asgEnd').value = t[1];
-      $('asgRoom').value = a.room && a.room !== 'TBA' ? a.room : '';
-      $('asgMsg').textContent = g ? 'New group G' + g + ' for ' + a.course_code + '. Day, time and room were copied; change them if needed, then save.' : 'All 20 groups of ' + a.course_code + ' are used.';
-      $('asgSave').scrollIntoView({ behavior: 'smooth', block: 'center' });
+    // A row saved without a group gets G1 first; the new group added here then becomes G2.
+    var proceed = function (row) {
+      $('asgFaculty').value = String(row.user_id);
+      $('asgProgram').value = row.program || '';
+      loadProgramSubjects().then(function () {
+        document.querySelectorAll('.asg-subj').forEach(function (c) { c.checked = c.value === row.course_code; });
+        document.querySelectorAll('.asg-year').forEach(function (c) { c.checked = (row.years || []).indexOf(Number(c.value)) !== -1; });
+        var secs = row.sections || [];
+        $('asgSection').value = secs.length > 1 ? 'ALL' : (secs[0] || '');
+        var g = asgNextGroup(row.course_code);
+        var t = asgParseTime(row.time_slot);
+        $('asgDay').value = row.day_label && row.day_label !== 'TBA' ? row.day_label : '';
+        $('asgStart').value = t[0];
+        $('asgEnd').value = t[1];
+        $('asgRoom').value = row.room && row.room !== 'TBA' ? row.room : '';
+        asgGroupPick = g ? 'G' + g : null;
+        $('asgMsg').textContent = g ? 'New group G' + g + ' for ' + row.course_code + '. Set its day, time and room (or leave blank for TBA), then save.' : 'All 20 groups of ' + row.course_code + ' are used.';
+        $('asgSave').scrollIntoView({ behavior: 'smooth', block: 'center' });
+      });
+    };
+    if (a.group_label) { proceed(a); return; }
+    post('/api/registrar/subject-assignments/' + a.id + '/update', {
+      faculty_id: a.user_id, years: a.years || [], sections: a.sections || [], group_label: 'G1',
+      day_label: a.day_label || 'TBA', time_slot: a.time_slot || 'TBA', room: a.room || 'TBA'
+    }).then(function (res) {
+      if (!res.ok) { $('asgMsg').textContent = res.j.error || 'Could not set group G1.'; return; }
+      return loadAssignments().then(function () {
+        var row = asgRows.filter(function (r) { return String(r.id) === String(a.id); })[0];
+        if (row) proceed(row);
+      });
     });
   }
   // One row of the table. While a row is being edited, its year, section, group, faculty,
@@ -689,6 +705,7 @@
     var time = st ? fmt12(st) + ' - ' + fmt12(en) : '';
     var body = { faculty_id: $('asgFaculty').value, subject_college: COLLEGE, program: $('asgProgram').value, course_codes: codes, years: years,
       sections: sec === 'ALL' ? ['A', 'B', 'C'] : (sec ? [sec] : []), group_label: '', day_label: $('asgDay').value.trim() || 'TBA', time_slot: time || 'TBA', room: $('asgRoom').value.trim() || 'TBA' };
+    body.group_label = asgGroupPick || ''; // set only by the + button
     if (!body.faculty_id) { msg.textContent = 'Choose a faculty member.'; return; }
     if (!body.program) { msg.textContent = 'Choose a program.'; return; }
     if (!body.course_codes.length) { msg.textContent = 'Choose at least one subject.'; return; }
@@ -697,6 +714,7 @@
     post('/api/registrar/subject-assignments', body).then(function (res) {
       if (!res.ok) { msg.textContent = res.j.error || 'Could not save.'; return; }
       msg.textContent = 'Saved.';
+      asgGroupPick = null;
       document.querySelectorAll('.asg-year, .asg-subj').forEach(function (c) { c.checked = false; });
       $('asgSection').value = ''; $('asgDay').value = ''; $('asgStart').value = ''; $('asgEnd').value = ''; $('asgRoom').value = '';
       loadAssignments();
