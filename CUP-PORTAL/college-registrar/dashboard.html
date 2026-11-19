@@ -381,6 +381,7 @@
             <button type="button" id="sch-load">Load subjects</button>
           </div>
           <div id="sch-list" style="margin-top:10px;overflow-x:auto"></div>
+          <div id="sch-conflicts" class="hint" style="margin-top:8px"></div>
           <p class="hint" id="sch-msg"></p>
         </div>
     </div></div></section>
@@ -1517,7 +1518,7 @@
       var inp = 'style="width:100%;box-sizing:border-box"';
       var rowsHtml = schRows.slice(from, from + schSize).map(function (r, k) {
         var i = from + k;
-        return '<tr>' +
+        return '<tr' + (schConf[i] && schConf[i].length ? ' style="background:#fde8e8"' : '') + '>' +
           '<td style="' + td + '">' + esc(r.course_code) + '</td>' +
           '<td style="' + td + '">' + esc(r.descriptive_title) + '</td>' +
           '<td style="' + td + '">' + esc(r.group_label || '—') + '</td>' +
@@ -1544,6 +1545,36 @@
       $('#sch-prev').onclick = function () { schCapture(); schPage--; schRender(); };
       $('#sch-next').onclick = function () { schCapture(); schPage++; schRender(); };
       $('#sch-save').onclick = schSave;
+      $('#sch-list').oninput = function (e) { if (e.target && e.target.getAttribute && e.target.getAttribute('data-i') !== null) { schCapture(); schCheck(); } };
+    }
+    var schConf = {}, schCheckTimer = null;
+    // Live conflict check: runs as the grid changes; highlights the rows with a conflict.
+    function schCheck() {
+      clearTimeout(schCheckTimer);
+      schCheckTimer = setTimeout(function () {
+        var y = $('#sch-year').value, sec = $('#sch-section').value.trim().toUpperCase();
+        if (!y || !sec || !schRows.length) { schConf = {}; $('#sch-conflicts').innerHTML = ''; return; }
+        var body = { year_level: y, section: sec, items: schRows.map(function (r) {
+          return { course_code: r.course_code, group_label: r.group_label || '', days: r.days || '', start_time: r.start_time || '', end_time: r.end_time || '' };
+        }) };
+        if (me.role === 'superadmin') body.college = sjCollege();
+        fetch('/api/registrar/schedules/check', { method: 'POST', credentials: 'same-origin', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(body) })
+          .then(function (r) { return r.json(); }).then(function (j) {
+            schConf = j.conflicts || {};
+            var lines = [];
+            Object.keys(schConf).forEach(function (i) {
+              var r = schRows[Number(i)];
+              var name = r ? r.course_code + (r.group_label ? ' ' + r.group_label : '') : '';
+              schConf[i].forEach(function (m) { lines.push(esc(name + ': ' + m)); });
+            });
+            $('#sch-conflicts').innerHTML = lines.length ? '<strong style="color:#b91c1c">Conflicts (' + lines.length + '):</strong><br>' + lines.join('<br>') : '<span class="hint">No conflicts.</span>';
+            // Update highlights in place so typing keeps its focus.
+            document.querySelectorAll('#sch-list [data-i]').forEach(function (el) {
+              var i = Number(el.getAttribute('data-i'));
+              el.closest('tr').style.background = schConf[i] && schConf[i].length ? '#fde8e8' : '';
+            });
+          }).catch(function () {});
+      }, 400);
     }
     function schLoad(keepMsg) {
       var msg = $('#sch-msg'); if (!keepMsg) msg.textContent = '';
@@ -1553,6 +1584,7 @@
         schPage = 1;
         if (!schRows.length) { $('#sch-list').innerHTML = '<p class="hint">No subjects for this year level yet. Add subjects first.</p>'; return; }
         schRender();
+        schCheck();
       }).catch(function () { msg.textContent = 'Could not load the schedule.'; });
     }
     function schSave() {

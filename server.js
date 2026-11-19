@@ -3530,6 +3530,105 @@ app.post('/api/registrar/schedules', requireRegistrar, async (req, res) => {
   res.json({ ok: true });
 });
 
+// Live conflict check for the Subject schedule: section overlaps and instructor overlaps.
+function schDaySet(str) {
+  const t = String(str || '').toUpperCase();
+  if (t.indexOf('TBA') !== -1) return new Set();
+  const toks = [['MON', 'MON'], ['TUES', 'TUE'], ['TUE', 'TUE'], ['WED', 'WED'], ['THURS', 'THU'], ['THUR', 'THU'], ['THU', 'THU'],
+    ['FRI', 'FRI'], ['SAT', 'SAT'], ['SUN', 'SUN'], ['TH', 'THU'], ['SU', 'SUN'], ['M', 'MON'], ['T', 'TUE'], ['W', 'WED'], ['F', 'FRI'], ['S', 'SAT']];
+  const out = new Set();
+  let i = 0;
+  while (i < t.length) {
+    let hit = false;
+    for (const [tok, day] of toks) {
+      if (t.startsWith(tok, i)) { out.add(day); i += tok.length; hit = true; break; }
+    }
+    if (!hit) i++;
+  }
+  return out;
+}
+function schOverlaps(a, b) {
+  const da = schDaySet(a.days), db = schDaySet(b.days);
+  if (![...da].some((d) => db.has(d))) return false;
+  return a.st < b.et && b.st < a.et;
+}
+app.post('/api/registrar/schedules/check', requireRegistrar, async (req, res) => {
+  const b = req.body || {};
+  const college = regCollege(req, b.college || req.query.college);
+  if (!college) return res.status(403).json({ error: 'Choose a college.' });
+  const year = Number(b.year_level);
+  const section = String(b.section || '').trim().toUpperCase().slice(0, 20);
+  const t = await gradingTerm();
+  if (!t.term || !t.ay || !(year >= 1 && year <= 4) || !section) return res.json({ conflicts: {} });
+  const items = (Array.isArray(b.items) ? b.items : []).slice(0, 500).map((it, i) => ({
+    i, code: String(it.course_code || '').trim().slice(0, 40), group: String(it.group_label || '').trim().toUpperCase().slice(0, 30),
+    days: String(it.days || '').trim().toUpperCase(), st: String(it.start_time || '').trim(), et: String(it.end_time || '').trim()
+  })).filter((x) => x.code && x.days && x.st && x.et && x.st < x.et);
+  const conflicts = {};
+  const add = (i, msg) => { (conflicts[i] = conflicts[i] || []).push(msg); };
+  const label = (x) => x.code + (x.group ? ' ' + x.group : '');
+  const when = (x) => x.days + ' ' + x.st + '–' + x.et;
+  try {
+    for (const x of items) {
+      const who = await pool.query(
+        `SELECT DISTINCT sa.user_id, u.name FROM reg_subject_assignments sa JOIN reg_users u ON u.id = sa.user_id
+          WHERE sa.college=$1 AND sa.term=$2 AND sa.academic_year=$3 AND sa.course_code=$4 AND sa.group_label=$5 AND $6 = ANY(sa.years) AND $7 = ANY(sa.sections)`,
+        [college, t.term, t.ay, x.code, x.group, year, section]);
+      x.instructors = who.rows;
+    }
+    // Inside this grid: everything here is the same year and section, so any overlap is a section conflict.
+    for (let a = 0; a < items.length; a++) {
+      for (let c = a + 1; c < items.length; c++) {
+        const p = items[a], q = items[c];
+        if (!schOverlaps(p, q)) continue;
+        add(p.i, 'Section conflict: ' + label(q) + ' is on ' + when(q) + ' in this section.');
+        add(q.i, 'Section conflict: ' + label(p) + ' is on ' + when(p) + ' in this section.');
+        for (const ip of p.instructors) {
+          if (q.instructors.some((iq) => iq.user_id === ip.user_id)) {
+            add(p.i, 'Instructor conflict: ' + ip.name + ' also teaches ' + label(q) + ' at this time.');
+            add(q.i, 'Instructor conflict: ' + ip.name + ' also teaches ' + label(p) + ' at this time.');
+          }
+        }
+      }
+    }
+    // Against saved schedules of this year and section.
+    const sec = await pool.query(
+      `SELECT course_code, group_label, days, start_time, end_time FROM reg_schedules
+        WHERE college=$1 AND term=$2 AND academic_year=$3 AND year_level=$4 AND section=$5 AND days<>'' AND start_time<>'' AND end_time<>''`,
+      [college, t.term, t.ay, year, section]);
+    for (const x of items) {
+      for (const sv of sec.rows) {
+        if (sv.course_code === x.code && sv.group_label === x.group) continue;
+        const o = { days: sv.days, st: sv.start_time, et: sv.end_time };
+        if (schOverlaps(x, o)) add(x.i, 'Section conflict: ' + sv.course_code + (sv.group_label ? ' ' + sv.group_label : '') + ' is saved on ' + sv.days + ' ' + sv.start_time + '–' + sv.end_time + '.');
+      }
+    }
+    // Instructor against their other saved schedules (any year and section).
+    for (const x of items) {
+      for (const ins of x.instructors) {
+        const other = await pool.query(
+          `SELECT rs.course_code, rs.group_label, rs.year_level, rs.section, rs.days, rs.start_time, rs.end_time
+             FROM reg_schedules rs
+             JOIN reg_subject_assignments sa ON sa.college = rs.college AND sa.course_code = rs.course_code AND sa.group_label = rs.group_label
+                  AND sa.term = rs.term AND sa.academic_year = rs.academic_year AND rs.year_level = ANY(sa.years) AND rs.section = ANY(sa.sections)
+            WHERE sa.user_id = $1 AND rs.college = $2 AND rs.term = $3 AND rs.academic_year = $4
+              AND rs.days <> '' AND rs.start_time <> '' AND rs.end_time <> ''
+              AND NOT (rs.course_code = $5 AND rs.group_label = $6 AND rs.year_level = $7 AND rs.section = $8)`,
+          [ins.user_id, college, t.term, t.ay, x.code, x.group, year, section]);
+        for (const o of other.rows) {
+          if (schOverlaps(x, { days: o.days, st: o.start_time, et: o.end_time })) {
+            add(x.i, 'Instructor conflict: ' + ins.name + ' teaches ' + o.course_code + (o.group_label ? ' ' + o.group_label : '') + ' in ' + o.year_level + '-' + o.section + ' on ' + o.days + ' ' + o.start_time + '–' + o.end_time + '.');
+          }
+        }
+      }
+    }
+    res.json({ conflicts });
+  } catch (err) {
+    console.error(err);
+    res.status(500).json({ error: 'Could not check conflicts.' });
+  }
+});
+
 // Subjects of every college and the programs of each, for Subject Assignments (college and program are chosen per assignment).
 app.get('/api/registrar/subject-catalog', requireRegistrar, async (req, res) => {
   const r = await pool.query('SELECT college, course_code, descriptive_title, year_level FROM reg_courses ORDER BY college, course_code');
