@@ -1567,13 +1567,13 @@
         '<span class="hint">' + view.length + ' subject(s)</span></div>' +
         '<div style="display:flex;gap:6px;align-items:flex-start">' +
         '<table id="sch-gl" style="border-collapse:collapse;font-size:.9rem;width:34px"><thead><tr><th></th></tr></thead><tbody>' + view.slice(from, from + schSize).map(function (i) {
-          return '<tr><td style="padding:0 2px;vertical-align:middle"><button type="button" data-add="' + i + '" title="Add a group row for this subject" style="border:0;background:none;color:#166534;font-weight:700;cursor:pointer;padding:0">+</button></td></tr>';
+          return '<tr><td style="padding:0 2px;vertical-align:middle"><button type="button" data-add="' + i + '" title="Add a group row for this subject" style="border:0;background:none;color:#166534;font-weight:900;font-size:1.3rem;line-height:1;cursor:pointer;padding:0">+</button></td></tr>';
         }).join('') + '</tbody></table>' +
         '<div style="flex:1;min-width:0;overflow-x:auto"><table style="width:100%;border-collapse:collapse;font-size:.9rem"><thead><tr>' +
         ['Code', 'Descriptive title', 'Group', 'Section', 'Day', 'Time', 'Instructor', 'Room'].map(function (t) { return '<th style="' + th + '">' + t + '</th>'; }).join('') +
         '</tr></thead><tbody>' + rowsHtml + '</tbody></table></div>' +
         '<table id="sch-gr" style="border-collapse:collapse;font-size:.9rem;width:34px"><thead><tr><th></th></tr></thead><tbody>' + view.slice(from, from + schSize).map(function (i) {
-          return '<tr><td style="padding:0 2px;vertical-align:middle"><button type="button" data-x="' + i + '" title="Remove this subject from the table" style="border:0;background:none;color:#b91c1c;font-weight:700;cursor:pointer;padding:0 4px">×</button></td></tr>';
+          return '<tr><td style="padding:0 2px;vertical-align:middle"><button type="button" data-x="' + i + '" title="Remove this subject from the table" style="border:0;background:none;color:#b91c1c;font-weight:900;font-size:1.3rem;line-height:1;cursor:pointer;padding:0 4px">×</button></td></tr>';
         }).join('') + '</tbody></table></div>' +
         '<div style="display:flex;gap:10px;align-items:center;margin-top:10px">' +
         '<button type="button" id="sch-prev"' + (schPage <= 1 ? ' disabled' : '') + '>Previous</button>' +
