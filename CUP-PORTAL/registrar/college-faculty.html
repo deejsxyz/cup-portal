@@ -7,7 +7,8 @@
 <link rel="icon" href="/images/favicon-cup.png">
 <script src="https://cdn.tailwindcss.com"></script>
 <style>
-  [hidden] { display: none !important; }   [role="tablist"] { display: none !important; }
+  [hidden] { display: none !important; }
+  [role="tablist"] { display: none !important; }
   body { background: #f8fafc; font-family: 'Libre Franklin', system-ui, sans-serif; }
   input[type=checkbox], input[type=radio] { width: 1rem; height: 1rem; margin: 0; vertical-align: middle; }
   input[type=date] { -webkit-appearance: none; appearance: none; }
@@ -110,10 +111,11 @@
       <p class="text-xs text-slate-500">Assign a faculty member to a subject for each year level and section. Students in those sections get that instructor automatically from the batch enrollment and New Student.</p>
       <p id="asgTerm" class="text-xs font-bold text-slate-700 mt-2"></p>
     </div>
-        <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+    <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
       <div class="text-xs font-bold text-slate-700 md:col-span-2">Subjects <span class="font-normal text-slate-500">(select one or more)</span>
-        <input id="asgSubjSearch" type="search" placeholder="Search subject, e.g. GEC 101 or gec101" autocomplete="off" class="mt-1 block w-full px-2 py-1.5 rounded border border-slate-300 text-xs bg-white font-normal">         <div id="asgSubjects" class="mt-1 max-h-56 overflow-y-auto border border-slate-300 rounded bg-white p-2 grid grid-cols-1 md:grid-cols-2 gap-x-4 gap-y-1 transition-opacity"></div>
-                <p id="asgSubjHint" class="text-[11px] font-normal text-slate-500 mt-1">Choose a faculty member and a program first.</p></div>
+        <input id="asgSubjSearch" type="search" placeholder="Search subject, e.g. GEC 101 or gec101" autocomplete="off" class="mt-1 block w-full px-2 py-1.5 rounded border border-slate-300 text-xs bg-white font-normal">
+        <div id="asgSubjects" class="mt-1 max-h-56 overflow-y-auto border border-slate-300 rounded bg-white p-2 grid grid-cols-1 md:grid-cols-2 gap-x-4 gap-y-1 transition-opacity"></div>
+        <p id="asgSubjHint" class="text-[11px] font-normal text-slate-500 mt-1">Choose a faculty member and a program first.</p></div>
       <label class="text-xs font-bold text-slate-700">Faculty member
         <select id="asgFaculty" class="block mt-1 w-full px-2 py-1.5 rounded border border-slate-300 text-xs bg-white"></select></label>
       <label class="text-xs font-bold text-slate-700">Program
@@ -360,7 +362,7 @@
     return 0;
   }
   // + : fills the form with this subject's faculty, program, years and section, and the next free group.
-  // Day, time and room start blank, as a new group row does in Subject Schedule.
+  // Day, time and room are copied from the row, so only the group changes.
   function asgAddGroup(a) {
     $('asgFaculty').value = String(a.user_id);
     $('asgProgram').value = a.program || '';
@@ -370,42 +372,60 @@
       var secs = a.sections || [];
       $('asgSection').value = secs.length > 1 ? 'ALL' : (secs[0] || '');
       var g = asgNextGroup(a.course_code);
-      var t = asgParseTime(a.time_slot);       $('asgDay').value = a.day_label && a.day_label !== 'TBA' ? a.day_label : '';       $('asgStart').value = t[0]; $('asgEnd').value = t[1];       $('asgRoom').value = a.room || '';
-      $('asgMsg').textContent = g ? ' New group G' + g + ' for ' + a.course_code + '. Day, time and room were copied; change them if needed, then save.' : 'All 20 groups of ' + a.course_code + ' are used.';
+      var t = asgParseTime(a.time_slot);
+      $('asgDay').value = a.day_label && a.day_label !== 'TBA' ? a.day_label : '';
+      $('asgStart').value = t[0];
+      $('asgEnd').value = t[1];
+      $('asgRoom').value = a.room || '';
+      $('asgMsg').textContent = g ? 'New group G' + g + ' for ' + a.course_code + '. Day, time and room were copied; change them if needed, then save.' : 'All 20 groups of ' + a.course_code + ' are used.';
       $('asgSave').scrollIntoView({ behavior: 'smooth', block: 'center' });
     });
   }
-  // One row of the table. The row being edited shows inputs for day, time and room;
-  // its button reads Cancel, and turns into Save once something is changed.
+  // One row of the table. While a row is being edited, its year, section, group, faculty,
+  // day, time and room become inputs. Its button reads Cancel, and turns into Save once something is changed.
   function asgRowHtml(a) {
     var td = 'class="border border-slate-300 px-2 py-1.5"';
-    var yrs = (a.years || []).slice().sort().map(function (y) { return YEAR[y]; }).join(', ');
-    var secs = (a.sections || []).slice().sort().join(', ');
     var editing = asgEditId === String(a.id);
-    var day, time, room, act;
+    var cells, act;
     if (editing) {
       var t = asgParseTime(a.time_slot);
       var inp = 'class="border border-slate-300 rounded px-1 py-0.5 text-xs w-full"';
-      day = '<input data-f="day" maxlength="40" value="' + esc(a.day_label && a.day_label !== 'TBA' ? a.day_label : '') + '" placeholder="MWF" ' + inp + '>';
-      time = '<input data-f="start" type="time" value="' + esc(t[0]) + '" ' + inp + '> to <input data-f="end" type="time" value="' + esc(t[1]) + '" ' + inp + '>';
-      room = '<input data-f="room" maxlength="40" value="' + esc(a.room || '') + '" placeholder="RM 204" ' + inp + '>';
+      var yearBox = [1, 2, 3, 4].map(function (y) {
+        return '<label class="block whitespace-nowrap"><input type="checkbox" data-f="year" value="' + y + '"' + ((a.years || []).indexOf(y) !== -1 ? ' checked' : '') + '> ' + YEAR[y] + '</label>';
+      }).join('');
+      var allSec = (a.sections || []).length > 1;
+      var secSel = '<select data-f="section" ' + inp + '>' + ['A', 'B', 'C', 'ALL'].map(function (s) {
+        var on = s === 'ALL' ? allSec : (!allSec && (a.sections || [])[0] === s);
+        return '<option value="' + s + '"' + (on ? ' selected' : '') + '>' + (s === 'ALL' ? 'All' : s) + '</option>';
+      }).join('') + '</select>';
+      var facSel = '<select data-f="faculty" ' + inp + '>' + faculty.filter(function (f) { return !f.archived_at; }).map(function (f) {
+        return '<option value="' + f.id + '"' + (String(f.id) === String(a.user_id) ? ' selected' : '') + '>' + esc(f.name) + '</option>';
+      }).join('') + '</select>';
+      cells = '<td ' + td + '>' + yearBox + '</td>' +
+        '<td ' + td + '>' + secSel + '</td>' +
+        '<td ' + td + '><input data-f="group" maxlength="30" value="' + esc(a.group_label || '') + '" placeholder="G1" ' + inp + '></td>' +
+        '<td ' + td + '><input data-f="day" maxlength="40" value="' + esc(a.day_label && a.day_label !== 'TBA' ? a.day_label : '') + '" placeholder="MWF" ' + inp + '></td>' +
+        '<td ' + td + '><input data-f="start" type="time" value="' + esc(t[0]) + '" ' + inp + '> to <input data-f="end" type="time" value="' + esc(t[1]) + '" ' + inp + '></td>' +
+        '<td ' + td + '><input data-f="room" maxlength="40" value="' + esc(a.room || '') + '" placeholder="RM 204" ' + inp + '></td>' +
+        '<td ' + td + '>' + facSel + '</td>';
       act = '<button type="button" data-act="cancel" data-id="' + a.id + '" class="px-2 py-1 bg-slate-500 hover:bg-slate-600 text-white rounded text-[11px] font-bold cursor-pointer">Cancel</button>';
     } else {
-      day = esc(a.day_label || '');
-      time = esc(a.time_slot || '');
-      room = esc(a.room || '');
+      var yrs = (a.years || []).slice().sort().map(function (y) { return YEAR[y]; }).join(', ');
+      var secs = (a.sections || []).slice().sort().join(', ');
+      cells = '<td ' + td + '>' + esc(yrs) + '</td>' +
+        '<td ' + td + '>' + esc(secs) + '</td>' +
+        '<td ' + td + '>' + esc(a.group_label || '') + '</td>' +
+        '<td ' + td + '>' + esc(a.day_label || '') + '</td>' +
+        '<td ' + td + '>' + esc(a.time_slot || '') + '</td>' +
+        '<td ' + td + '>' + esc(a.room || '') + '</td>' +
+        '<td ' + td + '>' + esc(a.faculty) + '</td>';
       act = '<button type="button" data-act="edit" data-id="' + a.id + '" class="px-2 py-1 bg-indigo-700 hover:bg-indigo-800 text-white rounded text-[11px] font-bold cursor-pointer">Edit</button>';
     }
     return '<tr data-row-id="' + a.id + '"' + (editing ? ' data-editing="1"' : '') + '>' +
       '<td class="border border-slate-300 px-1 py-1.5 text-center"><button type="button" data-add-group="' + a.id + '" title="Add a group for this subject" class="text-emerald-800 font-black text-lg leading-none cursor-pointer">+</button></td>' +
       '<td ' + td + '>' + esc(a.course_code) + ' — ' + esc(a.descriptive_title || '') + '</td>' +
       '<td ' + td + '>' + esc(a.program || '') + '</td>' +
-      '<td ' + td + '>' + esc(yrs) + '</td><td ' + td + '>' + esc(secs) + '</td>' +
-      '<td ' + td + '>' + esc(a.group_label || '') + '</td>' +
-      '<td ' + td + '>' + day + '</td>' +
-      '<td ' + td + '>' + time + '</td>' +
-      '<td ' + td + '>' + room + '</td>' +
-      '<td ' + td + '>' + esc(a.faculty) + '</td>' +
+      cells +
       '<td class="border border-slate-300 px-2 py-1.5 text-center">' + act + '</td>' +
       '<td class="border border-slate-300 px-1 py-1.5 text-center"><button type="button" data-remove="' + a.id + '" title="Remove this assignment" class="text-red-700 font-black text-lg leading-none cursor-pointer">×</button></td></tr>';
   }
@@ -503,22 +523,31 @@
       asgRender();
     });
   }
-  // Save the edited row: day, time and room to the assignment and the Subject schedule.
+  // Save the edited row: year, section, group, faculty, day, time and room.
   function asgSaveRow(id) {
     var tr = $('asgBody').querySelector('tr[data-editing="1"]');
     var msg = $('asgMsg');
     if (!tr) return;
+    var years = Array.prototype.slice.call(tr.querySelectorAll('[data-f="year"]:checked')).map(function (c) { return Number(c.value); });
+    var sec = tr.querySelector('[data-f="section"]').value;
+    var group = tr.querySelector('[data-f="group"]').value.trim();
+    var fac = tr.querySelector('[data-f="faculty"]').value;
     var day = tr.querySelector('[data-f="day"]').value.trim();
     var st = tr.querySelector('[data-f="start"]').value, en = tr.querySelector('[data-f="end"]').value;
     var room = tr.querySelector('[data-f="room"]').value.trim();
+    if (!years.length) { msg.textContent = 'Choose at least one year level.'; return; }
+    if (!group) { msg.textContent = 'Enter a group, for example G1.'; return; }
     if (!!st !== !!en) { msg.textContent = 'Set both the start and end time, or leave both blank.'; return; }
     if (st && en && en <= st) { msg.textContent = 'The end time must be after the start time.'; return; }
     var time = st ? asgFmt12(st) + ' - ' + asgFmt12(en) : '';
     msg.textContent = 'Saving…';
-    post('/api/registrar/subject-assignments/' + id + '/schedule', { day_label: day || 'TBA', time_slot: time || 'TBA', room: room }).then(function (res) {
+    post('/api/registrar/subject-assignments/' + id + '/update', {
+      faculty_id: fac, years: years, sections: sec === 'ALL' ? ['A', 'B', 'C'] : [sec], group_label: group,
+      day_label: day || 'TBA', time_slot: time || 'TBA', room: room
+    }).then(function (res) {
       if (!res.ok) { msg.textContent = res.j.error || 'Could not update.'; return; }
       asgEditId = null;
-      msg.textContent = 'Schedule updated.';
+      msg.textContent = 'Assignment updated.';
       loadAssignments();
     });
   }
@@ -573,7 +602,9 @@
     }).join('');
     fillSubjectSelect();
   }
-  var NON_MAJOR = /^(GEC|NSTP|PHE|PE|RIZ|COR)(?=\s|\d|$)/i;   function isMajorSubject(code) { return !NON_MAJOR.test(String(code || '').trim()); }   function fillSubjectSelect() {
+  var NON_MAJOR = /^(GEC|NSTP|PHE|PE|RIZ|COR)(?=\s|\d|$)/i;
+  function isMajorSubject(code) { return !NON_MAJOR.test(String(code || '').trim()); }
+  function fillSubjectSelect() {
     var seen = {};
     var mine = (catalog.courses || []).filter(function (c) {
       if (c.college !== COLLEGE || !isMajorSubject(c.course_code) || seen[c.course_code]) return false;
