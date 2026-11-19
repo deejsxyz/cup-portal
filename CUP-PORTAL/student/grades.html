@@ -449,7 +449,7 @@
   });
 
   /* Start: must be a signed-in student who has finished the first-login change */
-  // Live updates: every 15 seconds re-read the student's data and redraw only when something changed.
+  // Live updates: every 5 seconds re-read the student's data and redraw only when something changed.
   var lastSnap = null;
   function liveTick() {
     if (document.hidden) return;
@@ -471,7 +471,7 @@
       if (window.cupRefreshEnroll) window.cupRefreshEnroll();
     }).catch(function () {});
   }
-  setInterval(liveTick, 15000);
+  setInterval(liveTick, 5000);
   api('/api/portal/me').then(function (res) {
     if (!res.ok) { window.location.href = '/CUP-PORTAL/student/login'; return null; }
     if (res.j.must_change) { window.location.href = '/CUP-PORTAL/change-password'; return null; }
