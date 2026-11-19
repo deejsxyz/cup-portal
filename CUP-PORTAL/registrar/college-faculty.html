@@ -376,7 +376,7 @@
       $('asgDay').value = a.day_label && a.day_label !== 'TBA' ? a.day_label : '';
       $('asgStart').value = t[0];
       $('asgEnd').value = t[1];
-      $('asgRoom').value = a.room || '';
+      $('asgRoom').value = a.room && a.room !== 'TBA' ? a.room : '';
       $('asgMsg').textContent = g ? 'New group G' + g + ' for ' + a.course_code + '. Day, time and room were copied; change them if needed, then save.' : 'All 20 groups of ' + a.course_code + ' are used.';
       $('asgSave').scrollIntoView({ behavior: 'smooth', block: 'center' });
     });
@@ -406,7 +406,7 @@
         '<td ' + td + '><input data-f="group" maxlength="30" value="' + esc(a.group_label || '') + '" placeholder="G1" ' + inp + '></td>' +
         '<td ' + td + '><input data-f="day" maxlength="40" value="' + esc(a.day_label && a.day_label !== 'TBA' ? a.day_label : '') + '" placeholder="MWF" ' + inp + '></td>' +
         '<td ' + td + '><input data-f="start" type="time" value="' + esc(t[0]) + '" ' + inp + '> to <input data-f="end" type="time" value="' + esc(t[1]) + '" ' + inp + '></td>' +
-        '<td ' + td + '><input data-f="room" maxlength="40" value="' + esc(a.room || '') + '" placeholder="RM 204" ' + inp + '></td>' +
+        '<td ' + td + '><input data-f="room" maxlength="40" value="' + esc(a.room && a.room !== 'TBA' ? a.room : '') + '" placeholder="RM 204" ' + inp + '></td>' +
         '<td ' + td + '>' + facSel + '</td>';
       act = '<button type="button" data-act="cancel" data-id="' + a.id + '" class="px-2 py-1 bg-slate-500 hover:bg-slate-600 text-white rounded text-[11px] font-bold cursor-pointer">Cancel</button>';
     } else {
@@ -417,7 +417,7 @@
         '<td ' + td + '>' + esc(a.group_label || '') + '</td>' +
         '<td ' + td + '>' + esc(a.day_label || '') + '</td>' +
         '<td ' + td + '>' + esc(a.time_slot || '') + '</td>' +
-        '<td ' + td + '>' + esc(a.room || '') + '</td>' +
+        '<td ' + td + '>' + esc(a.room || 'TBA') + '</td>' +
         '<td ' + td + '>' + esc(a.faculty) + '</td>';
       act = '<button type="button" data-act="edit" data-id="' + a.id + '" class="px-2 py-1 bg-indigo-700 hover:bg-indigo-800 text-white rounded text-[11px] font-bold cursor-pointer">Edit</button>';
     }
@@ -460,7 +460,7 @@
     } else {
       var t = asgParseTime(a.time_slot);
       raw = a.day_label && a.day_label !== 'TBA' ? a.day_label : '';
-      st = t[0]; et = t[1]; room = a.room || '';
+      st = t[0]; et = t[1]; room = a.room && a.room !== 'TBA' ? a.room : '';
     }
     var toMin = function (t) { var m = /^(\d{1,2}):(\d{2})/.exec(t || ''); return m ? Number(m[1]) * 60 + Number(m[2]) : null; };
     var s0 = toMin(st), e0 = toMin(et);
@@ -548,7 +548,7 @@
     msg.textContent = 'Saving…';
     post('/api/registrar/subject-assignments/' + id + '/update', {
       faculty_id: fac, years: years, sections: sec === 'ALL' ? ['A', 'B', 'C'] : [sec], group_label: group,
-      day_label: day || 'TBA', time_slot: time || 'TBA', room: room
+      day_label: day || 'TBA', time_slot: time || 'TBA', room: room || 'TBA'
     }).then(function (res) {
       if (!res.ok) { msg.textContent = res.j.error || 'Could not update.'; return; }
       asgEditId = null;
@@ -688,7 +688,7 @@
     // End earlier than start = runs past midnight (e.g. 6:00 PM - 2:00 AM); allowed.
     var time = st ? fmt12(st) + ' - ' + fmt12(en) : '';
     var body = { faculty_id: $('asgFaculty').value, subject_college: COLLEGE, program: $('asgProgram').value, course_codes: codes, years: years,
-      sections: sec === 'ALL' ? ['A', 'B', 'C'] : (sec ? [sec] : []), group_label: '', day_label: $('asgDay').value.trim() || 'TBA', time_slot: time || 'TBA', room: $('asgRoom').value.trim() };
+      sections: sec === 'ALL' ? ['A', 'B', 'C'] : (sec ? [sec] : []), group_label: '', day_label: $('asgDay').value.trim() || 'TBA', time_slot: time || 'TBA', room: $('asgRoom').value.trim() || 'TBA' };
     if (!body.faculty_id) { msg.textContent = 'Choose a faculty member.'; return; }
     if (!body.program) { msg.textContent = 'Choose a program.'; return; }
     if (!body.course_codes.length) { msg.textContent = 'Choose at least one subject.'; return; }
