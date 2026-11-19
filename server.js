@@ -6688,7 +6688,7 @@ app.get('/api/student/enrollment-steps', requirePortal('student'), async (req, r
       { n: 3, label: 'NSTP enrollment', note: nstpRequired ? 'NSTP subject' : 'Not required for your year level', done: !nstpRequired || !!row.nstp_enrolled_at },
       { n: 4, label: 'Official CUP ID', note: 'Student number issued', done: !!String(row.student_no || '').trim() },
       { n: 5, label: 'CSC Fee payment', note: 'CSC fee (R407)', done: !!row.csc_paid_at },
-      { n: 6, label: 'Registrar Office', note: 'Advising slip and Certificate of Enrollment', done: !!row.advising_slip_at },
+      { n: 6, label: 'Registrar Office', note: 'Advising slip and Certificate of Enrollment', done: !!row.advising_slip_at && row.status === 'enrolled' },
     ];
     res.json({ steps, officiallyEnrolled: row.status === 'enrolled' });
   } catch (err) {
