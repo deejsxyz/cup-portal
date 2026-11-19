@@ -3806,7 +3806,8 @@ app.post('/api/registrar/subject-assignments', requireRegistrar, async (req, res
     // Subjects are limited to this college's own curriculum.
     const subjectCollege = college;
     const program = String(b.program || '');
-    if (program && !(REG_PROGRAM_COLLEGES[subjectCollege] || []).includes(program) && !REG_PROGRAMS.includes(program)) {
+    const isMajorProgram = CURRICULUM_PROGRAMS.some((x) => x.label === program && x.college === subjectCollege);
+    if (program && !isMajorProgram && !(REG_PROGRAM_COLLEGES[subjectCollege] || []).includes(program) && !REG_PROGRAMS.includes(program)) {
       return res.status(400).json({ error: 'Choose a valid program.' });
     }
     const c = await pool.query('SELECT course_code FROM reg_courses WHERE college = $1 AND course_code = ANY($2::text[])', [subjectCollege, codes]);
