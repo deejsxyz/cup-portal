@@ -377,11 +377,10 @@
     <section class="panel" id="schedule-section"><div class="box"><h2>Subject Schedule</h2><div class="body">
         <div id="sch-box" style="margin-top:22px;padding-top:14px;border-top:1px solid #d5e2d5">
           <h3 style="margin:0 0 6px">Subject schedule</h3>
-          <p class="hint">Each group's instructor, day and time come from Subject Assignments. Type the room here. Groups are G1 to G20 (G1A is Section A only). This shows on the student's advising slip and Certificate of Enrollment.</p>
+          <p class="hint">Subjects of the active term load automatically. Pick the group, days, time and room. The instructor comes from Subject Assignments. Leave Section blank to save to every section of the year level. This shows on the student's advising slip and Certificate of Enrollment.</p>
           <div style="display:flex;gap:10px;flex-wrap:wrap;align-items:flex-end">
-            <label>Year level <select id="sch-year"><option value="">Select</option><option>1</option><option>2</option><option>3</option><option>4</option></select></label>
+            <label>Year level <select id="sch-year"><option value="">All years</option><option>1</option><option>2</option><option>3</option><option>4</option></select></label>
             <label>Section <select id="sch-section"><option value="">All sections</option><option>A</option><option>B</option><option>C</option></select></label>
-            <button type="button" id="sch-load">Load subjects</button>
           </div>
           <div id="sch-list" style="margin-top:10px;overflow-x:auto"></div>
           <div id="sch-conflicts" class="hint" style="margin-top:8px"></div>
@@ -1496,47 +1495,56 @@
     }
     safeOn('#al-load', 'click', loadActivity);
     // Subjects and units (college registrar: own college; University Registrar: any college)
-    // Subject schedule (days, time and room per subject per section; instructor from Subject Assignments)
-    var schRows = [];
+    // Subject schedule: the active term's subjects load on open; the year and section filters update the table.
+    var schRows = [], schPage = 1, schSize = 10, schConf = {}, schCheckTimer = null;
+    var SCH_DAYS = ['MON', 'TUE', 'WED', 'THU', 'FRI', 'SAT', 'SUN'];
     function schCollectParams() {
-      var p = 'year_level=' + encodeURIComponent($('#sch-year').value) + '&section=' + encodeURIComponent($('#sch-section').value.trim().toUpperCase() || 'ALL');
+      var p = 'year_level=' + encodeURIComponent($('#sch-year').value) + '&section=' + encodeURIComponent($('#sch-section').value);
       if (me.role === 'superadmin') p += '&college=' + encodeURIComponent(sjCollege());
       return p;
     }
-    var schPage = 1, schSize = 10;
-    // Keep what is typed on the current page before switching pages or saving.
+    // Keep what is picked on the current page before switching pages, filters or saving.
     function schCapture() {
-      document.querySelectorAll('#sch-list [data-i]').forEach(function (el) {
-        var r = schRows[Number(el.getAttribute('data-i'))];
-        if (r) r[el.getAttribute('data-f')] = el.value;
+      document.querySelectorAll('#sch-list tr[data-row]').forEach(function (tr) {
+        var r = schRows[Number(tr.getAttribute('data-row'))];
+        if (!r) return;
+        r.group_label = tr.querySelector('[data-f="group_label"]').value;
+        r.start_time = tr.querySelector('[data-f="start_time"]').value;
+        r.end_time = tr.querySelector('[data-f="end_time"]').value;
+        r.room = tr.querySelector('[data-f="room"]').value.trim();
+        r.days = Array.prototype.slice.call(tr.querySelectorAll('[data-day]:checked')).map(function (c) { return c.getAttribute('data-day'); }).join(' ');
       });
     }
-    // Day and time come from Subject Assignments; only the room is typed here.
     function schRender() {
       var pages = Math.max(1, Math.ceil(schRows.length / schSize));
       if (schPage > pages) schPage = pages;
       if (schPage < 1) schPage = 1;
       var from = (schPage - 1) * schSize;
       var th = 'text-align:left;border-bottom:1px solid #7fa37f;padding:6px';
-      var td = 'padding:6px;border-bottom:1px solid #d5e2d5';
-      var inp = 'style="width:100%;box-sizing:border-box"';
+      var td = 'padding:6px;border-bottom:1px solid #d5e2d5;vertical-align:middle';
       var rowsHtml = schRows.slice(from, from + schSize).map(function (r, k) {
         var i = from + k;
-        return '<tr' + (schConf[i] && schConf[i].length ? ' style="background:#fde8e8"' : '') + '>' +
+        var groups = '<option value="">-</option>';
+        for (var g = 1; g <= 20; g++) groups += '<option value="G' + g + '"' + (r.group_label === 'G' + g ? ' selected' : '') + '>G' + g + '</option>';
+        var picked = (r.days || '').split(' ');
+        var days = SCH_DAYS.map(function (d) {
+          return '<label style="margin-right:6px;white-space:nowrap"><input type="checkbox" data-day="' + d + '"' + (picked.indexOf(d) !== -1 ? ' checked' : '') + '> ' + d.charAt(0) + d.slice(1).toLowerCase() + '</label>';
+        }).join('');
+        return '<tr data-row="' + i + '"' + (schConf[i] && schConf[i].length ? ' style="background:#fde8e8"' : '') + '>' +
           '<td style="' + td + '">' + esc(r.course_code) + '</td>' +
           '<td style="' + td + '">' + esc(r.descriptive_title) + '</td>' +
-          '<td style="' + td + '">' + esc(r.group_label || '—') + '</td>' +
+          '<td style="' + td + '"><select data-f="group_label">' + groups + '</select></td>' +
+          '<td style="' + td + '">' + days + '</td>' +
+          '<td style="' + td + ';white-space:nowrap"><input type="time" data-f="start_time" value="' + esc(r.start_time) + '"> to <input type="time" data-f="end_time" value="' + esc(r.end_time) + '"></td>' +
           '<td style="' + td + '">' + esc(r.instructor || '—') + '</td>' +
-          '<td style="' + td + '">' + esc(r.day_text || 'TBA') + '</td>' +
-          '<td style="' + td + '">' + esc(r.time_text || 'TBA') + '</td>' +
-          '<td style="' + td + '"><input data-i="' + i + '" data-f="room" value="' + esc(r.room) + '" maxlength="40" ' + inp + '></td>' +
+          '<td style="' + td + '"><input data-f="room" value="' + esc(r.room) + '" maxlength="40" style="width:100%;box-sizing:border-box"></td>' +
           '</tr>';
       }).join('');
       $('#sch-list').innerHTML = '<div style="display:flex;gap:10px;align-items:center;flex-wrap:wrap;margin-bottom:8px">' +
         '<label>Rows per page <select id="sch-size"><option>10</option><option>25</option><option>50</option></select></label>' +
         '<span class="hint">' + schRows.length + ' subject(s)</span></div>' +
         '<table style="width:100%;border-collapse:collapse;font-size:.9rem"><thead><tr>' +
-        ['Code', 'Descriptive title', 'Group', 'Instructor', 'Day', 'Time', 'Room'].map(function (t) { return '<th style="' + th + '">' + t + '</th>'; }).join('') +
+        ['Code', 'Descriptive title', 'Group', 'Day', 'Time', 'Instructor', 'Room'].map(function (t) { return '<th style="' + th + '">' + t + '</th>'; }).join('') +
         '</tr></thead><tbody>' + rowsHtml + '</tbody></table>' +
         '<div style="display:flex;gap:10px;align-items:center;margin-top:10px">' +
         '<button type="button" id="sch-prev"' + (schPage <= 1 ? ' disabled' : '') + '>Previous</button>' +
@@ -1544,78 +1552,86 @@
         '<button type="button" id="sch-next"' + (schPage >= pages ? ' disabled' : '') + '>Next</button></div>' +
         '<button type="button" id="sch-save" style="margin-top:10px">Save schedule</button>';
       $('#sch-size').value = String(schSize);
-      $('#sch-size').onchange = function () { schCapture(); schSize = Number(this.value) || 10; schPage = 1; schRender(); };
-      $('#sch-prev').onclick = function () { schCapture(); schPage--; schRender(); };
-      $('#sch-next').onclick = function () { schCapture(); schPage++; schRender(); };
+      $('#sch-size').onchange = function () { schCapture(); schSize = Number(this.value) || 10; schPage = 1; schRender(); schCheck(); };
+      $('#sch-prev').onclick = function () { schCapture(); schPage--; schRender(); schCheck(); };
+      $('#sch-next').onclick = function () { schCapture(); schPage++; schRender(); schCheck(); };
       $('#sch-save').onclick = schSave;
-      $('#sch-list').oninput = function (e) { if (e.target && e.target.getAttribute && e.target.getAttribute('data-i') !== null) { schCapture(); schCheck(); } };
     }
-    var schConf = {}, schCheckTimer = null;
-    // Live conflict check: runs as the grid changes; highlights the rows with a conflict.
+    // Live conflict check: one check per year level and section (all three sections when none is picked).
     function schCheck() {
       clearTimeout(schCheckTimer);
       schCheckTimer = setTimeout(function () {
-        var y = $('#sch-year').value, sec = $('#sch-section').value.trim().toUpperCase();
-        if (!y || !schRows.length) { schConf = {}; $('#sch-conflicts').innerHTML = ''; return; }
-        if (!sec) { schConf = {}; $('#sch-conflicts').innerHTML = '<span class="hint">Pick one section to check conflicts.</span>'; return; }
-        var body = { year_level: y, section: sec, items: schRows.map(function (r) {
-          return { course_code: r.course_code, group_label: r.group_label || '', days: r.days || '', start_time: r.start_time || '', end_time: r.end_time || '' };
-        }) };
-        if (me.role === 'superadmin') body.college = sjCollege();
-        fetch('/api/registrar/schedules/check', { method: 'POST', credentials: 'same-origin', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(body) })
-          .then(function (r) { return r.json(); }).then(function (j) {
-            schConf = j.conflicts || {};
-            var lines = [];
-            Object.keys(schConf).forEach(function (i) {
-              var r = schRows[Number(i)];
-              var name = r ? r.course_code + (r.group_label ? ' ' + r.group_label : '') : '';
-              schConf[i].forEach(function (m) { lines.push(esc(name + ': ' + m)); });
+        if (!schRows.length) { schConf = {}; $('#sch-conflicts').innerHTML = ''; return; }
+        var secs = $('#sch-section').value ? [$('#sch-section').value] : ['A', 'B', 'C'];
+        var byYear = {};
+        schRows.forEach(function (r, i) { if (r.year_level) (byYear[r.year_level] = byYear[r.year_level] || []).push(i); });
+        var jobs = [];
+        Object.keys(byYear).forEach(function (y) {
+          secs.forEach(function (sec) {
+            var idx = byYear[y];
+            var body = { year_level: y, section: sec, items: idx.map(function (i) {
+              var r = schRows[i];
+              return { course_code: r.course_code, group_label: r.group_label || '', days: r.days || '', start_time: r.start_time || '', end_time: r.end_time || '' };
+            }) };
+            if (me.role === 'superadmin') body.college = sjCollege();
+            jobs.push(fetch('/api/registrar/schedules/check', { method: 'POST', credentials: 'same-origin', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(body) })
+              .then(function (r) { return r.json(); }).then(function (j) {
+                return Object.keys(j.conflicts || {}).map(function (k) { return { i: idx[Number(k)], sec: sec, msgs: j.conflicts[k] }; });
+              }).catch(function () { return []; }));
+          });
+        });
+        Promise.all(jobs).then(function (parts) {
+          schConf = {};
+          var lines = [];
+          parts.forEach(function (list) {
+            list.forEach(function (x) {
+              var r = schRows[x.i];
+              var name = r.course_code + (r.group_label ? ' ' + r.group_label : '') + (secs.length > 1 ? ' (Section ' + x.sec + ')' : '');
+              schConf[x.i] = schConf[x.i] || [];
+              x.msgs.forEach(function (m) { schConf[x.i].push(m); lines.push(esc(name + ': ' + m)); });
             });
-            $('#sch-conflicts').innerHTML = lines.length ? '<strong style="color:#b91c1c">Conflicts (' + lines.length + '):</strong><br>' + lines.join('<br>') : '<span class="hint">No conflicts.</span>';
-            // Update highlights in place so typing keeps its focus.
-            document.querySelectorAll('#sch-list [data-i]').forEach(function (el) {
-              var i = Number(el.getAttribute('data-i'));
-              el.closest('tr').style.background = schConf[i] && schConf[i].length ? '#fde8e8' : '';
-            });
-          }).catch(function () {});
+          });
+          $('#sch-conflicts').innerHTML = lines.length ? '<strong style="color:#b91c1c">Conflicts (' + lines.length + '):</strong><br>' + lines.join('<br>') : '<span class="hint">No conflicts.</span>';
+          document.querySelectorAll('#sch-list tr[data-row]').forEach(function (tr) {
+            var i = Number(tr.getAttribute('data-row'));
+            tr.style.background = schConf[i] && schConf[i].length ? '#fde8e8' : '';
+          });
+        });
       }, 400);
     }
-    // Opening Subject Schedule loads the active term's subjects straight away (1st year, all sections by default).
-    function schOpen() {
-      if (!$('#sch-year').value) $('#sch-year').value = '1';
-      schLoad(true);
-    }
-    function schLoad(keepMsg) {
-      var msg = $('#sch-msg'); if (!keepMsg) msg.textContent = '';
-      if (!$('#sch-year').value) { msg.textContent = 'Choose a year level first.'; return; }
+    // Loads the subjects of the active term for the chosen filters (both optional).
+    function schLoad() {
       fetch('/api/registrar/schedules?' + schCollectParams(), { credentials: 'same-origin' }).then(function (r) { return r.json(); }).then(function (j) {
         schRows = j.rows || [];
         schPage = 1;
-        if (!schRows.length) { $('#sch-list').innerHTML = '<p class="hint">No subjects for this year level yet. Add subjects first.</p>'; return; }
+        if (!schRows.length) { $('#sch-list').innerHTML = '<p class="hint">No subjects for the active term yet.</p>'; $('#sch-conflicts').innerHTML = ''; return; }
         schRender();
         schCheck();
-      }).catch(function () { msg.textContent = 'Could not load the schedule.'; });
+      }).catch(function () { $('#sch-msg').textContent = 'Could not load the schedule.'; });
     }
+    function schOpen() { schLoad(); }
+    $('#sch-year').onchange = function () { schLoad(); };
+    $('#sch-section').onchange = function () { schLoad(); };
+    $('#sch-list').oninput = function () { schCapture(); schCheck(); };
+    $('#sch-list').onchange = function () { schCapture(); schCheck(); };
     function schSave() {
       var msg = $('#sch-msg'); msg.textContent = '';
       schCapture();
       var items = schRows.map(function (r) {
-        return { course_code: r.course_code, group_label: r.group_label || '', days: r.days || '', start_time: r.start_time || '', end_time: r.end_time || '', room: r.room || '' };
+        return { course_code: r.course_code, year_level: r.year_level, group_label: r.group_label || '', days: r.days || '', start_time: r.start_time || '', end_time: r.end_time || '', room: r.room || '' };
       });
       var bad = items.filter(function (x) { return (x.start_time && !x.end_time) || (!x.start_time && x.end_time); });
       if (bad.length) { msg.textContent = 'Set both start and end time for ' + bad[0].course_code + '.'; return; }
-      var body = { year_level: $('#sch-year').value, section: $('#sch-section').value.trim().toUpperCase() || 'ALL', items: items };
+      var body = { section: $('#sch-section').value, items: items };
       if (me.role === 'superadmin') body.college = sjCollege();
       fetch('/api/registrar/schedules', { method: 'POST', credentials: 'same-origin', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(body) })
         .then(function (r) { return r.json().then(function (j) { return { ok: r.ok, j: j }; }); })
         .then(function (x) {
           if (!x.ok) { msg.textContent = x.j.error || 'Could not save.'; return; }
-          schLoad(true);
-          msg.textContent = 'Schedule saved.';
-          setTimeout(function () { msg.textContent = ''; }, 2500);
-        });
+          msg.textContent = 'Saved.';
+          schLoad();
+        }).catch(function () { msg.textContent = 'Could not save.'; });
     }
-    $('#sch-load').onclick = schLoad;
     function sjCollege() { return me.role === 'superadmin' ? $('#sj-college').value : me.college; }
     var sjRows = [], sjYear = '', sjPage = 1, sjSize = 10;
     var SJ_SEM_ORDER = { '1st Semester': 1, '2nd Semester': 2, 'Summer': 3 };

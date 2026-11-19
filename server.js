@@ -3446,65 +3446,63 @@ function schParseSlot(slot) {
 app.get('/api/registrar/schedules', requireRegistrar, async (req, res) => {
   const college = regCollege(req, req.query.college);
   if (!college) return res.status(403).json({ error: 'Choose a college.' });
-  const year = Number(req.query.year_level);
-  const section = String(req.query.section || '').trim().toUpperCase() || 'ALL'; // ALL: every section of the year
+  const year = [1, 2, 3, 4].includes(Number(req.query.year_level)) ? Number(req.query.year_level) : 0; // 0 = all years
+  const section = String(req.query.section || '').trim().toUpperCase(); // '' = all sections
   const t = await gradingTerm();
-  if (!t.term || !t.ay || !(year >= 1 && year <= 4) || !section) return res.json({ term: t.term, academic_year: t.ay, rows: [] });
-  // Subjects of this year level, plus any subject assigned to this year and section.
+  if (!t.term || !t.ay) return res.json({ term: t.term, academic_year: t.ay, rows: [] });
+  // Every subject of the college (optionally one year level) for the active term.
   const courses = await pool.query(
-    `SELECT x.course_code, COALESCE(c.descriptive_title, '') AS descriptive_title, COALESCE(c.units, 0) AS units
+    `SELECT x.course_code, COALESCE(c.descriptive_title, '') AS descriptive_title, COALESCE(c.units, 0) AS units, COALESCE(c.year_level, 0) AS year_level
        FROM (
-         SELECT course_code FROM reg_courses WHERE college = $1 AND year_level = $4
+         SELECT course_code FROM reg_courses WHERE college = $1 AND ($2 = 0 OR year_level = $2)
          UNION
-         SELECT course_code FROM reg_subject_assignments WHERE college = $1 AND term = $2 AND academic_year = $3 AND $4 = ANY(years) AND ($5 = 'ALL' OR $5 = ANY(sections))
+         SELECT course_code FROM reg_subject_assignments WHERE college = $1 AND term = $3 AND academic_year = $4 AND ($2 = 0 OR $2 = ANY(years))
        ) x
-       LEFT JOIN LATERAL (SELECT descriptive_title, units FROM reg_courses rc WHERE rc.course_code = x.course_code ORDER BY (rc.college = $1) DESC LIMIT 1) c ON true
-      ORDER BY x.course_code`,
-    [college, t.term, t.ay, year, section]);
-  // Each group has its own instructor (from Subject Assignments) and its own days and time.
+       LEFT JOIN LATERAL (SELECT descriptive_title, units, year_level FROM reg_courses rc WHERE rc.course_code = x.course_code ORDER BY (rc.college = $1) DESC, rc.year_level LIMIT 1) c ON true
+      ORDER BY COALESCE(c.year_level, 0), x.course_code`,
+    [college, year, t.term, t.ay]);
   const asg = await pool.query(
-    `SELECT sa.course_code, sa.group_label, COALESCE(string_agg(DISTINCT u.name, ', '), '') AS instructor,
-            MIN(sa.day_label) AS day_label, MIN(sa.time_slot) AS time_slot
+    `SELECT sa.course_code, sa.group_label, sa.years, sa.sections, u.name
        FROM reg_subject_assignments sa JOIN reg_users u ON u.id = sa.user_id
-      WHERE sa.college = $1 AND sa.term = $2 AND sa.academic_year = $3 AND $4 = ANY(sa.years) AND ($5 = 'ALL' OR $5 = ANY(sa.sections))
-      GROUP BY sa.course_code, sa.group_label`,
-    [college, t.term, t.ay, year, section]);
+      WHERE sa.college = $1 AND sa.term = $2 AND sa.academic_year = $3`,
+    [college, t.term, t.ay]);
   const sch = await pool.query(
-    `SELECT course_code, group_label, days, start_time, end_time, room FROM reg_schedules
-      WHERE college = $1 AND term = $2 AND academic_year = $3 AND year_level = $4 AND ($5 = 'ALL' OR section = $5)`,
-    [college, t.term, t.ay, year, section]);
-  const asgMap = new Map(asg.rows.map((a) => [a.course_code + '|' + a.group_label, a.instructor]));
-  const asgTime = new Map(asg.rows.map((a) => [a.course_code + '|' + a.group_label, a]));
-  const schMap = new Map(sch.rows.map((x) => [x.course_code + '|' + x.group_label, x]));
-  const groupsOf = {};
-  [...asg.rows, ...sch.rows].forEach((x) => { (groupsOf[x.course_code] = groupsOf[x.course_code] || new Set()).add(x.group_label); });
+    `SELECT course_code, group_label, year_level, section, days, start_time, end_time, room FROM reg_schedules
+      WHERE college = $1 AND term = $2 AND academic_year = $3 ORDER BY section`,
+    [college, t.term, t.ay]);
+  // One saved schedule per subject, group and year (the first section, or the chosen section).
+  const schFirst = new Map();
+  sch.rows.forEach((x) => {
+    const k = x.course_code + '|' + x.group_label + '|' + x.year_level;
+    if (!schFirst.has(k) && (!section || x.section === section)) schFirst.set(k, x);
+  });
   const rows = [];
   courses.rows.forEach((c) => {
-    const groups = groupsOf[c.course_code] ? [...groupsOf[c.course_code]].sort() : [''];
-    groups.forEach((g) => {
-      const x = schMap.get(c.course_code + '|' + g) || {};
-      const a = asgTime.get(c.course_code + '|' + g) || {};
-      const tm = schParseSlot(a.time_slot);
-      const days = (a.day_label || '').trim() || x.days || '';
-      const start = tm ? tm.start : (x.start_time || ''), end = tm ? tm.end : (x.end_time || '');
+    const yr = c.year_level || year;
+    const inScope = (a) => a.course_code === c.course_code && (!yr || a.years.includes(yr)) && (!section || a.sections.includes(section));
+    const groups = new Set();
+    asg.rows.filter(inScope).forEach((a) => groups.add(a.group_label));
+    sch.rows.filter((x) => x.course_code === c.course_code && (!yr || x.year_level === yr) && (!section || x.section === section))
+      .forEach((x) => groups.add(x.group_label));
+    if (!groups.size) groups.add('');
+    [...groups].sort((p, q) => p.localeCompare(q, undefined, { numeric: true })).forEach((g) => {
+      const names = [...new Set(asg.rows.filter((a) => inScope(a) && a.group_label === g).map((a) => a.name))];
+      const x = schFirst.get(c.course_code + '|' + g + '|' + yr) || {};
       rows.push({
-        course_code: c.course_code, descriptive_title: c.descriptive_title, units: c.units, group_label: g,
-        instructor: asgMap.get(c.course_code + '|' + g) || '',
-        days, start_time: start, end_time: end, room: x.room || '',
-        day_text: days || 'TBA', time_text: (a.time_slot || '').trim() || (start && end ? start + '-' + end : 'TBA')
+        course_code: c.course_code, descriptive_title: c.descriptive_title, units: c.units, year_level: yr, group_label: g,
+        instructor: names.join(', '), days: x.days || '', start_time: x.start_time || '', end_time: x.end_time || '', room: x.room || ''
       });
     });
   });
   res.json({ term: t.term, academic_year: t.ay, rows });
 });
 
+// Save the schedule. Blank section = every section (A, B, C) of each row's year level.
 app.post('/api/registrar/schedules', requireRegistrar, async (req, res) => {
   const b = req.body || {};
   const college = regCollege(req, b.college || req.query.college);
   if (!college) return res.status(403).json({ error: 'Choose a college.' });
-  const year = Number(b.year_level);
-  const section = String(b.section || '').trim().toUpperCase().slice(0, 20) || 'ALL';
-  if (!(year >= 1 && year <= 4)) return res.status(400).json({ error: 'Choose a year level.' });
+  const section = String(b.section || '').trim().toUpperCase().slice(0, 20);
   const t = await gradingTerm();
   if (!t.term || !t.ay) return res.status(400).json({ error: 'The grading term is not set yet.' });
   const items = Array.isArray(b.items) ? b.items : [];
@@ -3514,30 +3512,29 @@ app.post('/api/registrar/schedules', requireRegistrar, async (req, res) => {
     for (const it of items) {
       const code = String(it.course_code || '').trim().slice(0, 40);
       if (!code) continue;
+      const year = Number(it.year_level);
+      if (!(year >= 1 && year <= 4)) throw new Error('Year level is missing for ' + code + '.');
       const group = String(it.group_label || '').trim().toUpperCase().slice(0, 30);
       const days = String(it.days || '').trim().toUpperCase().slice(0, 20);
       const st = String(it.start_time || '').trim();
       const et = String(it.end_time || '').trim();
       const room = String(it.room || '').trim().slice(0, 40);
-      // ALL: save to every section that has this group in Subject Assignments.
-      const secs = section === 'ALL'
-        ? (await client.query('SELECT DISTINCT unnest(sa.sections) AS sec FROM reg_subject_assignments sa WHERE sa.college=$1 AND sa.term=$2 AND sa.academic_year=$3 AND sa.course_code=$4 AND sa.group_label=$5 AND $6 = ANY(sa.years)',
-            [college, t.term, t.ay, code, group, year])).rows.map((r) => r.sec)
-        : [section];
+      const label = code + (group ? ' ' + group : '');
+      if ((st && !SCHED_TIME_RE.test(st)) || (et && !SCHED_TIME_RE.test(et))) throw new Error('Time must be set for ' + label + '.');
+      if (st && et && et <= st) throw new Error('End time must be after start time for ' + label + '.');
+      const secs = section ? [section] : ['A', 'B', 'C'];
       for (const sec of secs) {
-      if (!days && !st && !et && !room) {
-        await client.query('DELETE FROM reg_schedules WHERE college=$1 AND course_code=$2 AND term=$3 AND academic_year=$4 AND year_level=$5 AND section=$6 AND group_label=$7',
-          [college, code, t.term, t.ay, year, sec, group]);
-        continue;
-      }
-      if ((st && !SCHED_TIME_RE.test(st)) || (et && !SCHED_TIME_RE.test(et))) throw new Error('Time must be set for ' + code + (group ? ' ' + group : '') + '.');
-      if (st && et && et <= st) throw new Error('End time must be after start time for ' + code + (group ? ' ' + group : '') + '.');
-      await client.query(
-        `INSERT INTO reg_schedules (college, course_code, term, academic_year, year_level, section, group_label, days, start_time, end_time, room)
-         VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11)
-         ON CONFLICT (college, course_code, term, academic_year, year_level, section, group_label)
-         DO UPDATE SET days = EXCLUDED.days, start_time = EXCLUDED.start_time, end_time = EXCLUDED.end_time, room = EXCLUDED.room`,
-        [college, code, t.term, t.ay, year, sec, group, days, st, et, room]);
+        if (!days && !st && !et && !room) {
+          await client.query('DELETE FROM reg_schedules WHERE college=$1 AND course_code=$2 AND term=$3 AND academic_year=$4 AND year_level=$5 AND section=$6 AND group_label=$7',
+            [college, code, t.term, t.ay, year, sec, group]);
+          continue;
+        }
+        await client.query(
+          `INSERT INTO reg_schedules (college, course_code, term, academic_year, year_level, section, group_label, days, start_time, end_time, room)
+           VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11)
+           ON CONFLICT (college, course_code, term, academic_year, year_level, section, group_label)
+           DO UPDATE SET days = EXCLUDED.days, start_time = EXCLUDED.start_time, end_time = EXCLUDED.end_time, room = EXCLUDED.room`,
+          [college, code, t.term, t.ay, year, sec, group, days, st, et, room]);
       }
     }
     await client.query('COMMIT');
@@ -3547,7 +3544,7 @@ app.post('/api/registrar/schedules', requireRegistrar, async (req, res) => {
   } finally {
     client.release();
   }
-  logAction(req, (req.session && req.session.name) || 'Registrar', 'schedule saved', college + ' · year ' + year + ' · section ' + section + ' · ' + items.length + ' row(s)');
+  logAction(req, (req.session && req.session.name) || 'Registrar', 'schedule saved', college + ' · ' + (section || 'all sections') + ' · ' + items.length + ' row(s)');
   res.json({ ok: true });
 });
 
