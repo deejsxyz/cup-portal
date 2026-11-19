@@ -3031,9 +3031,9 @@ app.get('/api/registrar/coe/:no', requireRegistrar, async (req, res) => {
     ws.getCell('F11').value = name.toUpperCase();
     ws.getCell('AB11').value = COE_STANDING_ABBR[standing && standing.status] || (standing && standing.status) || 'REG';
     ws.getCell('F12').value = (COLLEGE_FULL_NAMES[college] || college).toUpperCase();
-    // Course: program abbreviation only, e.g. "Bachelor of Science in Nursing (BSN)" -> BSN (with major abbreviation after a dash).
+    // Course: program abbreviation only, e.g. "Bachelor of Science in Nursing (BSN)" -> BSN (with the major after it, e.g. BSBA FINANCIAL MANAGEMENT).
     const progAbbr = ((String(s.program || '').match(/\(([^)]+)\)/) || [])[1] || String(s.program || '')).trim();
-    ws.getCell('W12').value = (progAbbr + (s.major ? '-' + String(s.major).trim() : '')).toUpperCase();
+    ws.getCell('W12').value = (progAbbr + (s.major ? ' ' + String(s.major).trim() : '')).toUpperCase();
     subs.slice(0, 41).forEach((x, i) => {
       const row = 15 + i;
       const sd = smap.get(x.course_code) || {};
