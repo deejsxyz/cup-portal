@@ -1677,8 +1677,12 @@
     var schMajor = [];
     // Program filter for the subject search: shows only the subjects of the chosen program (curriculum import).
     var schProgCodes = null;
+    function schKey(code) { return String(code || '').replace(/\s+/g, '').toUpperCase(); }
     function schFillSubjectList() {
-      var list = schMajor.filter(function (x) { return !schProgCodes || schProgCodes.indexOf(x.course_code) !== -1; });
+      var keys = schProgCodes ? schProgCodes.map(schKey) : null;
+      var list = schMajor.filter(function (x) { return !keys || keys.indexOf(schKey(x.course_code)) !== -1; });
+      if (keys && !list.length) $('#sch-msg').textContent = 'No curriculum subjects found for this program. Check the curriculum import.';
+      else if (!keys) $('#sch-msg').textContent = '';
       $('#sch-subject-list').innerHTML = list.map(function (x) {
         return '<option value="' + esc(x.course_code + ' — ' + x.descriptive_title) + '"></option>';
       }).join('');
@@ -1698,6 +1702,7 @@
       if (!p) { schProgCodes = null; schFillSubjectList(); return; }
       fetch('/api/registrar/curriculum-codes?program=' + encodeURIComponent(p), { credentials: 'same-origin' }).then(function (r) { return r.json(); }).then(function (j) {
         schProgCodes = j.codes || [];
+        if (!schProgCodes.length) schProgCodes = [];
         schFillSubjectList();
       }).catch(function () {});
     });
