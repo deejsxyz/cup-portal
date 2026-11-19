@@ -1500,7 +1500,7 @@
     safeOn('#al-load', 'click', loadActivity);
     // Subjects and units (college registrar: own college; University Registrar: any college)
     // Subject schedule: the active term's subjects load on open; the year and section filters update the table.
-    var schSubject = '', schSubjects = [], schRows = [], schPage = 1, schSize = 10, schConf = {}, schCheckTimer = null, schDirty = false;
+    var schSubject = '', schSubjects = [], schRows = [], schPage = 1, schSize = 10, schConf = {}, schCheckSeq = 0, schDirty = false;
     var SCH_DAYS = ['MON', 'TUE', 'WED', 'THU', 'FRI', 'SAT', 'SUN'];
     function schCollectParams(courses) {
       var p = 'year_level=' + encodeURIComponent($('#sch-year').value) + '&section=' + encodeURIComponent($('#sch-section').value);
@@ -1632,10 +1632,11 @@
       }
       schDirty = true; schCapture(); schCheck();
     }
-    // Live conflict check: one check per year level and section (all three sections when none is picked).
+    // Live conflict check on every keystroke: one check per year level and section (all three sections when none is picked).
+    // Each run gets a sequence number; a response from an older run is ignored so it cannot overwrite newer results.
     function schCheck() {
-      clearTimeout(schCheckTimer);
-      schCheckTimer = setTimeout(function () {
+      var seq = ++schCheckSeq;
+      {
         if (!schRows.length) { schConf = {}; $('#sch-conflicts').innerHTML = ''; return; }
         var secs = $('#sch-section').value ? [$('#sch-section').value] : ['A', 'B', 'C'];
         var byYear = {};
@@ -1657,6 +1658,7 @@
           });
         });
         Promise.all(jobs).then(function (parts) {
+          if (seq !== schCheckSeq) return;
           schConf = {};
           var lines = [];
           parts.forEach(function (list) {
@@ -1673,7 +1675,7 @@
             tr.style.background = schConf[i] && schConf[i].length ? '#fde8e8' : '';
           });
         });
-      }, 400);
+      }
     }
     // Loads the subjects of the active term for the chosen filters (both optional).
     function schLoad(silent) {
