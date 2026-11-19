@@ -370,8 +370,8 @@
       var secs = a.sections || [];
       $('asgSection').value = secs.length > 1 ? 'ALL' : (secs[0] || '');
       var g = asgNextGroup(a.course_code);
-      $('asgDay').value = ''; $('asgStart').value = ''; $('asgEnd').value = ''; $('asgRoom').value = '';
-      $('asgMsg').textContent = g ? 'New group G' + g + ' for ' + a.course_code + '. Set its day, time and room, then save.' : 'All 20 groups of ' + a.course_code + ' are used.';
+      var t = asgParseTime(a.time_slot);       $('asgDay').value = a.day_label && a.day_label !== 'TBA' ? a.day_label : '';       $('asgStart').value = t[0]; $('asgEnd').value = t[1];       $('asgRoom').value = a.room || '';
+      $('asgMsg').textContent = g ? ' New group G' + g + ' for ' + a.course_code + '. Day, time and room were copied; change them if needed, then save.' : 'All 20 groups of ' + a.course_code + ' are used.';
       $('asgSave').scrollIntoView({ behavior: 'smooth', block: 'center' });
     });
   }
