@@ -3173,7 +3173,20 @@ app.get('/api/registrar/enrollments', requireRegistrar, async (req, res) => {
     [no, college, t.term, t.ay]);
   // Academic standing (REGULAR, IRREGULAR, WARNING, PROBATION, PERMANENT DISQUALIFICATION), same rules as the student portal.
   const standingRow = await studentRetentionStatus(no).catch(() => null);
-  res.json({ enrollments: r.rows, student_type: prior.rows.length ? 'Old' : 'New', standing: standingRow ? standingRow.status : '' });
+  // Allowable load (retention policy): normal load = total units of this year level and term's curriculum.
+  // REGULAR: normal; WARNING: normal - 3; PROBATION: normal - 6; PERMANENT DISQUALIFICATION: not allowed.
+  const standingStatus = standingRow ? standingRow.status : '';
+  let load = null;
+  const curEn = r.rows.find((x) => x.term === t.term && x.academic_year === t.ay);
+  if (curEn) {
+    const nl = await pool.query('SELECT COALESCE(SUM(units), 0) AS total FROM reg_courses WHERE college = $1 AND year_level = $2 AND (semester = $3 OR semester IS NULL)', [college, curEn.year_level, t.term]);
+    const normal = Number(nl.rows[0].total) || 0;
+    const enrolled = (Array.isArray(curEn.subjects) ? curEn.subjects : []).reduce((n, x) => n + (Number(x.units) || 0), 0);
+    const cut = { WARNING: 3, PROBATION: 6 }[standingStatus] || 0;
+    const allowed = standingStatus === 'PERMANENT DISQUALIFICATION' ? 0 : normal - cut;
+    load = { standing: standingStatus, normal, allowed, enrolled, over: enrolled > allowed };
+  }
+  res.json({ enrollments: r.rows, student_type: prior.rows.length ? 'Old' : 'New', standing: standingStatus, load });
 });
 
 // Enroll a University-issued student for the active term with the chosen subjects and instructors.

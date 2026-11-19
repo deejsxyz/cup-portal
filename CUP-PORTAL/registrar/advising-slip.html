@@ -69,6 +69,7 @@
   <div id="subjects" class="card" hidden>
     <h2><span id="subjTitle">Pre-enrolled subjects</span> <span id="term" class="hint" style="text-transform:none;letter-spacing:0"></span></h2>
     <div id="subjList"></div>
+    <p id="loadMsg" class="hint" style="margin:8px 0 0;font-weight:700"></p>
   </div>
 </div>
 <script>
@@ -154,6 +155,13 @@
       curSubjects = list;
       curStudentType = res.ok ? (res.j.student_type || '') : '';
       curStanding = res.ok ? (res.j.standing || '') : '';
+      var L = res.ok ? res.j.load : null;
+      var lm = document.getElementById('loadMsg');
+      if (lm) {
+        if (!L) { lm.textContent = ''; }
+        else if (L.standing === 'PERMANENT DISQUALIFICATION') { lm.style.color = '#b91c1c'; lm.textContent = 'Not allowed to enroll (PERMANENT DISQUALIFICATION). Enrolled: ' + L.enrolled + ' units.'; }
+        else { lm.style.color = L.over ? '#b91c1c' : '#166534'; lm.textContent = (L.over ? 'OVER the allowable load' : 'Within the allowable load') + ': enrolled ' + L.enrolled + ' units, allowable ' + L.allowed + ' units (normal load ' + L.normal + ', ' + L.standing + ').'; }
+      }
       document.getElementById('subjTitle').textContent = s.status === 'enrolled' ? 'Enrolled subjects' : 'Pre-enrolled subjects';
       subjects.hidden = false;
       subjList.innerHTML = list.length ? '<table><thead><tr><th>Code</th><th>Descriptive title</th><th>Units</th><th>Section</th><th>Schedule</th><th>Room</th><th>Instructor</th></tr></thead><tbody>' +
