@@ -464,6 +464,8 @@
   });
 
   Promise.all([loadFaculty(), loadSubjects(), loadAssignments()]).catch(function () {});
+  // Keep the list live: reload every 5 seconds while this tab is visible.
+  setInterval(function () { if (!document.hidden) loadAssignments(); }, 5000);
 })();
 </script>
 <script src="/CUP-PORTAL/portal-search.js"></script>
