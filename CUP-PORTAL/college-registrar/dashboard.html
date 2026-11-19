@@ -1828,6 +1828,7 @@
         renderSubjects(c);
       });
     }
+    var sjEdit = null;
     function renderSubjects(c) {
       var rows = sjYear ? sjRows.filter(function (r) { return String(r.year_level) === sjYear; }) : sjRows;
       var pages = Math.max(1, Math.ceil(rows.length / sjSize));
@@ -1844,11 +1845,24 @@
         html += '<p class="hint">No subjects' + (sjYear ? ' for year ' + esc(sjYear) : '') + ' yet.</p>';
       } else {
         html += '<table style="width:100%;border-collapse:collapse;font-size:.9rem"><thead><tr>' +
-          ['Code', 'Descriptive title', 'Units', 'Year level', 'Semester'].map(function (t) { return '<th style="' + th + '">' + t + '</th>'; }).join('') +
+          ['Code', 'Descriptive title', 'Units', 'Year level', 'Semester', ''].map(function (t) { return '<th style="' + th + '">' + t + '</th>'; }).join('') +
           '</tr></thead><tbody>' + slice.map(function (r) {
+            var code = esc(r.course_code);
+            if (sjEdit === r.course_code) {
+              return '<tr>' +
+                '<td style="' + td + '">' + code + '</td>' +
+                '<td style="' + td + '"><input data-f="descriptive_title" value="' + esc(r.descriptive_title) + '" style="min-width:220px"></td>' +
+                '<td style="' + td + '"><input data-f="units" value="' + esc(r.units) + '" style="width:60px"></td>' +
+                '<td style="' + td + '"><select data-f="year_level"><option value="">-</option>' + ['1', '2', '3', '4'].map(function (y) { return '<option value="' + y + '"' + (String(r.year_level) === y ? ' selected' : '') + '>' + y + '</option>'; }).join('') + '</select></td>' +
+                '<td style="' + td + '"><select data-f="semester"><option value="">-</option>' + ['1st Semester', '2nd Semester', 'Summer'].map(function (s) { return '<option' + (r.semester === s ? ' selected' : '') + '>' + s + '</option>'; }).join('') + '</select></td>' +
+                '<td style="' + td + ';white-space:nowrap"><button type="button" data-act="save" data-code="' + code + '">Save</button> <button type="button" data-act="cancel">Cancel</button></td>' +
+                '</tr>';
+            }
             return '<tr>' + [r.course_code, r.descriptive_title, r.units, r.year_level == null ? '' : r.year_level, r.semester || ''].map(function (v) {
               return '<td style="' + td + '">' + esc(v) + '</td>';
-            }).join('') + '</tr>';
+            }).join('') +
+              '<td style="' + td + ';white-space:nowrap"><button type="button" data-act="edit" data-code="' + code + '">Edit</button> <button type="button" data-act="del" data-code="' + code + '">Delete</button></td>' +
+              '</tr>';
           }).join('') + '</tbody></table>' +
           '<div style="display:flex;gap:10px;align-items:center;margin-top:10px">' +
           '<button type="button" id="sj-prev"' + (sjPage <= 1 ? ' disabled' : '') + '>Previous</button>' +
@@ -1863,6 +1877,36 @@
       if ($('#sj-prev')) $('#sj-prev').onclick = function () { sjPage--; renderSubjects(c); };
       if ($('#sj-next')) $('#sj-next').onclick = function () { sjPage++; renderSubjects(c); };
     }
+    $('#sj-list').onclick = function (e) {
+      var b = e.target.closest('button[data-act]');
+      if (!b) return;
+      var act = b.getAttribute('data-act'), code = b.getAttribute('data-code'), c = sjCollege();
+      if (act === 'edit') { sjEdit = code; renderSubjects(c); return; }
+      if (act === 'cancel') { sjEdit = null; renderSubjects(c); return; }
+      if (act === 'del') {
+        if (!confirm('Delete ' + code + ' from ' + c + '?')) return;
+        fetch('/api/registrar/courses/' + encodeURIComponent(code) + '?college=' + encodeURIComponent(c), { method: 'DELETE', credentials: 'same-origin' })
+          .then(function (r) { return r.json().then(function (j) { return { ok: r.ok, j: j }; }); })
+          .then(function (res) {
+            if (!res.ok) { $('#sj-msg').textContent = res.j.error || 'Could not delete.'; return; }
+            $('#sj-msg').textContent = code + ' deleted.';
+            loadSubjects();
+          });
+        return;
+      }
+      if (act === 'save') {
+        var tr = b.closest('tr'), body = { college: c };
+        tr.querySelectorAll('[data-f]').forEach(function (el) { body[el.getAttribute('data-f')] = el.value; });
+        fetch('/api/registrar/courses/' + encodeURIComponent(code), { method: 'PUT', credentials: 'same-origin', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(body) })
+          .then(function (r) { return r.json().then(function (j) { return { ok: r.ok, j: j }; }); })
+          .then(function (res) {
+            if (!res.ok) { $('#sj-msg').textContent = res.j.error || 'Could not save.'; return; }
+            sjEdit = null;
+            $('#sj-msg').textContent = code + ' updated.';
+            loadSubjects();
+          });
+      }
+    };
     safeOn('#sj-college', 'change', loadSubjects);
     safeOn('#sj-tpl', 'click', function (e) {
       e.preventDefault();

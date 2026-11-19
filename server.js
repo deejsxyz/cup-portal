@@ -1386,6 +1386,52 @@ app.post('/api/registrar/courses/batch', requireRegistrar, async (req, res) => {
   }
 });
 
+// Edit or delete one subject in the college's list (registrar of that college, or the University Registrar).
+app.put('/api/registrar/courses/:code', requireRegistrar, async (req, res) => {
+  const college = req.reg.role === 'registrar' ? req.reg.college : String((req.body || {}).college || '');
+  if (!REG_COLLEGES.includes(college)) return res.status(400).json({ error: 'Choose a valid college.' });
+  const code = String(req.params.code || '').trim().toUpperCase().slice(0, 50);
+  const b = req.body || {};
+  const title = String(b.descriptive_title || '').trim().slice(0, 200);
+  const units = Number(b.units);
+  const yl = String(b.year_level == null ? '' : b.year_level).trim();
+  const yearLevel = yl === '' ? null : Number(yl);
+  const semester = String(b.semester || '').trim() || null;
+  if (!title) return res.status(400).json({ error: 'Descriptive title is required.' });
+  if (!String(b.units == null ? '' : b.units).trim() || !Number.isFinite(units) || units < 0 || units > 99) return res.status(400).json({ error: 'Units must be a number from 0 to 99.' });
+  if (yearLevel !== null && (!Number.isInteger(yearLevel) || yearLevel < 1 || yearLevel > 4)) return res.status(400).json({ error: 'Year level must be 1 to 4.' });
+  if (semester && !REG_SEMESTERS.includes(semester)) return res.status(400).json({ error: 'Choose a valid semester.' });
+  try {
+    const { rowCount } = await pool.query(
+      'UPDATE reg_courses SET descriptive_title = $3, units = $4, year_level = $5, semester = $6 WHERE college = $1 AND course_code = $2',
+      [college, code, title, units, yearLevel, semester]);
+    if (!rowCount) return res.status(404).json({ error: 'Subject not found.' });
+    logAction(req, req.reg.role === 'registrar' ? college + ' registrar' : 'University Registrar', 'subject edited', college + ': ' + code);
+    res.json({ ok: true });
+  } catch (err) {
+    console.error(err);
+    res.status(500).json({ error: 'Could not save the subject.' });
+  }
+});
+app.delete('/api/registrar/courses/:code', requireRegistrar, async (req, res) => {
+  const college = req.reg.role === 'registrar' ? req.reg.college : String(req.query.college || '');
+  if (!REG_COLLEGES.includes(college)) return res.status(400).json({ error: 'Choose a valid college.' });
+  const code = String(req.params.code || '').trim().toUpperCase().slice(0, 50);
+  try {
+    const used = await pool.query(
+      `SELECT (SELECT COUNT(*) FROM reg_schedules WHERE college = $1 AND course_code = $2)
+            + (SELECT COUNT(*) FROM reg_subject_assignments WHERE college = $1 AND course_code = $2) AS n`, [college, code]);
+    if (Number(used.rows[0].n) > 0) return res.status(409).json({ error: code + ' has schedules or assignments. Remove them first, then delete the subject.' });
+    const { rowCount } = await pool.query('DELETE FROM reg_courses WHERE college = $1 AND course_code = $2', [college, code]);
+    if (!rowCount) return res.status(404).json({ error: 'Subject not found.' });
+    logAction(req, req.reg.role === 'registrar' ? college + ' registrar' : 'University Registrar', 'subject deleted', college + ': ' + code);
+    res.json({ ok: true });
+  } catch (err) {
+    console.error(err);
+    res.status(500).json({ error: 'Could not delete the subject.' });
+  }
+});
+
 // Activity log (University Registrar only).
 app.get('/api/registrar/logs', requireSuperAdmin, async (req, res) => {
   const { rows } = await pool.query('SELECT at, actor, action, detail, ip FROM reg_logs ORDER BY at DESC LIMIT 500');
