@@ -3489,35 +3489,30 @@ app.get('/api/registrar/schedules', requireRegistrar, async (req, res) => {
     `SELECT course_code, group_label, year_level, section, days, start_time, end_time, room FROM reg_schedules
       WHERE college = $1 AND term = $2 AND academic_year = $3 ORDER BY section`,
     [college, t.term, t.ay]);
-  // One saved schedule per subject, group and year (the first section, or the chosen section).
-  const schFirst = new Map();
-  sch.rows.forEach((x) => {
-    const k = x.course_code + '|' + x.group_label + '|' + x.year_level;
-    if (!schFirst.has(k) && (!section || x.section === section)) schFirst.set(k, x);
-  });
-  // Sections saved for each subject, group and year: one saved section shows as that section, several show as all.
-  const secOf = new Map();
-  sch.rows.forEach((x) => {
-    const k = x.course_code + '|' + x.group_label + '|' + x.year_level;
-    if (!secOf.has(k)) secOf.set(k, new Set());
-    secOf.get(k).add(x.section);
-  });
+  // One row per saved assignment, year level and section, so every section shows (even with no group yet).
+  const titleOf = new Map(courses.rows.map((c) => [c.course_code, c]));
+  const schBy = new Map();
+  sch.rows.forEach((x) => schBy.set(x.course_code + '|' + x.group_label + '|' + x.year_level + '|' + x.section, x));
   const rows = [];
-  courses.rows.forEach((c) => {
-    const yr = c.year_level || year;
-    const inScope = (a) => a.course_code === c.course_code && (!yr || a.years.includes(yr)) && (!section || a.sections.includes(section));
-    const groups = new Set();
-    asg.rows.filter(inScope).forEach((a) => groups.add(a.group_label));
-    [...groups].sort((p, q) => p.localeCompare(q, undefined, { numeric: true })).forEach((g) => {
-      const names = [...new Set(asg.rows.filter((a) => inScope(a) && a.group_label === g).map((a) => a.name))];
-      const x = schFirst.get(c.course_code + '|' + g + '|' + yr) || {};
-      rows.push({
-        course_code: c.course_code, descriptive_title: c.descriptive_title, units: c.units, year_level: yr, group_label: g,
-        instructor: names.join(', '), days: x.days || '', start_time: x.start_time || '', end_time: x.end_time || '', room: x.room || '',
-        section: section || (secOf.get(c.course_code + '|' + g + '|' + yr) && secOf.get(c.course_code + '|' + g + '|' + yr).size === 1 ? [...secOf.get(c.course_code + '|' + g + '|' + yr)][0] : '')
+  asg.rows.forEach((a) => {
+    const c = titleOf.get(a.course_code);
+    if (!c) return;
+    (a.years || []).forEach((y) => {
+      if (year && y !== year) return;
+      (a.sections || []).forEach((sec) => {
+        if (section && sec !== section) return;
+        const x = schBy.get(a.course_code + '|' + a.group_label + '|' + y + '|' + sec) || {};
+        rows.push({
+          course_code: a.course_code, descriptive_title: c.descriptive_title, units: c.units, year_level: y,
+          group_label: a.group_label, instructor: a.name, section: sec,
+          days: x.days || '', start_time: x.start_time || '', end_time: x.end_time || '', room: x.room || ''
+        });
       });
     });
   });
+  rows.sort((p, q) => p.course_code.localeCompare(q.course_code)
+    || String(p.group_label).localeCompare(String(q.group_label), undefined, { numeric: true })
+    || p.year_level - q.year_level || p.section.localeCompare(q.section));
   res.json({ term: t.term, academic_year: t.ay, rows });
 });
 
