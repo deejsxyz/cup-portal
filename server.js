@@ -3436,6 +3436,13 @@ async function gradingTerm() {
   const m = Object.fromEntries(set.rows.map((r) => [r.key, r.value]));
   return { term: m.grading_semester || '', ay: m.grading_ay || '' };
 }
+// Assignment time text ("7:00 AM - 8:30 AM") to 24-hour start and end, or null when it is not a time range.
+function schParseSlot(slot) {
+  const m = /^\s*(\d{1,2}):(\d{2})\s*(AM|PM)\s*-\s*(\d{1,2}):(\d{2})\s*(AM|PM)\s*$/i.exec(String(slot || ''));
+  if (!m) return null;
+  const to24 = (h, mi, ap) => String((Number(h) % 12) + (ap.toUpperCase() === 'PM' ? 12 : 0)).padStart(2, '0') + ':' + mi;
+  return { start: to24(m[1], m[2], m[3]), end: to24(m[4], m[5], m[6]) };
+}
 app.get('/api/registrar/schedules', requireRegistrar, async (req, res) => {
   const college = regCollege(req, req.query.college);
   if (!college) return res.status(403).json({ error: 'Choose a college.' });
@@ -3456,7 +3463,8 @@ app.get('/api/registrar/schedules', requireRegistrar, async (req, res) => {
     [college, t.term, t.ay, year, section]);
   // Each group has its own instructor (from Subject Assignments) and its own days and time.
   const asg = await pool.query(
-    `SELECT sa.course_code, sa.group_label, COALESCE(string_agg(DISTINCT u.name, ', '), '') AS instructor
+    `SELECT sa.course_code, sa.group_label, COALESCE(string_agg(DISTINCT u.name, ', '), '') AS instructor,
+            MIN(sa.day_label) AS day_label, MIN(sa.time_slot) AS time_slot
        FROM reg_subject_assignments sa JOIN reg_users u ON u.id = sa.user_id
       WHERE sa.college = $1 AND sa.term = $2 AND sa.academic_year = $3 AND $4 = ANY(sa.years) AND $5 = ANY(sa.sections)
       GROUP BY sa.course_code, sa.group_label`,
@@ -3466,6 +3474,7 @@ app.get('/api/registrar/schedules', requireRegistrar, async (req, res) => {
       WHERE college = $1 AND term = $2 AND academic_year = $3 AND year_level = $4 AND section = $5`,
     [college, t.term, t.ay, year, section]);
   const asgMap = new Map(asg.rows.map((a) => [a.course_code + '|' + a.group_label, a.instructor]));
+  const asgTime = new Map(asg.rows.map((a) => [a.course_code + '|' + a.group_label, a]));
   const schMap = new Map(sch.rows.map((x) => [x.course_code + '|' + x.group_label, x]));
   const groupsOf = {};
   [...asg.rows, ...sch.rows].forEach((x) => { (groupsOf[x.course_code] = groupsOf[x.course_code] || new Set()).add(x.group_label); });
@@ -3474,10 +3483,15 @@ app.get('/api/registrar/schedules', requireRegistrar, async (req, res) => {
     const groups = groupsOf[c.course_code] ? [...groupsOf[c.course_code]].sort() : [''];
     groups.forEach((g) => {
       const x = schMap.get(c.course_code + '|' + g) || {};
+      const a = asgTime.get(c.course_code + '|' + g) || {};
+      const tm = schParseSlot(a.time_slot);
+      const days = (a.day_label || '').trim() || x.days || '';
+      const start = tm ? tm.start : (x.start_time || ''), end = tm ? tm.end : (x.end_time || '');
       rows.push({
         course_code: c.course_code, descriptive_title: c.descriptive_title, units: c.units, group_label: g,
         instructor: asgMap.get(c.course_code + '|' + g) || '',
-        days: x.days || '', start_time: x.start_time || '', end_time: x.end_time || '', room: x.room || ''
+        days, start_time: start, end_time: end, room: x.room || '',
+        day_text: days || 'TBA', time_text: (a.time_slot || '').trim() || (start && end ? start + '-' + end : 'TBA')
       });
     });
   });

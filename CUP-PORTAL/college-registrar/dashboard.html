@@ -377,7 +377,7 @@
     <section class="panel" id="schedule-section"><div class="box"><h2>Subject Schedule</h2><div class="body">
         <div id="sch-box" style="margin-top:22px;padding-top:14px;border-top:1px solid #d5e2d5">
           <h3 style="margin:0 0 6px">Subject schedule</h3>
-          <p class="hint">Set the days, time and room of each subject per group and section. Each group's instructor comes from Subject Assignments (group labels such as G1 or G1A). This shows on the student's advising slip and Certificate of Enrollment.</p>
+          <p class="hint">Each group's instructor, day and time come from Subject Assignments. Type the room here. Groups are G1 to G20 (G1A is Section A only). This shows on the student's advising slip and Certificate of Enrollment.</p>
           <div style="display:flex;gap:10px;flex-wrap:wrap;align-items:flex-end">
             <label>Year level <select id="sch-year"><option value="">Select</option><option>1</option><option>2</option><option>3</option><option>4</option></select></label>
             <label>Section <select id="sch-section"><option value="">Select</option><option>A</option><option>B</option><option>C</option></select></label>
@@ -1511,6 +1511,7 @@
         if (r) r[el.getAttribute('data-f')] = el.value;
       });
     }
+    // Day and time come from Subject Assignments; only the room is typed here.
     function schRender() {
       var pages = Math.max(1, Math.ceil(schRows.length / schSize));
       if (schPage > pages) schPage = pages;
@@ -1526,9 +1527,8 @@
           '<td style="' + td + '">' + esc(r.descriptive_title) + '</td>' +
           '<td style="' + td + '">' + esc(r.group_label || '—') + '</td>' +
           '<td style="' + td + '">' + esc(r.instructor || '—') + '</td>' +
-          '<td style="' + td + '"><input data-i="' + i + '" data-f="days" value="' + esc(r.days) + '" placeholder="e.g. MWF" maxlength="20" ' + inp + '></td>' +
-          '<td style="' + td + '"><input type="time" data-i="' + i + '" data-f="start_time" value="' + esc(r.start_time) + '" ' + inp + '></td>' +
-          '<td style="' + td + '"><input type="time" data-i="' + i + '" data-f="end_time" value="' + esc(r.end_time) + '" ' + inp + '></td>' +
+          '<td style="' + td + '">' + esc(r.day_text || 'TBA') + '</td>' +
+          '<td style="' + td + '">' + esc(r.time_text || 'TBA') + '</td>' +
           '<td style="' + td + '"><input data-i="' + i + '" data-f="room" value="' + esc(r.room) + '" maxlength="40" ' + inp + '></td>' +
           '</tr>';
       }).join('');
@@ -1536,7 +1536,7 @@
         '<label>Rows per page <select id="sch-size"><option>10</option><option>25</option><option>50</option></select></label>' +
         '<span class="hint">' + schRows.length + ' subject(s)</span></div>' +
         '<table style="width:100%;border-collapse:collapse;font-size:.9rem"><thead><tr>' +
-        ['Code', 'Descriptive title', 'Group', 'Instructor', 'Days', 'Start', 'End', 'Room'].map(function (t) { return '<th style="' + th + '">' + t + '</th>'; }).join('') +
+        ['Code', 'Descriptive title', 'Group', 'Instructor', 'Day', 'Time', 'Room'].map(function (t) { return '<th style="' + th + '">' + t + '</th>'; }).join('') +
         '</tr></thead><tbody>' + rowsHtml + '</tbody></table>' +
         '<div style="display:flex;gap:10px;align-items:center;margin-top:10px">' +
         '<button type="button" id="sch-prev"' + (schPage <= 1 ? ' disabled' : '') + '>Previous</button>' +
