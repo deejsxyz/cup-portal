@@ -963,6 +963,12 @@ function progAbbrOf(p) { var m = /\(([^)]+)\)\s*$/.exec(p || ''); return m ? m[1
       top.location.href = onCollege ? '/CUP-PORTAL/college-registrar/' : '/CUP-PORTAL/registrar/';
       return;
     }
+    r.clone().json().then(function (j) {
+      if (j.role === 'superadmin') return;
+      var nb = document.querySelector('[data-tab="new"]'), ns = document.querySelector('[data-sec="new"]');
+      if (nb) nb.hidden = true;
+      if (ns) ns.hidden = true;
+    }).catch(function () {});
     return loadRoster().then(function () {
       renderList();
       var qp = new URLSearchParams(location.search);

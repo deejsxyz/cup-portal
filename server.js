@@ -3254,6 +3254,7 @@ app.post('/api/registrar/enroll-student', requireRegistrar, async (req, res) => 
   if (!college) return res.status(403).json({ error: 'Choose a college.' });
   const b = req.body || {};
   const mode = b.mode === 'new' ? 'new' : 'existing';
+  if (mode === 'new' && req.reg.role !== 'superadmin') return res.status(403).json({ error: 'Only the University Registrar can add a new student.' });
   let no = String(b.student_no || '').trim();
   if (mode === 'existing' && !/^\d{4}-\d-\d{7}-\d{2}$/.test(no)) return res.status(400).json({ error: 'Student number must be in the format xxxx-x-xxxxxxx-xx.' });
   const last = String(b.last_name || '').trim().slice(0, 100);
