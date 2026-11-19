@@ -153,6 +153,7 @@
       <table class="w-full text-xs border-collapse">
         <thead class="bg-slate-100">
           <tr>
+            <th class="border border-slate-300 px-1 py-1.5 w-6"></th>
             <th class="border border-slate-300 px-2 py-1.5 text-left">Subject</th>
             <th class="border border-slate-300 px-2 py-1.5 text-left">College</th>
             <th class="border border-slate-300 px-2 py-1.5 text-left">Program</th>
@@ -163,10 +164,10 @@
             <th class="border border-slate-300 px-2 py-1.5 text-left">Time</th>
             <th class="border border-slate-300 px-2 py-1.5 text-left">Room</th>
             <th class="border border-slate-300 px-2 py-1.5 text-left">Faculty</th>
-            <th class="border border-slate-300 px-2 py-1.5 text-center">Remove</th>
+            <th class="border border-slate-300 px-1 py-1.5 w-6"></th>
           </tr>
         </thead>
-        <tbody id="asgBody"><tr><td colspan="11" class="border border-slate-300 px-2 py-4 text-center text-slate-500">Loading…</td></tr></tbody>
+        <tbody id="asgBody"><tr><td colspan="12" class="border border-slate-300 px-2 py-4 text-center text-slate-500">Loading…</td></tr></tbody>
       </table>
     </div>
   </div>
@@ -338,16 +339,47 @@
   });
 
   /* Subject Assignments */
+  var asgRows = [];
+  // Smallest group number (1 to 20) not yet used by this subject.
+  function asgNextGroup(code) {
+    var used = {};
+    asgRows.forEach(function (r) {
+      if (r.course_code !== code) return;
+      var m = /^G(\d+)/.exec(r.group_label || '');
+      if (m) used[Number(m[1])] = true;
+    });
+    for (var g = 1; g <= 20; g++) if (!used[g]) return g;
+    return 0;
+  }
+  // + : fills the form with this subject's faculty, program, years and section, and the next free group.
+  // Day, time and room start blank, as a new group row does in Subject Schedule.
+  function asgAddGroup(a) {
+    $('asgFaculty').value = String(a.user_id);
+    $('asgProgram').value = a.program || '';
+    loadProgramSubjects().then(function () {
+      document.querySelectorAll('.asg-subj').forEach(function (c) { c.checked = c.value === a.course_code; });
+      document.querySelectorAll('.asg-year').forEach(function (c) { c.checked = (a.years || []).indexOf(Number(c.value)) !== -1; });
+      var secs = a.sections || [];
+      $('asgSection').value = secs.length > 1 ? 'ALL' : (secs[0] || '');
+      var g = asgNextGroup(a.course_code);
+      $('asgGroup').value = g ? String(g) : '';
+      $('asgDay').value = ''; $('asgStart').value = ''; $('asgEnd').value = ''; $('asgRoom').value = '';
+      $('asgMsg').textContent = g ? 'New group G' + g + ' for ' + a.course_code + '. Set its day, time and room, then save.' : 'All 20 groups of ' + a.course_code + ' are used.';
+      $('asgSave').scrollIntoView({ behavior: 'smooth', block: 'center' });
+    });
+  }
   function loadAssignments() {
     return api('/api/registrar/subject-assignments').then(function (res) {
-      if (!res.ok) { $('asgBody').innerHTML = '<tr><td colspan="11" class="border border-slate-300 px-2 py-4 text-center text-slate-500">' + esc(res.j.error || 'Could not load.') + '</td></tr>'; return; }
+      if (!res.ok) { $('asgBody').innerHTML = '<tr><td colspan="12" class="border border-slate-300 px-2 py-4 text-center text-slate-500">' + esc(res.j.error || 'Could not load.') + '</td></tr>'; return; }
       term = res.j.term; ay = res.j.academic_year;
       $('asgTerm').textContent = term && ay ? 'Active term: ' + term + ' · A.Y. ' + ay : 'The academic year and semester are not set yet. The University Registrar sets them in Settings → Grading period.';
       var rows = res.j.assignments || [];
+      asgRows = rows;
       $('asgBody').innerHTML = rows.length ? rows.map(function (a) {
         var yrs = (a.years || []).sort().map(function (y) { return YEAR[y]; }).join(', ');
         var secs = (a.sections || []).sort().join(', ');
-        return '<tr><td class="border border-slate-300 px-2 py-1.5">' + esc(a.course_code) + ' — ' + esc(a.descriptive_title || '') + '</td>' +
+        return '<tr><td class="border border-slate-300 px-1 py-1.5 text-center"><button type="button" data-add-group="' + a.id + '" title="Add a group for this subject" class="text-emerald-800 font-black text-lg leading-none cursor-pointer">+</button></td>' +
+          '<td class="border border-slate-300 px-2 py-1.5">' + esc(a.course_code) + ' — ' + esc(a.descriptive_title || '') + '</td>' +
           '<td class="border border-slate-300 px-2 py-1.5">' + esc(a.subject_college || '') + '</td><td class="border border-slate-300 px-2 py-1.5">' + esc(a.program || '') + '</td>' +
           '<td class="border border-slate-300 px-2 py-1.5">' + esc(yrs) + '</td><td class="border border-slate-300 px-2 py-1.5">' + esc(secs) + '</td>' +
           '<td class="border border-slate-300 px-2 py-1.5">' + esc(a.group_label || '') + '</td>' +
@@ -355,11 +387,18 @@
           '<td class="border border-slate-300 px-2 py-1.5">' + esc(a.time_slot || '') + '</td>' +
           '<td class="border border-slate-300 px-2 py-1.5">' + esc(a.room || '') + '</td>' +
           '<td class="border border-slate-300 px-2 py-1.5">' + esc(a.faculty) + '</td>' +
-          '<td class="border border-slate-300 px-2 py-1.5 text-center"><button type="button" data-remove="' + a.id + '" class="px-2 py-1 bg-red-600 hover:bg-red-700 text-white rounded text-[11px] font-bold cursor-pointer">Remove</button></td></tr>';
-      }).join('') : '<tr><td colspan="11" class="border border-slate-300 px-2 py-4 text-center text-slate-500">No subject assignments yet.</td></tr>';
+          '<td class="border border-slate-300 px-1 py-1.5 text-center"><button type="button" data-remove="' + a.id + '" title="Remove this assignment" class="text-red-700 font-black text-lg leading-none cursor-pointer">×</button></td></tr>';
+      }).join('') : '<tr><td colspan="12" class="border border-slate-300 px-2 py-4 text-center text-slate-500">No subject assignments yet.</td></tr>';
     });
   }
   $('asgBody').addEventListener('click', function (e) {
+    var add = e.target.closest('[data-add-group]');
+    if (add) {
+      var id = add.getAttribute('data-add-group');
+      var row = asgRows.filter(function (r) { return String(r.id) === id; })[0];
+      if (row) asgAddGroup(row);
+      return;
+    }
     var b = e.target.closest('[data-remove]');
     if (!b) return;
     post('/api/registrar/subject-assignments/' + b.getAttribute('data-remove') + '/remove').then(function (res) {
@@ -393,8 +432,8 @@
   function keyOf(code) { return String(code || '').replace(/\s+/g, '').toUpperCase(); }
   function loadProgramSubjects() {
     var p = $('asgProgram').value;
-    if (!p) { progKeys = null; fillSubjectSelect(); return; }
-    api('/api/registrar/curriculum-codes?program=' + encodeURIComponent(p)).then(function (res) {
+    if (!p) { progKeys = null; fillSubjectSelect(); return Promise.resolve(); }
+    return api('/api/registrar/curriculum-codes?program=' + encodeURIComponent(p)).then(function (res) {
       var codes = res.ok ? (res.j.codes || []) : [];
       progKeys = codes.map(keyOf);
       fillSubjectSelect();
