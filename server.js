@@ -3418,7 +3418,8 @@ app.get('/api/registrar/subject-assignments', requireRegistrar, async (req, res)
     `SELECT sa.id, sa.user_id, u.username, u.name AS faculty, u.first_name, u.last_name, sa.course_code,
             COALESCE(c.descriptive_title, (SELECT rc.descriptive_title FROM reg_courses rc WHERE rc.course_code = sa.course_code LIMIT 1), '') AS descriptive_title,
             sa.years, sa.sections,
-            COALESCE(NULLIF(sa.subject_college, ''), sa.college) AS subject_college, sa.program
+            COALESCE(NULLIF(sa.subject_college, ''), sa.college) AS subject_college, sa.program,
+            sa.group_label, sa.day_label, sa.time_slot
        FROM reg_subject_assignments sa
        JOIN reg_users u ON u.id = sa.user_id
        LEFT JOIN reg_courses c ON c.college = COALESCE(NULLIF(sa.subject_college, ''), sa.college) AND c.course_code = sa.course_code
@@ -3520,6 +3521,10 @@ app.post('/api/registrar/subject-assignments', requireRegistrar, async (req, res
   // One or more subjects; a single course_code is still accepted.
   const codes = [...new Set((Array.isArray(b.course_codes) ? b.course_codes : [b.course_code])
     .map((c) => String(c || '').trim()).filter(Boolean))];
+  // Schedule group: any label (G1 ... G12 and beyond), day and time as typed. Not limited in number.
+  const groupLabel = String(b.group_label || '').trim().slice(0, 30);
+  const dayLabel = String(b.day_label || '').trim().slice(0, 40);
+  const timeSlot = String(b.time_slot || '').trim().slice(0, 40);
   const years = (Array.isArray(b.years) ? b.years : []).map(Number).filter((y) => [1, 2, 3, 4].includes(y));
   const sections = (Array.isArray(b.sections) ? b.sections : []).map((s) => String(s).trim()).filter((s) => ['A', 'B', 'C'].includes(s));
   if (!codes.length) return res.status(400).json({ error: 'Choose at least one subject.' });
@@ -3542,8 +3547,8 @@ app.post('/api/registrar/subject-assignments', requireRegistrar, async (req, res
     await client.query('BEGIN');
     for (const code of codes) {
       await client.query(
-        'INSERT INTO reg_subject_assignments (user_id, college, course_code, term, academic_year, years, sections, subject_college, program) VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9)',
-        [userId, college, code, m.grading_semester, m.grading_ay, years, sections, subjectCollege, program]);
+        'INSERT INTO reg_subject_assignments (user_id, college, course_code, term, academic_year, years, sections, subject_college, program, group_label, day_label, time_slot) VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12)',
+        [userId, college, code, m.grading_semester, m.grading_ay, years, sections, subjectCollege, program, groupLabel, dayLabel, timeSlot]);
     }
     await client.query('COMMIT');
     logAction(req, college + ' registrar', 'subject assigned', codes.join(', ') + ' to ' + userId);
@@ -5246,6 +5251,9 @@ pool.query(`CREATE TABLE IF NOT EXISTS cat_sections (
   .then(() => pool.query("ALTER TABLE reg_grades ADD COLUMN IF NOT EXISTS remarks TEXT NOT NULL DEFAULT ''"))
   .then(() => pool.query("ALTER TABLE reg_subject_assignments ADD COLUMN IF NOT EXISTS subject_college TEXT NOT NULL DEFAULT ''"))
   .then(() => pool.query("ALTER TABLE reg_subject_assignments ADD COLUMN IF NOT EXISTS program TEXT NOT NULL DEFAULT ''"))
+  .then(() => pool.query("ALTER TABLE reg_subject_assignments ADD COLUMN IF NOT EXISTS group_label TEXT NOT NULL DEFAULT ''"))
+  .then(() => pool.query("ALTER TABLE reg_subject_assignments ADD COLUMN IF NOT EXISTS day_label TEXT NOT NULL DEFAULT ''"))
+  .then(() => pool.query("ALTER TABLE reg_subject_assignments ADD COLUMN IF NOT EXISTS time_slot TEXT NOT NULL DEFAULT ''"))
   .then(() => pool.query(`CREATE TABLE IF NOT EXISTS reg_schedules (college TEXT NOT NULL, course_code TEXT NOT NULL, term TEXT NOT NULL, academic_year TEXT NOT NULL, year_level INT NOT NULL, section TEXT NOT NULL, days TEXT NOT NULL DEFAULT '', start_time TEXT NOT NULL DEFAULT '', end_time TEXT NOT NULL DEFAULT '', room TEXT NOT NULL DEFAULT '', PRIMARY KEY (college, course_code, term, academic_year, year_level, section))`))
   .then(() => pool.query('CREATE TABLE IF NOT EXISTS reg_settings (key TEXT PRIMARY KEY, value TEXT NOT NULL)'))
   .then(() => pool.query(`CREATE TABLE IF NOT EXISTS reg_courses (college TEXT NOT NULL, course_code TEXT NOT NULL, descriptive_title TEXT NOT NULL DEFAULT '', units NUMERIC(4,1) NOT NULL DEFAULT 0, PRIMARY KEY (college, course_code))`))
