@@ -4246,6 +4246,22 @@ async function step2Blocked(no, college) {
   if (r.rows[0].step1_status !== 'verified') return 'Grades are not yet fully approved for this student, so this step cannot be marked done yet.';
   return null;
 }
+// Student standing (REGULAR, IRREGULAR, WARNING, PROBATION, PERMANENT DISQUALIFICATION) for the info panels.
+app.get('/api/registrar/student-standing/:no', requireCollegeRegistrar, async (req, res) => {
+  const college = regCollege(req, req.query.college);
+  if (!college) return res.status(403).json({ error: 'Choose a college.' });
+  try {
+    const no = String(req.params.no || '').trim();
+    const own = await pool.query('SELECT 1 FROM reg_students WHERE student_no = $1 AND college = $2', [no, college]);
+    if (!own.rows.length) return res.status(404).json({ error: 'Student not found.' });
+    const r = await studentRetentionStatus(no);
+    res.json({ standing: r ? r.status : '' });
+  } catch (err) {
+    console.error('student standing', err);
+    res.status(500).json({ error: 'Could not load the student status.' });
+  }
+});
+
 app.get('/api/registrar/step2', requireCollegeRegistrar, async (req, res) => {
   const college = regCollege(req, req.query.college);
   if (!college || !REG_COLLEGES.includes(college)) return res.status(400).json({ error: 'Choose a college.' });

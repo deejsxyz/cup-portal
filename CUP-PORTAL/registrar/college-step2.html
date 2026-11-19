@@ -96,6 +96,20 @@
   function labelled(label, value) {
     return '<div><div class="text-[10px] uppercase font-bold text-slate-500">' + esc(label) + '</div><div class="font-semibold text-slate-900 break-words">' + esc(value == null || value === '' ? '—' : value) + '</div></div>';
   }
+  // Student Status box in the info panel, filled from the server (REGULAR, IRREGULAR, WARNING, PROBATION, ...).
+  function stdStatusBox(no) {
+    return '<div><div class="text-[10px] uppercase font-bold text-slate-500">Student Status</div><div id="stdStatus" data-no="' + esc(no || '') + '" class="font-semibold text-slate-900">—</div></div>';
+  }
+  function loadStanding(no) {
+    var el = document.getElementById('stdStatus');
+    if (!el || !no) return;
+    fetch('/api/registrar/student-standing/' + encodeURIComponent(no) + '?college=' + encodeURIComponent(COLLEGE), { credentials: 'same-origin' })
+      .then(function (r) { return r.json(); })
+      .then(function (j) {
+        var cur = document.getElementById('stdStatus');
+        if (cur && cur.getAttribute('data-no') === String(no) && j.standing) cur.textContent = j.standing;
+      }).catch(function () {});
+  }
   function fmtStatus(r) { return r.status === 'enrolled' ? 'Officially Enrolled' : 'Pre-registered'; }
 
   /* ----- Student Evaluation (Existing Student layout) ----- */
@@ -113,7 +127,8 @@
     evalInfo.innerHTML =
       labelled('First Name', s.first_name) + labelled('Middle Name', s.middle_name) + labelled('Last Name', s.last_name) + labelled('Extension', s.name_extension) +
       labelled('Gender', s.gender) + labelled('Birthday', s.birthday) + labelled('Email Address', s.email) + labelled('Contact Number', s.contact_number) +
-      labelled('Program', s.program) + labelled('Year & Section', (s.year_level || '') + (s.section || '')) + labelled('Student ID', s.student_no);
+      labelled('Program', s.program) + labelled('Year & Section', (s.year_level || '') + (s.section || '')) + labelled('Student ID', s.student_no) + stdStatusBox(s.student_no);
+    loadStanding(s.student_no);
     evalBanner.className = 'mb-4 px-4 py-2.5 rounded-lg border text-xs font-semibold ' + (done ? 'bg-emerald-50 border-emerald-200 text-emerald-800' : 'bg-amber-50 border-amber-200 text-amber-800');
     evalBanner.textContent = TASK_NAME[cur] + (done ? ' is done.' : ' is not yet done.');
     evalDone.className = 'px-4 py-2 rounded-lg text-xs font-bold shadow-md cursor-pointer ' + (done ? 'bg-emerald-600 text-white' : 'bg-indigo-700 hover:bg-indigo-800 text-white');
@@ -175,7 +190,8 @@
       labelled('Program', s.program) +
       '<div><div class="text-[10px] uppercase font-bold text-slate-500">Year Level</div><select id="secYear" class="mt-1 px-2 py-1.5 rounded-lg border border-slate-300 text-sm bg-white cursor-pointer">' + selOpts(YEARS, yr) + '</select></div>' +
       '<div><div class="text-[10px] uppercase font-bold text-slate-500">Section</div><select id="secSection" class="mt-1 px-2 py-1.5 rounded-lg border border-slate-300 text-sm bg-white cursor-pointer"></select></div>' +
-      labelled('Student ID', s.student_no) + labelled('Status', ev ? fmtStatus(ev) : '—');
+      labelled('Student ID', s.student_no) + labelled('Status', ev ? fmtStatus(ev) : '—') + stdStatusBox(s.student_no);
+    loadStanding(s.student_no);
     evalBanner.className = 'mb-4 px-4 py-2.5 rounded-lg border text-xs font-semibold ' + (done ? 'bg-emerald-50 border-emerald-200 text-emerald-800' : 'bg-amber-50 border-amber-200 text-amber-800');
     evalBanner.textContent = done ? 'Section assigned: ' + programCode(s.program) + '-' + yr + sec : 'Section not yet assigned.';
     evalDone.className = 'px-4 py-2 rounded-lg text-xs font-bold shadow-md cursor-pointer bg-indigo-700 hover:bg-indigo-800 text-white';
