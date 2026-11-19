@@ -3023,6 +3023,11 @@ app.get('/api/registrar/coe/:no', requireRegistrar, async (req, res) => {
     const wb = new ExcelJS.Workbook();
     await wb.xlsx.readFile(COE_TEMPLATE);
     const ws = wb.worksheets[0];
+    // White background across the whole certificate.
+    const whiteFill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FFFFFFFF' } };
+    for (let r = 1; r <= 59; r++) {
+      for (let c = 1; c <= 33; c++) { ws.getCell(r, c).fill = whiteFill; }
+    }
     // Print setup: A4, 0.75 inch margins (top 0.5), whole certificate on one page.
     ws.pageSetup = Object.assign({}, ws.pageSetup, {
       paperSize: 9, // A4
