@@ -458,7 +458,7 @@
         var when = p.days.join('') + ' ' + p.st + '–' + p.et;
         var sameYear = p.yrs.some(function (y) { return q.yrs.indexOf(y) !== -1; });
         var sameSec = p.secs.some(function (s) { return q.secs.indexOf(s) !== -1; });
-        if (sameYear && sameSec) {
+        if (sameYear && sameSec && p.a.course_code !== q.a.course_code) {
           var m1 = 'Section conflict: ' + label(q) + ' is at this time in the same year and section.';
           add(i, m1); add(j, 'Section conflict: ' + label(p) + ' is at this time in the same year and section.');
           lines.push(esc(label(p) + ' and ' + label(q) + ': same section, ' + when + '.'));
