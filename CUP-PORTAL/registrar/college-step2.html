@@ -17,8 +17,11 @@
   <!-- Student Evaluation: same search and information layout as Student > Existing Student -->
   <div id="evalPane" hidden class="space-y-4">
     <div class="bg-white p-5 rounded-xl shadow-sm border border-slate-200">
-      <label class="block text-[10px] font-bold uppercase text-slate-500 mb-1" for="evalSearchInput">Search Student by ID Number:</label>
-      <input type="text" id="evalSearchInput" inputmode="numeric" maxlength="17" placeholder="xxxx-x-xxxxxxx-xx" autocomplete="off" class="w-full px-3 py-2 rounded-lg border text-sm font-mono border-slate-300">
+      <label class="block text-[10px] font-bold uppercase text-slate-500 mb-1" for="evalSearchInput">Search student by number or name:</label>
+      <div style="position:relative">
+        <input type="text" id="evalSearchInput" placeholder="Student number or name" autocomplete="off" class="w-full px-3 py-2 rounded-lg border text-sm border-slate-300">
+        <div id="evalSuggest" hidden style="position:absolute;left:0;right:0;top:100%;margin-top:4px;z-index:30;background:#fff;border:1px solid #cbd5e1;border-radius:8px;max-height:280px;overflow:auto;box-shadow:0 8px 20px rgba(0,0,0,.12)"></div>
+      </div>
       <p id="evalSearchMsg" class="text-xs font-semibold text-rose-600 mt-2"></p>
     </div>
     <div id="evalRecordArea" hidden>
@@ -42,7 +45,10 @@
   <div id="listPane" class="space-y-4">
     <div class="bg-white rounded-xl shadow-sm border border-slate-200 p-5">
       <div class="flex flex-wrap items-center gap-2 mb-4">
-        <input id="s2Search" type="text" placeholder="Search student number or name" autocomplete="off" class="flex-1 min-w-[200px] px-3 py-2 rounded-lg border border-slate-300 text-sm">
+        <div class="flex-1 min-w-[200px]" style="position:relative">
+          <input id="s2Search" type="text" placeholder="Search student number or name" autocomplete="off" class="w-full px-3 py-2 rounded-lg border border-slate-300 text-sm">
+          <div id="s2Suggest" hidden style="position:absolute;left:0;right:0;top:100%;margin-top:4px;z-index:30;background:#fff;border:1px solid #cbd5e1;border-radius:8px;max-height:280px;overflow:auto;box-shadow:0 8px 20px rgba(0,0,0,.12)"></div>
+        </div>
         <select id="s2Year" aria-label="Year level" class="px-3 py-2 rounded-lg border border-slate-300 text-sm bg-white cursor-pointer">
           <option value="">All Year Levels</option>
         </select>
@@ -359,10 +365,37 @@
   document.querySelectorAll('.s2-btn').forEach(function (b) {
     b.addEventListener('click', function () { cur = b.getAttribute('data-s2'); page = 1; render(); });
   });
+  // Live suggestions: type a student number or name and click the student below the box.
+  function suggestFor(q) {
+    q = q.trim().toLowerCase();
+    if (!q) return [];
+    return rows.filter(function (r) {
+      return String(r.student_no).toLowerCase().indexOf(q) !== -1 || fullName(r).toLowerCase().indexOf(q) !== -1;
+    }).slice(0, 8);
+  }
+  function showSuggest(box, q, pick) {
+    var list = suggestFor(q);
+    if (!list.length) { box.hidden = true; box.innerHTML = ''; return; }
+    box.innerHTML = list.map(function (r, i) {
+      return '<div data-i="' + i + '" style="padding:8px 10px;cursor:pointer;font-size:13px;border-bottom:1px solid #eef2f7">' +
+        '<span style="font-family:monospace">' + esc(r.student_no) + '</span> — ' + esc(fullName(r)) + '</div>';
+    }).join('');
+    box.hidden = false;
+    box.querySelectorAll('[data-i]').forEach(function (el) {
+      el.addEventListener('mousedown', function (e) {
+        e.preventDefault();
+        box.hidden = true;
+        pick(list[Number(el.getAttribute('data-i'))]);
+      });
+    });
+  }
+  var evalBox = document.getElementById('evalSuggest'), s2Box = document.getElementById('s2Suggest');
   evalSearch.addEventListener('input', function () {
     var v = evalSearch.value.trim();
-    if (validId(v)) showEvalStudent(v); else { evalRecord.hidden = true; evalMsg.textContent = ''; current = null; }
+    if (validId(v)) { evalBox.hidden = true; showEvalStudent(v); }
+    else { evalRecord.hidden = true; evalMsg.textContent = ''; current = null; showSuggest(evalBox, v, function (r) { evalSearch.value = r.student_no; evalBox.hidden = true; showEvalStudent(r.student_no); }); }
   });
+  evalSearch.addEventListener('blur', function () { setTimeout(function () { evalBox.hidden = true; }, 150); });
   evalDone.addEventListener('click', function () {
     if (cur === 'section') { saveSection(); return; }
     if (!current) return;
@@ -379,7 +412,11 @@
       .then(function () { if (current) showEvalStudent(no); render(); if (err) msgEl.textContent = err; })
       .catch(function () { msgEl.textContent = 'Could not update.'; evalDone.disabled = false; });
   });
-  searchEl.addEventListener('input', function () { page = 1; renderList(); });
+  searchEl.addEventListener('input', function () {
+    page = 1; renderList();
+    showSuggest(s2Box, searchEl.value, function (r) { searchEl.value = r.student_no; s2Box.hidden = true; page = 1; renderList(); });
+  });
+  searchEl.addEventListener('blur', function () { setTimeout(function () { s2Box.hidden = true; }, 150); });
   yearEl.addEventListener('change', function () { page = 1; renderList(); });
   secEl.addEventListener('change', function () { page = 1; renderList(); });
   prevEl.addEventListener('click', function () { page--; renderList(); });
