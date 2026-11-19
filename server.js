@@ -6586,18 +6586,17 @@ app.post('/api/admin/portal', requireAdmin, async (req, res) => {
 // Student: profile, term, curriculum for the program and year, and current selections.
 // Enrollment procedure for the logged-in student, from the same step records the registrar uses.
 // Pre-registration form for the active term. Editable info is saved as the student types; submitting is final.
-async function studentRecord(accountId) {
-  const p = await pool.query('SELECT student_number FROM student_profiles WHERE account_id = $1', [accountId]);
-  if (!p.rowCount) return null;
+async function studentRecord(studentNo) {
+  if (!studentNo) return null;
   const r = await pool.query(
     'SELECT student_no, college, last_name, first_name, middle_name, name_extension, birthday::text AS birthday, program, year_level, email, contact_number, civil_status FROM reg_students WHERE student_no = $1',
-    [p.rows[0].student_number]);
+    [studentNo]);
   return r.rows[0] || null;
 }
-app.get('/api/student/prereg', requireStudent, async (req, res) => {
+app.get('/api/student/prereg', requirePortal('student'), async (req, res) => {
   try {
     const t = await gradingTerm();
-    const rec = await studentRecord(req.studentId);
+    const rec = await studentRecord(req.portal.student_no);
     if (!rec) return res.status(404).json({ error: 'No student record found for this account.' });
     const sub = await pool.query('SELECT submitted_at FROM reg_preregistrations WHERE student_no = $1 AND term = $2 AND academic_year = $3', [rec.student_no, t.term, t.ay]);
     res.json({
@@ -6610,11 +6609,11 @@ app.get('/api/student/prereg', requireStudent, async (req, res) => {
     res.status(500).json({ error: 'Could not load the pre-registration form.' });
   }
 });
-app.put('/api/student/prereg', requireStudent, async (req, res) => {
+app.put('/api/student/prereg', requirePortal('student'), async (req, res) => {
   try {
     const t = await gradingTerm();
     if (!t.term || !t.ay) return res.status(400).json({ error: 'The active term is not set yet.' });
-    const rec = await studentRecord(req.studentId);
+    const rec = await studentRecord(req.portal.student_no);
     if (!rec) return res.status(404).json({ error: 'No student record found for this account.' });
     const sub = await pool.query('SELECT 1 FROM reg_preregistrations WHERE student_no = $1 AND term = $2 AND academic_year = $3', [rec.student_no, t.term, t.ay]);
     if (sub.rowCount) return res.status(409).json({ error: 'You are already pre-registered. The form can no longer be changed.' });
@@ -6632,12 +6631,12 @@ app.put('/api/student/prereg', requireStudent, async (req, res) => {
     res.status(500).json({ error: 'Could not save the form.' });
   }
 });
-app.post('/api/student/prereg/submit', requireStudent, async (req, res) => {
+app.post('/api/student/prereg/submit', requirePortal('student'), async (req, res) => {
   const client = await pool.connect();
   try {
     const t = await gradingTerm();
     if (!t.term || !t.ay) return res.status(400).json({ error: 'The active term is not set yet.' });
-    const rec = await studentRecord(req.studentId);
+    const rec = await studentRecord(req.portal.student_no);
     if (!rec) return res.status(404).json({ error: 'No student record found for this account.' });
     await client.query('BEGIN');
     const info = { email: rec.email || '', contact_number: rec.contact_number || '', civil_status: rec.civil_status || '' };
@@ -6657,10 +6656,9 @@ app.post('/api/student/prereg/submit', requireStudent, async (req, res) => {
     client.release();
   }
 });
-app.get('/api/student/enrollment-steps', requireStudent, async (req, res) => {
+app.get('/api/student/enrollment-steps', requirePortal('student'), async (req, res) => {
   try {
-    const p = await pool.query('SELECT student_number FROM student_profiles WHERE account_id = $1', [req.studentId]);
-    const no = p.rowCount ? p.rows[0].student_number : '';
+    const no = req.portal.student_no || '';
     const r = no ? (await pool.query(
       `SELECT student_no, status, year_level, COALESCE(nstp_subject, '') AS nstp_subject, nstp_enrolled_at, step1_status,
               step2_evaluated_at, step2_advised_at, step2_sectioned_at, csc_paid_at, advising_slip_at
