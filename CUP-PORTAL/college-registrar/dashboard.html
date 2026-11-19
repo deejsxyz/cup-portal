@@ -1539,6 +1539,7 @@
           return '<label style="margin-right:6px;white-space:nowrap"><input type="checkbox" data-day="' + d + '"' + (picked.indexOf(d) !== -1 ? ' checked' : '') + '> ' + d.charAt(0) + d.slice(1).toLowerCase() + '</label>';
         }).join('');
         return '<tr data-row="' + i + '"' + (schConf[i] && schConf[i].length ? ' style="background:#fde8e8"' : '') + '>' +
+          '<td style="' + td + '"><input type="checkbox" data-pick title="Tick this row, then Add group row"></td>' +
           '<td style="' + td + '"><button type="button" data-x="' + esc(r.course_code) + '" title="Remove this subject from the table" style="border:0;background:none;color:#b91c1c;font-weight:700;cursor:pointer;padding:0 6px 0 0">×</button>' + esc(r.course_code) + '</td>' +
           '<td style="' + td + '">' + esc(r.descriptive_title) + '</td>' +
           '<td style="' + td + '"><select data-f="group_label">' + groups + '</select></td>' +
@@ -1552,7 +1553,7 @@
         '<label>Rows per page <select id="sch-size"><option>10</option><option>25</option><option>50</option></select></label>' +
         '<span class="hint">' + view.length + ' subject(s)</span></div>' +
         '<table style="width:100%;border-collapse:collapse;font-size:.9rem"><thead><tr>' +
-        ['Code', 'Descriptive title', 'Group', 'Day', 'Time', 'Instructor', 'Room'].map(function (t) { return '<th style="' + th + '">' + t + '</th>'; }).join('') +
+        ['', 'Code', 'Descriptive title', 'Group', 'Day', 'Time', 'Instructor', 'Room'].map(function (t) { return '<th style="' + th + '">' + t + '</th>'; }).join('') +
         '</tr></thead><tbody>' + rowsHtml + '</tbody></table>' +
         '<div style="display:flex;gap:10px;align-items:center;margin-top:10px">' +
         '<button type="button" id="sch-prev"' + (schPage <= 1 ? ' disabled' : '') + '>Previous</button>' +
@@ -1567,6 +1568,10 @@
     }
     // Hides a row's TBA as soon as it is edited (no TBA while editing).
     function schTouch(e) {
+      if (e.target && e.target.hasAttribute && e.target.hasAttribute('data-pick')) {
+        if (e.target.checked) document.querySelectorAll('#sch-list [data-pick]').forEach(function (c) { if (c !== e.target) c.checked = false; });
+        return;
+      }
       var tr = e.target && e.target.closest ? e.target.closest('tr[data-row]') : null;
       if (tr) {
         var r = schRows[Number(tr.getAttribute('data-row'))];
@@ -1700,18 +1705,26 @@
       schCheck();
     });
     $('#sch-list').onchange = schTouch;
+    // Add group row: a new row for the ticked subject, placed under the ticked row (or the last picked subject if none is ticked).
     $('#sch-add-row').onclick = function () {
-      var code = schSubject;
-      if (!code) return;
-      var c = schMajor.filter(function (x) { return x.course_code === code; })[0];
-      if (!c) return;
       schCapture();
+      var tick = document.querySelector('#sch-list [data-pick]:checked');
+      var refIdx = tick ? Number(tick.closest('tr').getAttribute('data-row')) : -1;
+      var ref = refIdx >= 0 ? schRows[refIdx] : null;
+      var code = ref ? ref.course_code : schSubject;
+      if (!code) return;
+      var c = ref || schMajor.filter(function (x) { return x.course_code === code; })[0];
+      if (!c) return;
       var nr = { course_code: code, descriptive_title: c.descriptive_title, units: c.units,
         year_level: Number(c.year_level) || Number($('#sch-year').value) || 1, group_label: '', instructor: '',
         days: '', start_time: '', end_time: '', room: '', tba_day: true, tba_time: true, edited: true };
-      var last = -1;
-      schRows.forEach(function (r, i) { if (r.course_code === code) last = i; });
-      schRows.splice(last < 0 ? schRows.length : last + 1, 0, nr);
+      var at;
+      if (ref) at = refIdx + 1;
+      else {
+        at = schRows.length;
+        schRows.forEach(function (r, i) { if (r.course_code === code) at = i + 1; });
+      }
+      schRows.splice(at, 0, nr);
       schDirty = true;
       schRender();
       schCheck();
