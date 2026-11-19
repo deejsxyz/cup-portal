@@ -380,7 +380,8 @@
           <p class="hint">Subjects of the active term load automatically. Pick the group, days, time and room. The instructor comes from Subject Assignments. Leave Section blank to save to every section of the year level. This shows on the student's advising slip and Certificate of Enrollment.</p>
           <div style="display:flex;gap:10px;flex-wrap:wrap;align-items:flex-end">
             <label>Year level <select id="sch-year"><option value="">All years</option><option>1</option><option>2</option><option>3</option><option>4</option></select></label>
-            <label>Section <select id="sch-section"><option value="">All sections</option><option>A</option><option>B</option><option>C</option></select></label>
+            <label>Filter <input id="sch-filter" type="search" placeholder="Code or title" style="width:200px"></label>
+          <label>Section <select id="sch-section"><option value="">All sections</option><option>A</option><option>B</option><option>C</option></select></label>
           </div>
           <div id="sch-list" style="margin-top:10px;overflow-x:auto"></div>
           <div id="sch-conflicts" class="hint" style="margin-top:8px"></div>
@@ -1516,14 +1517,19 @@
       });
     }
     function schRender() {
-      var pages = Math.max(1, Math.ceil(schRows.length / schSize));
+      var q = ($('#sch-filter') ? $('#sch-filter').value : '').trim().toLowerCase();
+      var view = [];
+      schRows.forEach(function (r, i) {
+        if (!q || (r.course_code + ' ' + r.descriptive_title).toLowerCase().indexOf(q) !== -1) view.push(i);
+      });
+      var pages = Math.max(1, Math.ceil(view.length / schSize));
       if (schPage > pages) schPage = pages;
       if (schPage < 1) schPage = 1;
       var from = (schPage - 1) * schSize;
       var th = 'text-align:left;border-bottom:1px solid #7fa37f;padding:6px';
       var td = 'padding:6px;border-bottom:1px solid #d5e2d5;vertical-align:middle';
-      var rowsHtml = schRows.slice(from, from + schSize).map(function (r, k) {
-        var i = from + k;
+      var rowsHtml = view.slice(from, from + schSize).map(function (i) {
+        var r = schRows[i];
         var groups = '<option value="">-</option>';
         for (var g = 1; g <= 20; g++) groups += '<option value="G' + g + '"' + (r.group_label === 'G' + g ? ' selected' : '') + '>G' + g + '</option>';
         var picked = (r.days || '').split(' ');
@@ -1534,15 +1540,15 @@
           '<td style="' + td + '">' + esc(r.course_code) + '</td>' +
           '<td style="' + td + '">' + esc(r.descriptive_title) + '</td>' +
           '<td style="' + td + '"><select data-f="group_label">' + groups + '</select></td>' +
-          '<td style="' + td + '">' + days + '<div class="hint" data-tba-day style="font-size:.8rem">TBA</div></td>' +
-          '<td style="' + td + ';white-space:nowrap"><input type="time" data-f="start_time" value="' + esc(r.start_time) + '"> to <input type="time" data-f="end_time" value="' + esc(r.end_time) + '"><div class="hint" data-tba-time style="font-size:.8rem">TBA</div></td>' +
+          '<td style="' + td + '">' + days + '<div class="hint" data-tba-day style="font-size:.8rem;display:' + (r.tba_day && !r.edited ? '' : 'none') + '">TBA</div></td>' +
+          '<td style="' + td + ';white-space:nowrap"><input type="time" data-f="start_time" value="' + esc(r.start_time) + '"> to <input type="time" data-f="end_time" value="' + esc(r.end_time) + '"><div class="hint" data-tba-time style="font-size:.8rem;display:' + (r.tba_time && !r.edited ? '' : 'none') + '">TBA</div></td>' +
           '<td style="' + td + '">' + esc(r.instructor || 'TBA') + '</td>' +
           '<td style="' + td + '"><input data-f="room" value="' + esc(r.room) + '" maxlength="40" style="width:100%;box-sizing:border-box"></td>' +
           '</tr>';
       }).join('');
       $('#sch-list').innerHTML = '<div style="display:flex;gap:10px;align-items:center;flex-wrap:wrap;margin-bottom:8px">' +
         '<label>Rows per page <select id="sch-size"><option>10</option><option>25</option><option>50</option></select></label>' +
-        '<span class="hint">' + schRows.length + ' subject(s)</span></div>' +
+        '<span class="hint">' + view.length + ' subject(s)</span></div>' +
         '<table style="width:100%;border-collapse:collapse;font-size:.9rem"><thead><tr>' +
         ['Code', 'Descriptive title', 'Group', 'Day', 'Time', 'Instructor', 'Room'].map(function (t) { return '<th style="' + th + '">' + t + '</th>'; }).join('') +
         '</tr></thead><tbody>' + rowsHtml + '</tbody></table>' +
@@ -1556,15 +1562,18 @@
       $('#sch-prev').onclick = function () { schCapture(); schPage--; schRender(); schCheck(); };
       $('#sch-next').onclick = function () { schCapture(); schPage++; schRender(); schCheck(); };
       $('#sch-save').onclick = schSave;
-      schRefreshTba();
     }
-    function schRefreshTba() {
-      document.querySelectorAll('#sch-list tr[data-row]').forEach(function (tr) {
-        var anyDay = tr.querySelector('[data-day]:checked');
-        var st = tr.querySelector('[data-f="start_time"]').value, en = tr.querySelector('[data-f="end_time"]').value;
-        tr.querySelector('[data-tba-day]').style.display = anyDay ? 'none' : '';
-        tr.querySelector('[data-tba-time]').style.display = (st || en) ? 'none' : '';
-      });
+    // Hides a row's TBA as soon as it is edited (no TBA while editing).
+    function schTouch(e) {
+      var tr = e.target && e.target.closest ? e.target.closest('tr[data-row]') : null;
+      if (tr) {
+        var r = schRows[Number(tr.getAttribute('data-row'))];
+        if (r) r.edited = true;
+        var d = tr.querySelector('[data-tba-day]'), t = tr.querySelector('[data-tba-time]');
+        if (d) d.style.display = 'none';
+        if (t) t.style.display = 'none';
+      }
+      schDirty = true; schCapture(); schCheck();
     }
     // Live conflict check: one check per year level and section (all three sections when none is picked).
     function schCheck() {
@@ -1612,7 +1621,7 @@
     function schLoad(silent) {
       if (!silent) schDirty = false;
       fetch('/api/registrar/schedules?' + schCollectParams(), { credentials: 'same-origin' }).then(function (r) { return r.json(); }).then(function (j) {
-        schRows = j.rows || [];
+        schRows = (j.rows || []).map(function (r) { r.tba_day = !r.days; r.tba_time = !(r.start_time && r.end_time); r.edited = false; return r; });
         if (!silent) schPage = 1;
         if (!schRows.length) { $('#sch-list').innerHTML = '<p class="hint">No subjects for the active term yet.</p>'; $('#sch-conflicts').innerHTML = ''; return; }
         schRender();
@@ -1627,8 +1636,9 @@
     }, 10000);
     $('#sch-year').onchange = function () { schLoad(); };
     $('#sch-section').onchange = function () { schLoad(); };
-    $('#sch-list').oninput = function () { schDirty = true; schCapture(); schRefreshTba(); schCheck(); };
-    $('#sch-list').onchange = function () { schDirty = true; schCapture(); schRefreshTba(); schCheck(); };
+    $('#sch-list').oninput = schTouch;
+    $('#sch-list').onchange = schTouch;
+    $('#sch-filter').oninput = function () { schCapture(); schPage = 1; schRender(); };
     function schSave() {
       var msg = $('#sch-msg'); msg.textContent = '';
       schCapture();
