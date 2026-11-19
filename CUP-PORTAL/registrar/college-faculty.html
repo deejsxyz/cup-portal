@@ -422,7 +422,7 @@
     if (st && en && en <= st) { msg.textContent = 'The end time must be after the start time.'; return; }
     var time = st ? fmt12(st) + ' - ' + fmt12(en) : '';
     var body = { faculty_id: $('asgFaculty').value, subject_college: COLLEGE, program: $('asgProgram').value, course_codes: codes, years: years,
-      sections: sec ? [sec] : [], group_label: group, day_label: $('asgDay').value.trim(), time_slot: time };
+      sections: sec ? [sec] : [], group_label: group, day_label: $('asgDay').value.trim() || 'TBA', time_slot: time || 'TBA' };
     if (!body.faculty_id) { msg.textContent = 'Choose a faculty member.'; return; }
     if (!body.program) { msg.textContent = 'Choose a program.'; return; }
     if (!body.course_codes.length) { msg.textContent = 'Choose at least one subject.'; return; }
