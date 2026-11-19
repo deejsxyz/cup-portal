@@ -98,14 +98,21 @@
   }
 
   // Live update: re-read the student list every 10 seconds, so a CSC payment or other change shows without reloading.
+  // Redraws only when the open student's status or CSC payment changed, so nothing flickers or resets otherwise.
   function refreshLive() {
+    if (document.hidden) return;
     getJson('/api/registrar/students?college=' + encodeURIComponent(COLLEGE)).then(function (res) {
       if (!res.ok) return;
+      var before = current ? (current.status + '|' + !!current.csc_paid) : '';
       students = res.j.students || [];
-      if (current) open(current.student_no);
+      if (!current) return;
+      var now = students.filter(function (x) { return x.student_no === current.student_no; })[0];
+      if (!now) return;
+      if ((now.status + '|' + !!now.csc_paid) !== before) open(current.student_no);
+      else current = now;
     }).catch(function () {});
   }
-  setInterval(refreshLive, 10000);
+  setInterval(refreshLive, 15000);
 
   q.addEventListener('input', function () {
     var v = q.value.trim().toLowerCase();
