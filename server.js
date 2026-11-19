@@ -3630,6 +3630,54 @@ function schOverlaps(a, b) {
   if (![...da].some((d) => db.has(d))) return false;
   return a.st < b.et && b.st < a.et;
 }
+// Subject schedule as a PDF file. The page sends the rows it shows; the server lays them out as a table.
+app.post('/api/registrar/schedules/pdf', requireRegistrar, (req, res) => {
+  const b = req.body || {};
+  const college = regCollege(req, b.college || req.query.college);
+  if (!college) return res.status(403).json({ error: 'Choose a college.' });
+  const rows = (Array.isArray(b.rows) ? b.rows : []).slice(0, 1000).map((r) => ({
+    code: String(r.code || '').slice(0, 40), title: String(r.title || '').slice(0, 120), group: String(r.group || '').slice(0, 30),
+    section: String(r.section || '').slice(0, 10), day: String(r.day || '').slice(0, 40), time: String(r.time || '').slice(0, 60),
+    instructor: String(r.instructor || '').slice(0, 120), room: String(r.room || '').slice(0, 40)
+  }));
+  if (!rows.length) return res.status(400).json({ error: 'Nothing to print.' });
+  const doc = new PDFDocument({ size: 'A4', layout: 'landscape', margin: 36 });
+  res.setHeader('Content-Type', 'application/pdf');
+  res.setHeader('Content-Disposition', 'attachment; filename="Subject-Schedule-' + college + '.pdf"');
+  doc.pipe(res);
+  doc.font('Helvetica-Bold').fontSize(14).text(college + ' | Subject Schedule');
+  doc.font('Helvetica').fontSize(9).text('Printed ' + new Date().toLocaleString('en-PH'));
+  doc.moveDown(0.8);
+  const cols = [
+    ['Code', 70, 'code'], ['Descriptive title', 200, 'title'], ['Group', 50, 'group'], ['Section', 50, 'section'],
+    ['Day', 80, 'day'], ['Time', 150, 'time'], ['Instructor', 170, 'instructor'], ['Room', 80, 'room']
+  ];
+  const x0 = doc.page.margins.left, rowH = 20, bottom = doc.page.height - doc.page.margins.bottom;
+  let y = doc.y;
+  const drawRow = (vals, bold) => {
+    doc.font(bold ? 'Helvetica-Bold' : 'Helvetica').fontSize(9);
+    let x = x0;
+    cols.forEach(([, w], i) => {
+      doc.rect(x, y, w, rowH).stroke();
+      doc.text(String(vals[i] || ''), x + 4, y + 6, { width: w - 8, height: rowH - 6, ellipsis: true, lineBreak: false });
+      x += w;
+    });
+    y += rowH;
+  };
+  const newPageIfNeeded = () => {
+    if (y + rowH <= bottom) return;
+    doc.addPage();
+    y = doc.page.margins.top;
+    drawRow(cols.map((c) => c[0]), true);
+  };
+  drawRow(cols.map((c) => c[0]), true);
+  rows.forEach((r) => {
+    newPageIfNeeded();
+    drawRow(cols.map((c) => r[c[2]]), false);
+  });
+  doc.end();
+});
+
 app.post('/api/registrar/schedules/check', requireRegistrar, async (req, res) => {
   const b = req.body || {};
   const college = regCollege(req, b.college || req.query.college);
