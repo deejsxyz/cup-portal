@@ -1850,7 +1850,7 @@
             var code = esc(r.course_code);
             if (sjEdit === r.course_code) {
               return '<tr>' +
-                '<td style="' + td + '">' + code + '</td>' +
+                '<td style="' + td + '"><input data-f="course_code" value="' + code + '" style="width:110px"></td>' +
                 '<td style="' + td + '"><input data-f="descriptive_title" value="' + esc(r.descriptive_title) + '" style="min-width:220px"></td>' +
                 '<td style="' + td + '"><input data-f="units" value="' + esc(r.units) + '" style="width:60px"></td>' +
                 '<td style="' + td + '"><select data-f="year_level"><option value="">-</option>' + ['1', '2', '3', '4'].map(function (y) { return '<option value="' + y + '"' + (String(r.year_level) === y ? ' selected' : '') + '>' + y + '</option>'; }).join('') + '</select></td>' +

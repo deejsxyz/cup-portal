@@ -1392,6 +1392,8 @@ app.put('/api/registrar/courses/:code', requireRegistrar, async (req, res) => {
   if (!REG_COLLEGES.includes(college)) return res.status(400).json({ error: 'Choose a valid college.' });
   const code = String(req.params.code || '').trim().toUpperCase().slice(0, 50);
   const b = req.body || {};
+  const newCode = String(b.course_code == null ? code : b.course_code).trim().toUpperCase().slice(0, 50);
+  if (!newCode) return res.status(400).json({ error: 'Subject code is required.' });
   const title = String(b.descriptive_title || '').trim().slice(0, 200);
   const units = Number(b.units);
   const yl = String(b.year_level == null ? '' : b.year_level).trim();
@@ -1402,11 +1404,20 @@ app.put('/api/registrar/courses/:code', requireRegistrar, async (req, res) => {
   if (yearLevel !== null && (!Number.isInteger(yearLevel) || yearLevel < 1 || yearLevel > 4)) return res.status(400).json({ error: 'Year level must be 1 to 4.' });
   if (semester && !REG_SEMESTERS.includes(semester)) return res.status(400).json({ error: 'Choose a valid semester.' });
   try {
+    if (newCode !== code) {
+      const dup = await pool.query('SELECT 1 FROM reg_courses WHERE college = $1 AND course_code = $2', [college, newCode]);
+      if (dup.rows.length) return res.status(409).json({ error: newCode + ' already exists for this college.' });
+      const used = await pool.query(
+        `SELECT (SELECT COUNT(*) FROM reg_schedules WHERE college = $1 AND course_code = $2)
+              + (SELECT COUNT(*) FROM reg_subject_assignments WHERE college = $1 AND course_code = $2)
+              + (SELECT COUNT(*) FROM reg_grades WHERE course_code = $2) AS n`, [college, code]);
+      if (Number(used.rows[0].n) > 0) return res.status(409).json({ error: code + ' has schedules, assignments or grades. The code can only be changed before it is used.' });
+    }
     const { rowCount } = await pool.query(
-      'UPDATE reg_courses SET descriptive_title = $3, units = $4, year_level = $5, semester = $6 WHERE college = $1 AND course_code = $2',
-      [college, code, title, units, yearLevel, semester]);
+      'UPDATE reg_courses SET course_code = $7, descriptive_title = $3, units = $4, year_level = $5, semester = $6 WHERE college = $1 AND course_code = $2',
+      [college, code, title, units, yearLevel, semester, newCode]);
     if (!rowCount) return res.status(404).json({ error: 'Subject not found.' });
-    logAction(req, req.reg.role === 'registrar' ? college + ' registrar' : 'University Registrar', 'subject edited', college + ': ' + code);
+    logAction(req, req.reg.role === 'registrar' ? college + ' registrar' : 'University Registrar', 'subject edited', college + ': ' + code + (newCode !== code ? ' to ' + newCode : ''));
     res.json({ ok: true });
   } catch (err) {
     console.error(err);
