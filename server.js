@@ -3470,9 +3470,8 @@ app.get('/api/registrar/schedules', requireRegistrar, async (req, res) => {
   const courses = await pool.query(
     `SELECT x.course_code, COALESCE(c.descriptive_title, '') AS descriptive_title, COALESCE(c.units, 0) AS units, COALESCE(c.year_level, 0) AS year_level
        FROM (
-         SELECT course_code FROM reg_courses WHERE college = $1 AND ($2 = 0 OR year_level = $2)
-         UNION
-         SELECT course_code FROM reg_subject_assignments WHERE college = $1 AND term = $3 AND academic_year = $4 AND ($2 = 0 OR $2 = ANY(years))
+         SELECT DISTINCT course_code FROM reg_subject_assignments
+          WHERE college = $1 AND term = $3 AND academic_year = $4 AND ($2 = 0 OR $2 = ANY(years))
        ) x
        LEFT JOIN LATERAL (SELECT descriptive_title, units, year_level FROM reg_courses rc WHERE rc.course_code = x.course_code ORDER BY (rc.college = $1) DESC, rc.year_level LIMIT 1) c ON true
       WHERE ($5 = '' OR x.course_code = ANY(string_to_array($5, '|')))
@@ -3506,9 +3505,6 @@ app.get('/api/registrar/schedules', requireRegistrar, async (req, res) => {
     const inScope = (a) => a.course_code === c.course_code && (!yr || a.years.includes(yr)) && (!section || a.sections.includes(section));
     const groups = new Set();
     asg.rows.filter(inScope).forEach((a) => groups.add(a.group_label));
-    sch.rows.filter((x) => x.course_code === c.course_code && (!yr || x.year_level === yr) && (!section || x.section === section))
-      .forEach((x) => groups.add(x.group_label));
-    if (!groups.size) groups.add('');
     [...groups].sort((p, q) => p.localeCompare(q, undefined, { numeric: true })).forEach((g) => {
       const names = [...new Set(asg.rows.filter((a) => inScope(a) && a.group_label === g).map((a) => a.name))];
       const x = schFirst.get(c.course_code + '|' + g + '|' + yr) || {};
