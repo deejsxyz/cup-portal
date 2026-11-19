@@ -56,6 +56,7 @@
   .dl-status.ok { color: #1f6b2f; }
   .dl-status.err { color: #9b1c1c; }
   .dl-status.muted { color: #5a6a5a; font-weight: 400; }
+  .live-clock { font-size: 13px; font-weight: 700; white-space: nowrap; }
 </style>
 <script src="/CUP-PORTAL/portal-session.js" data-logout="/api/portal/logout" data-login="/CUP-PORTAL/faculty/"></script>
 </head>
@@ -67,6 +68,7 @@
       <small>Faculty · Grade Sheet</small>
     </div>
     <div class="who">
+      <span id="liveClock" class="live-clock"></span>
       <span id="who"></span>
       <a href="/CUP-PORTAL/change-password">Change Password</a>
       <button class="btn gold" id="logout" type="button">Log Out</button>
@@ -465,6 +467,20 @@
       if (fc && !fc.hidden) { fc.hidden = true; return; }
     });
   })();
+</script>
+<script>
+(function () {
+  var el = document.getElementById('liveClock');
+  if (!el) return;
+  var f = new Intl.DateTimeFormat('en-US', { timeZone: 'Asia/Manila', weekday: 'long', month: 'long', day: 'numeric', year: 'numeric', hour: 'numeric', minute: '2-digit', second: '2-digit', hour12: true });
+  function tick() {
+    var p = {};
+    f.formatToParts(new Date()).forEach(function (x) { p[x.type] = x.value; });
+    el.textContent = '\uD83D\uDCC5 ' + p.weekday + ', ' + p.month + ' ' + p.day + ', ' + p.year + ' at ' + p.hour + ':' + p.minute + ':' + p.second + ' ' + p.dayPeriod;
+  }
+  tick();
+  setInterval(tick, 1000);
+})();
 </script>
 </body>
 </html>
