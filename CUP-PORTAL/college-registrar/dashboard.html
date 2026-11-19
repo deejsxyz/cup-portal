@@ -1496,7 +1496,7 @@
     safeOn('#al-load', 'click', loadActivity);
     // Subjects and units (college registrar: own college; University Registrar: any college)
     // Subject schedule: the active term's subjects load on open; the year and section filters update the table.
-    var schRows = [], schPage = 1, schSize = 10, schConf = {}, schCheckTimer = null;
+    var schRows = [], schPage = 1, schSize = 10, schConf = {}, schCheckTimer = null, schDirty = false;
     var SCH_DAYS = ['MON', 'TUE', 'WED', 'THU', 'FRI', 'SAT', 'SUN'];
     function schCollectParams() {
       var p = 'year_level=' + encodeURIComponent($('#sch-year').value) + '&section=' + encodeURIComponent($('#sch-section').value);
@@ -1534,9 +1534,9 @@
           '<td style="' + td + '">' + esc(r.course_code) + '</td>' +
           '<td style="' + td + '">' + esc(r.descriptive_title) + '</td>' +
           '<td style="' + td + '"><select data-f="group_label">' + groups + '</select></td>' +
-          '<td style="' + td + '">' + days + '</td>' +
-          '<td style="' + td + ';white-space:nowrap"><input type="time" data-f="start_time" value="' + esc(r.start_time) + '"> to <input type="time" data-f="end_time" value="' + esc(r.end_time) + '"></td>' +
-          '<td style="' + td + '">' + esc(r.instructor || '—') + '</td>' +
+          '<td style="' + td + '">' + days + '<div class="hint" data-tba-day style="font-size:.8rem">TBA</div></td>' +
+          '<td style="' + td + ';white-space:nowrap"><input type="time" data-f="start_time" value="' + esc(r.start_time) + '"> to <input type="time" data-f="end_time" value="' + esc(r.end_time) + '"><div class="hint" data-tba-time style="font-size:.8rem">TBA</div></td>' +
+          '<td style="' + td + '">' + esc(r.instructor || 'TBA') + '</td>' +
           '<td style="' + td + '"><input data-f="room" value="' + esc(r.room) + '" maxlength="40" style="width:100%;box-sizing:border-box"></td>' +
           '</tr>';
       }).join('');
@@ -1556,6 +1556,15 @@
       $('#sch-prev').onclick = function () { schCapture(); schPage--; schRender(); schCheck(); };
       $('#sch-next').onclick = function () { schCapture(); schPage++; schRender(); schCheck(); };
       $('#sch-save').onclick = schSave;
+      schRefreshTba();
+    }
+    function schRefreshTba() {
+      document.querySelectorAll('#sch-list tr[data-row]').forEach(function (tr) {
+        var anyDay = tr.querySelector('[data-day]:checked');
+        var st = tr.querySelector('[data-f="start_time"]').value, en = tr.querySelector('[data-f="end_time"]').value;
+        tr.querySelector('[data-tba-day]').style.display = anyDay ? 'none' : '';
+        tr.querySelector('[data-tba-time]').style.display = (st || en) ? 'none' : '';
+      });
     }
     // Live conflict check: one check per year level and section (all three sections when none is picked).
     function schCheck() {
@@ -1600,20 +1609,26 @@
       }, 400);
     }
     // Loads the subjects of the active term for the chosen filters (both optional).
-    function schLoad() {
+    function schLoad(silent) {
+      if (!silent) schDirty = false;
       fetch('/api/registrar/schedules?' + schCollectParams(), { credentials: 'same-origin' }).then(function (r) { return r.json(); }).then(function (j) {
         schRows = j.rows || [];
-        schPage = 1;
+        if (!silent) schPage = 1;
         if (!schRows.length) { $('#sch-list').innerHTML = '<p class="hint">No subjects for the active term yet.</p>'; $('#sch-conflicts').innerHTML = ''; return; }
         schRender();
         schCheck();
       }).catch(function () { $('#sch-msg').textContent = 'Could not load the schedule.'; });
     }
     function schOpen() { schLoad(); }
+    // Live update: every 10 seconds the table re-reads the active term (Subject Assignments and schedules saved elsewhere). Paused while there are unsaved edits.
+    setInterval(function () {
+      var panel = document.getElementById('schedule-section');
+      if (!schDirty && panel && panel.classList.contains('on')) schLoad(true);
+    }, 10000);
     $('#sch-year').onchange = function () { schLoad(); };
     $('#sch-section').onchange = function () { schLoad(); };
-    $('#sch-list').oninput = function () { schCapture(); schCheck(); };
-    $('#sch-list').onchange = function () { schCapture(); schCheck(); };
+    $('#sch-list').oninput = function () { schDirty = true; schCapture(); schRefreshTba(); schCheck(); };
+    $('#sch-list').onchange = function () { schDirty = true; schCapture(); schRefreshTba(); schCheck(); };
     function schSave() {
       var msg = $('#sch-msg'); msg.textContent = '';
       schCapture();
@@ -1629,7 +1644,8 @@
         .then(function (x) {
           if (!x.ok) { msg.textContent = x.j.error || 'Could not save.'; return; }
           msg.textContent = 'Saved.';
-          schLoad();
+          schDirty = false;
+          schLoad(true);
         }).catch(function () { msg.textContent = 'Could not save.'; });
     }
     function sjCollege() { return me.role === 'superadmin' ? $('#sj-college').value : me.college; }
