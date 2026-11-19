@@ -380,7 +380,6 @@
           <p class="hint">Subjects of the active term load automatically. Pick the group, days, time and room. The instructor comes from Subject Assignments. Leave Section blank to save to every section of the year level. This shows on the student's advising slip and Certificate of Enrollment.</p>
           <div style="display:flex;gap:10px;flex-wrap:wrap;align-items:flex-end">
             <label>Subject <input id="sch-subject" list="sch-subject-list" placeholder="Type to search" autocomplete="off" style="width:300px"></label><datalist id="sch-subject-list"></datalist>
-          <button type="button" id="sch-add-row">Add group row</button>
           <label>Year level <select id="sch-year"><option value="">All years</option><option>1</option><option>2</option><option>3</option><option>4</option></select></label>
           <label>Section <select id="sch-section"><option value="">All sections</option><option>A</option><option>B</option><option>C</option></select></label>
                     </div>
@@ -1539,8 +1538,8 @@
           return '<label style="margin-right:6px;white-space:nowrap"><input type="checkbox" data-day="' + d + '"' + (picked.indexOf(d) !== -1 ? ' checked' : '') + '> ' + d.charAt(0) + d.slice(1).toLowerCase() + '</label>';
         }).join('');
         return '<tr data-row="' + i + '"' + (schConf[i] && schConf[i].length ? ' style="background:#fde8e8"' : '') + '>' +
-          '<td style="' + td + '"><input type="checkbox" data-pick title="Tick this row, then Add group row"></td>' +
-          '<td style="' + td + '"><button type="button" data-x="' + esc(r.course_code) + '" title="Remove this subject from the table" style="border:0;background:none;color:#b91c1c;font-weight:700;cursor:pointer;padding:0 6px 0 0">×</button>' + esc(r.course_code) + '</td>' +
+          '<td style="' + td + '"><button type="button" data-add="' + i + '" title="Add a group row for this subject" style="border:0;background:none;color:#166534;font-weight:700;cursor:pointer;padding:0 6px 0 0">+</button>' +
+          '<button type="button" data-x="' + esc(r.course_code) + '" title="Remove this subject from the table" style="border:0;background:none;color:#b91c1c;font-weight:700;cursor:pointer;padding:0 6px 0 0">×</button>' + esc(r.course_code) + '</td>' +
           '<td style="' + td + '">' + esc(r.descriptive_title) + '</td>' +
           '<td style="' + td + '"><select data-f="group_label">' + groups + '</select></td>' +
           '<td style="' + td + '">' + days + '<div class="hint" data-tba-day style="font-size:.8rem;display:' + (r.tba_day && !r.edited ? '' : 'none') + '">TBA</div></td>' +
@@ -1553,7 +1552,7 @@
         '<label>Rows per page <select id="sch-size"><option>10</option><option>25</option><option>50</option></select></label>' +
         '<span class="hint">' + view.length + ' subject(s)</span></div>' +
         '<table style="width:100%;border-collapse:collapse;font-size:.9rem"><thead><tr>' +
-        ['', 'Code', 'Descriptive title', 'Group', 'Day', 'Time', 'Instructor', 'Room'].map(function (t) { return '<th style="' + th + '">' + t + '</th>'; }).join('') +
+        ['Code', 'Descriptive title', 'Group', 'Day', 'Time', 'Instructor', 'Room'].map(function (t) { return '<th style="' + th + '">' + t + '</th>'; }).join('') +
         '</tr></thead><tbody>' + rowsHtml + '</tbody></table>' +
         '<div style="display:flex;gap:10px;align-items:center;margin-top:10px">' +
         '<button type="button" id="sch-prev"' + (schPage <= 1 ? ' disabled' : '') + '>Previous</button>' +
@@ -1693,6 +1692,8 @@
     $('#sch-list').oninput = schTouch;
     // The × before a code removes that subject from the table (saved schedules stay until changed).
     $('#sch-list').addEventListener('click', function (e) {
+      var add = e.target.closest ? e.target.closest('[data-add]') : null;
+      if (add) { schAddGroup(Number(add.getAttribute('data-add'))); return; }
       var b = e.target.closest ? e.target.closest('[data-x]') : null;
       if (!b) return;
       var code = b.getAttribute('data-x');
@@ -1705,30 +1706,19 @@
       schCheck();
     });
     $('#sch-list').onchange = schTouch;
-    // Add group row: a new row for the ticked subject, placed under the ticked row (or the last picked subject if none is ticked).
-    $('#sch-add-row').onclick = function () {
+    // + before a code: a new group row for that subject, placed right under this row.
+    function schAddGroup(refIdx) {
       schCapture();
-      var tick = document.querySelector('#sch-list [data-pick]:checked');
-      var refIdx = tick ? Number(tick.closest('tr').getAttribute('data-row')) : -1;
-      var ref = refIdx >= 0 ? schRows[refIdx] : null;
-      var code = ref ? ref.course_code : schSubject;
-      if (!code) return;
-      var c = ref || schMajor.filter(function (x) { return x.course_code === code; })[0];
-      if (!c) return;
-      var nr = { course_code: code, descriptive_title: c.descriptive_title, units: c.units,
-        year_level: Number(c.year_level) || Number($('#sch-year').value) || 1, group_label: '', instructor: '',
+      var ref = schRows[refIdx];
+      if (!ref) return;
+      var nr = { course_code: ref.course_code, descriptive_title: ref.descriptive_title, units: ref.units,
+        year_level: ref.year_level || Number($('#sch-year').value) || 1, group_label: '', instructor: '',
         days: '', start_time: '', end_time: '', room: '', tba_day: true, tba_time: true, edited: true };
-      var at;
-      if (ref) at = refIdx + 1;
-      else {
-        at = schRows.length;
-        schRows.forEach(function (r, i) { if (r.course_code === code) at = i + 1; });
-      }
-      schRows.splice(at, 0, nr);
+      schRows.splice(refIdx + 1, 0, nr);
       schDirty = true;
       schRender();
       schCheck();
-    };
+    }
     function schSave() {
       var msg = $('#sch-msg'); msg.textContent = '';
       schCapture();
