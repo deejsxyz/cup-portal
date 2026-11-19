@@ -563,7 +563,6 @@
       else tr.scrollIntoView({ block: 'center' });
     }
     if (!years.length) return asgFail('Choose at least one year level.', tr.querySelector('[data-f="year"]'));
-    if (!group) return asgFail('Enter a group, for example G1.', tr.querySelector('[data-f="group"]'));
     if (!!st !== !!en) return asgFail('Set both the start and end time, or leave both blank.', tr.querySelector(st ? '[data-f="end"]' : '[data-f="start"]'));
     // End earlier than start = runs past midnight (e.g. 6:00 PM - 2:00 AM); allowed.
     var time = st ? asgFmt12(st) + ' - ' + asgFmt12(en) : '';

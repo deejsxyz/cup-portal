@@ -4093,8 +4093,8 @@ app.post('/api/registrar/subject-assignments/:id/update', requireRegistrar, asyn
   let sections = (Array.isArray(b.sections) ? b.sections : []).map((s) => String(s).trim()).filter((s) => ['A', 'B', 'C'].includes(s));
   let groupLabel = String(b.group_label || '').trim().toUpperCase().slice(0, 30);
   if (/^\d{1,2}$/.test(groupLabel)) groupLabel = 'G' + groupLabel;
-  if (!groupLabel) return res.status(400).json({ error: 'Enter a group, for example G1.' });
-  if (!(/^G\d{1,2}$/.test(groupLabel) || (/^G\d{1,2}[A-C]$/.test(groupLabel) && sections.includes(groupLabel.slice(-1))))) {
+  // Group is optional: blank means no group yet.
+  if (groupLabel && !(/^G\d{1,2}$/.test(groupLabel) || (/^G\d{1,2}[A-C]$/.test(groupLabel) && sections.includes(groupLabel.slice(-1))))) {
     return res.status(400).json({ error: 'Group must look like G1 (all selected sections) or G1A (section A must be selected).' });
   }
   const gsec = /^G\d{1,2}([A-C])$/.exec(groupLabel);
