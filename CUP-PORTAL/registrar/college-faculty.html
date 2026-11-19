@@ -161,10 +161,11 @@
             <th class="border border-slate-300 px-2 py-1.5 text-left">Time</th>
             <th class="border border-slate-300 px-2 py-1.5 text-left">Room</th>
             <th class="border border-slate-300 px-2 py-1.5 text-left">Faculty</th>
+            <th class="border border-slate-300 px-2 py-1.5 text-center">Edit</th>
             <th class="border border-slate-300 px-1 py-1.5 w-6"></th>
           </tr>
         </thead>
-        <tbody id="asgBody"><tr><td colspan="11" class="border border-slate-300 px-2 py-4 text-center text-slate-500">Loading…</td></tr></tbody>
+        <tbody id="asgBody"><tr><td colspan="12" class="border border-slate-300 px-2 py-4 text-center text-slate-500">Loading…</td></tr></tbody>
       </table>
     </div>
   </div>
@@ -337,6 +338,15 @@
 
   /* Subject Assignments */
   var asgRows = [];
+  var asgEditId = null;   // id of the row being edited in place (null = none)
+  function asgFmt12(t) { var p = t.split(':'), hh = Number(p[0]); return (hh % 12 || 12) + ':' + p[1] + ' ' + (hh >= 12 ? 'PM' : 'AM'); }
+  // "1:00 PM - 2:00 PM" to ["13:00", "14:00"] for the time pickers.
+  function asgParseTime(text) {
+    var m = /^(\d{1,2}):(\d{2})\s*(AM|PM)\s*-\s*(\d{1,2}):(\d{2})\s*(AM|PM)$/i.exec(text || '');
+    if (!m) return ['', ''];
+    function to24(h, mi, ap) { return String((Number(h) % 12) + (/PM/i.test(ap) ? 12 : 0)).padStart(2, '0') + ':' + mi; }
+    return [to24(m[1], m[2], m[3]), to24(m[4], m[5], m[6])];
+  }
   // Smallest group number (1 to 20) not yet used by this subject.
   function asgNextGroup(code) {
     var used = {};
@@ -364,34 +374,86 @@
       $('asgSave').scrollIntoView({ behavior: 'smooth', block: 'center' });
     });
   }
+  // One row of the table. The row being edited shows inputs for day, time and room;
+  // its button reads Cancel, and turns into Save once something is changed.
+  function asgRowHtml(a) {
+    var td = 'class="border border-slate-300 px-2 py-1.5"';
+    var yrs = (a.years || []).slice().sort().map(function (y) { return YEAR[y]; }).join(', ');
+    var secs = (a.sections || []).slice().sort().join(', ');
+    var editing = asgEditId === String(a.id);
+    var day, time, room, act;
+    if (editing) {
+      var t = asgParseTime(a.time_slot);
+      var inp = 'class="border border-slate-300 rounded px-1 py-0.5 text-xs w-full"';
+      day = '<input data-f="day" maxlength="40" value="' + esc(a.day_label && a.day_label !== 'TBA' ? a.day_label : '') + '" placeholder="MWF" ' + inp + '>';
+      time = '<input data-f="start" type="time" value="' + esc(t[0]) + '" ' + inp + '> to <input data-f="end" type="time" value="' + esc(t[1]) + '" ' + inp + '>';
+      room = '<input data-f="room" maxlength="40" value="' + esc(a.room || '') + '" placeholder="RM 204" ' + inp + '>';
+      act = '<button type="button" data-act="cancel" data-id="' + a.id + '" class="px-2 py-1 bg-slate-500 hover:bg-slate-600 text-white rounded text-[11px] font-bold cursor-pointer">Cancel</button>';
+    } else {
+      day = esc(a.day_label || '');
+      time = esc(a.time_slot || '');
+      room = esc(a.room || '');
+      act = '<button type="button" data-act="edit" data-id="' + a.id + '" class="px-2 py-1 bg-indigo-700 hover:bg-indigo-800 text-white rounded text-[11px] font-bold cursor-pointer">Edit</button>';
+    }
+    return '<tr' + (editing ? ' data-editing="1"' : '') + '>' +
+      '<td class="border border-slate-300 px-1 py-1.5 text-center"><button type="button" data-add-group="' + a.id + '" title="Add a group for this subject" class="text-emerald-800 font-black text-lg leading-none cursor-pointer">+</button></td>' +
+      '<td ' + td + '>' + esc(a.course_code) + ' — ' + esc(a.descriptive_title || '') + '</td>' +
+      '<td ' + td + '>' + esc(a.program || '') + '</td>' +
+      '<td ' + td + '>' + esc(yrs) + '</td><td ' + td + '>' + esc(secs) + '</td>' +
+      '<td ' + td + '>' + esc(a.group_label || '') + '</td>' +
+      '<td ' + td + '>' + day + '</td>' +
+      '<td ' + td + '>' + time + '</td>' +
+      '<td ' + td + '>' + room + '</td>' +
+      '<td ' + td + '>' + esc(a.faculty) + '</td>' +
+      '<td class="border border-slate-300 px-2 py-1.5 text-center">' + act + '</td>' +
+      '<td class="border border-slate-300 px-1 py-1.5 text-center"><button type="button" data-remove="' + a.id + '" title="Remove this assignment" class="text-red-700 font-black text-lg leading-none cursor-pointer">×</button></td></tr>';
+  }
+  function asgRender() {
+    $('asgBody').innerHTML = asgRows.length ? asgRows.map(asgRowHtml).join('') : '<tr><td colspan="12" class="border border-slate-300 px-2 py-4 text-center text-slate-500">No subject assignments yet.</td></tr>';
+  }
   function loadAssignments() {
     return api('/api/registrar/subject-assignments').then(function (res) {
-      if (!res.ok) { $('asgBody').innerHTML = '<tr><td colspan="11" class="border border-slate-300 px-2 py-4 text-center text-slate-500">' + esc(res.j.error || 'Could not load.') + '</td></tr>'; return; }
+      if (!res.ok) { $('asgBody').innerHTML = '<tr><td colspan="12" class="border border-slate-300 px-2 py-4 text-center text-slate-500">' + esc(res.j.error || 'Could not load.') + '</td></tr>'; return; }
       term = res.j.term; ay = res.j.academic_year;
       $('asgTerm').textContent = term && ay ? 'Active term: ' + term + ' · A.Y. ' + ay : 'The academic year and semester are not set yet. The University Registrar sets them in Settings → Grading period.';
-      var rows = res.j.assignments || [];
-      asgRows = rows;
-      $('asgBody').innerHTML = rows.length ? rows.map(function (a) {
-        var yrs = (a.years || []).sort().map(function (y) { return YEAR[y]; }).join(', ');
-        var secs = (a.sections || []).sort().join(', ');
-        return '<tr><td class="border border-slate-300 px-1 py-1.5 text-center"><button type="button" data-add-group="' + a.id + '" title="Add a group for this subject" class="text-emerald-800 font-black text-lg leading-none cursor-pointer">+</button></td>' +
-          '<td class="border border-slate-300 px-2 py-1.5">' + esc(a.course_code) + ' — ' + esc(a.descriptive_title || '') + '</td>' +
-          '<td class="border border-slate-300 px-2 py-1.5">' + esc(a.program || '') + '</td>' +
-          '<td class="border border-slate-300 px-2 py-1.5">' + esc(yrs) + '</td><td class="border border-slate-300 px-2 py-1.5">' + esc(secs) + '</td>' +
-          '<td class="border border-slate-300 px-2 py-1.5">' + esc(a.group_label || '') + '</td>' +
-          '<td class="border border-slate-300 px-2 py-1.5">' + esc(a.day_label || '') + '</td>' +
-          '<td class="border border-slate-300 px-2 py-1.5">' + esc(a.time_slot || '') + '</td>' +
-          '<td class="border border-slate-300 px-2 py-1.5">' + esc(a.room || '') + '</td>' +
-          '<td class="border border-slate-300 px-2 py-1.5">' + esc(a.faculty) + '</td>' +
-          '<td class="border border-slate-300 px-1 py-1.5 text-center"><button type="button" data-remove="' + a.id + '" title="Remove this assignment" class="text-red-700 font-black text-lg leading-none cursor-pointer">×</button></td></tr>';
-      }).join('') : '<tr><td colspan="11" class="border border-slate-300 px-2 py-4 text-center text-slate-500">No subject assignments yet.</td></tr>';
+      asgRows = res.j.assignments || [];
+      if (asgEditId && !asgRows.some(function (r) { return String(r.id) === asgEditId; })) asgEditId = null;
+      asgRender();
+    });
+  }
+  // Save the edited row: day, time and room to the assignment and the Subject schedule.
+  function asgSaveRow(id) {
+    var tr = $('asgBody').querySelector('tr[data-editing="1"]');
+    var msg = $('asgMsg');
+    if (!tr) return;
+    var day = tr.querySelector('[data-f="day"]').value.trim();
+    var st = tr.querySelector('[data-f="start"]').value, en = tr.querySelector('[data-f="end"]').value;
+    var room = tr.querySelector('[data-f="room"]').value.trim();
+    if (!!st !== !!en) { msg.textContent = 'Set both the start and end time, or leave both blank.'; return; }
+    if (st && en && en <= st) { msg.textContent = 'The end time must be after the start time.'; return; }
+    var time = st ? asgFmt12(st) + ' - ' + asgFmt12(en) : '';
+    msg.textContent = 'Saving…';
+    post('/api/registrar/subject-assignments/' + id + '/schedule', { day_label: day || 'TBA', time_slot: time || 'TBA', room: room }).then(function (res) {
+      if (!res.ok) { msg.textContent = res.j.error || 'Could not update.'; return; }
+      asgEditId = null;
+      msg.textContent = 'Schedule updated.';
+      loadAssignments();
     });
   }
   $('asgBody').addEventListener('click', function (e) {
+    var act = e.target.closest('[data-act]');
+    if (act) {
+      var id = act.getAttribute('data-id');
+      var kind = act.getAttribute('data-act');
+      if (kind === 'edit') { asgEditId = id; asgRender(); }
+      else if (kind === 'cancel') { asgEditId = null; asgRender(); }
+      else if (kind === 'save') { asgSaveRow(id); }
+      return;
+    }
     var add = e.target.closest('[data-add-group]');
     if (add) {
-      var id = add.getAttribute('data-add-group');
-      var row = asgRows.filter(function (r) { return String(r.id) === id; })[0];
+      var aid = add.getAttribute('data-add-group');
+      var row = asgRows.filter(function (r) { return String(r.id) === aid; })[0];
       if (row) asgAddGroup(row);
       return;
     }
@@ -402,6 +464,17 @@
       loadAssignments();
     });
   });
+  // Changing anything in the editing row turns its Cancel button into Save.
+  $('asgBody').addEventListener('input', function (e) {
+    var tr = e.target.closest ? e.target.closest('tr[data-editing="1"]') : null;
+    if (!tr) return;
+    var btn = tr.querySelector('[data-act]');
+    if (!btn) return;
+    btn.setAttribute('data-act', 'save');
+    btn.textContent = 'Save';
+    btn.className = 'px-2 py-1 bg-emerald-700 hover:bg-emerald-800 text-white rounded text-[11px] font-bold cursor-pointer';
+  });
+
   var catalog = { colleges: [], programs: {}, courses: [] };
   // Programs with majors are listed one entry per major (as in the curriculum), since each major has its own subjects.
   var curriculumPrograms = [];
@@ -508,7 +581,7 @@
 
   Promise.all([loadFaculty(), loadSubjects(), loadAssignments()]).catch(function () {});
   // Keep the list live: reload every 5 seconds while this tab is visible.
-  setInterval(function () { if (!document.hidden) loadAssignments(); }, 5000);
+  setInterval(function () { if (!document.hidden && !asgEditId) loadAssignments(); }, 5000);
 })();
 </script>
 <script src="/CUP-PORTAL/portal-search.js"></script>
