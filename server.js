@@ -3667,12 +3667,18 @@ app.get('/api/registrar/subject-catalog', requireRegistrar, async (req, res) => 
   res.json({ colleges: REG_COLLEGES, programs: REG_PROGRAM_COLLEGES, courses: r.rows });
 });
 
-// Subject codes of one program, from the curriculum import (used by the Program filter in Subject schedule).
+// Subject codes of one program, from the curriculum import (Program filter in Subject schedule).
+// Matches the program name ignoring spaces, case and punctuation, or the abbreviation in brackets, e.g. (ACT).
 app.get('/api/registrar/curriculum-codes', requireRegistrar, async (req, res) => {
   const program = String(req.query.program || '').trim();
-  if (!program) return res.json({ codes: [] });
-  const r = await pool.query('SELECT DISTINCT code FROM curriculum_subjects WHERE program = $1 ORDER BY code', [program]);
-  res.json({ codes: r.rows.map((x) => x.code) });
+  const all = await pool.query('SELECT program, code FROM curriculum_subjects');
+  const known = [...new Set(all.rows.map((r) => r.program))].sort();
+  if (!program) return res.json({ codes: [], known });
+  const norm = (v) => String(v || '').toLowerCase().replace(/[^a-z0-9]/g, '');
+  const abbr = ((program.match(/\(([^)]+)\)\s*$/) || [])[1] || '').toLowerCase();
+  const names = known.filter((k) => norm(k) === norm(program) || (abbr && new RegExp('(^|[^a-z0-9])' + abbr.replace(/[^a-z0-9]/g, '') + '($|[^a-z0-9])', 'i').test(k)));
+  const codes = [...new Set(all.rows.filter((r) => names.includes(r.program)).map((r) => r.code))].sort();
+  res.json({ codes, matched: names, known });
 });
 
 app.post('/api/registrar/subject-assignments', requireRegistrar, async (req, res) => {

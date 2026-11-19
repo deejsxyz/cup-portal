@@ -1676,15 +1676,15 @@
     // Major subjects for "Add another group": every major subject of the college, not only the active term (GEC and other shared subjects left out).
     var schMajor = [];
     // Program filter for the subject search: shows only the subjects of the chosen program (curriculum import).
-    var schProgCodes = null;
+    var schProgCodes = null, schKnown = [];
     function schKey(code) { return String(code || '').replace(/\s+/g, '').toUpperCase(); }
     function schFillSubjectList() {
       var keys = schProgCodes ? schProgCodes.map(schKey) : null;
       var list = schMajor.filter(function (x) { return !keys || keys.indexOf(schKey(x.course_code)) !== -1; });
       if (keys && !list.length) {
         // No curriculum match for this program: keep the subject box working with the college's subjects, and say why.
-        list = schMajor;
-        $('#sch-msg').textContent = 'No curriculum subjects matched this program, so all subjects of the college are shown. Check the curriculum import for this program name.';
+        list = [];
+        $('#sch-msg').textContent = 'No subjects for this program in the curriculum import.' + (schKnown && schKnown.length ? ' Program names in the import: ' + schKnown.join('; ') : ' The curriculum import is empty.');
       } else if (!keys) $('#sch-msg').textContent = '';
       $('#sch-subject-list').innerHTML = list.map(function (x) {
         return '<option value="' + esc(x.course_code + ' — ' + x.descriptive_title) + '"></option>';
@@ -1705,7 +1705,7 @@
       if (!p) { schProgCodes = null; schFillSubjectList(); return; }
       fetch('/api/registrar/curriculum-codes?program=' + encodeURIComponent(p), { credentials: 'same-origin' }).then(function (r) { return r.json(); }).then(function (j) {
         schProgCodes = j.codes || [];
-        if (!schProgCodes.length) schProgCodes = [];
+        schKnown = j.known || [];
         schFillSubjectList();
       }).catch(function () {});
     });
