@@ -2090,7 +2090,7 @@ app.get('/api/faculty/sheet', requirePortal('faculty'), async (req, res) => {
     const t = await activeTerm();
     if (!(await facultyCanTeach(req.portal.id, college, code, year, section, t.term, t.ay))) return res.status(403).json({ error: 'This subject is not assigned to you for this year level and section.' });
     const r = await pool.query(
-      `SELECT s.student_no, s.last_name, s.first_name, s.middle_name, s.program, e.year_level, e.section,,
+      `SELECT s.student_no, s.last_name, s.first_name, s.middle_name, s.program, e.year_level, e.section,
               g.final_grade, g.remarks,
               (SELECT u.name FROM reg_subject_assignments sa JOIN reg_users u ON u.id = sa.user_id WHERE sa.user_id = $8::int AND sa.college = $4 AND sa.course_code = $1 AND sa.term = $2 AND sa.academic_year = $3 AND $5 = ANY(sa.years) AND $6 = ANY(sa.sections) LIMIT 1) AS instructor
          FROM reg_enrollments e
