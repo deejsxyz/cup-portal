@@ -4575,9 +4575,17 @@ app.get('/api/csc/students', requireCsc, async (req, res) => {
   const college = String(req.query.college || '');
   if (!REG_COLLEGES.includes(college)) return res.status(400).json({ error: 'Choose a college.' });
   try {
+    // Only students who finished Steps 1 to 4 for the active term: grades verified, Step 2 complete (evaluation, advising, section),
+    // NSTP done where required, and pre-registered.
+    const pt = await gradingTerm();
     const { rows } = await pool.query(
       `SELECT student_no, last_name, first_name, middle_name, name_extension, program, year_level, section, csc_paid_at
-       FROM reg_students WHERE college = $1 AND status IN ('enrolled','pre-registered') ORDER BY last_name, first_name`, [college]);
+       FROM reg_students WHERE college = $1 AND status IN ('enrolled','pre-registered')
+         AND step1_status = 'verified'
+         AND step2_evaluated_at IS NOT NULL AND step2_advised_at IS NOT NULL AND step2_sectioned_at IS NOT NULL
+         AND (NOT (year_level <= 2 OR COALESCE(nstp_subject, '') <> '') OR nstp_enrolled_at IS NOT NULL)
+         AND EXISTS (SELECT 1 FROM reg_preregistrations p WHERE p.student_no = reg_students.student_no AND p.term = $2 AND p.academic_year = $3)
+       ORDER BY last_name, first_name`, [college, pt.term, pt.ay]);
     res.json({ students: rows });
   } catch (err) {
     console.error(err);
