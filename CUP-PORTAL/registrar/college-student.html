@@ -1134,8 +1134,7 @@
 <script>
 (function () {
   // When framed by the College Registrar dashboard, its panel header holds these tabs.
-  var framed = false;
-  try { framed = !!(window.parent && window.parent !== window && window.parent.document.querySelector('.pn-head-btn')); } catch (e) {}
+  var framed = new URLSearchParams(location.search).get('framed') === '1';
   if (framed) {
     var tl = document.querySelector('[role="tablist"]');
     if (tl) {
@@ -1143,6 +1142,12 @@
       target.style.display = 'none';
     }
   }
+  window.addEventListener('message', function (e) {
+    var t = e.data && e.data.panelTab;
+    if (!t) return;
+    var b = document.querySelector('[data-tab="' + t + '"]');
+    if (b) b.click();
+  });
   window.addEventListener('message', function (e) {
     var t = e.data && e.data.panelTab;
     if (!t) return;

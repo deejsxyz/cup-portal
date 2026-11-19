@@ -160,6 +160,9 @@
   .acct-drop { position: absolute; right: 0; top: calc(100% + 6px); min-width: 180px; background: #fff; border: 1px solid #c9ccd1; border-radius: 8px; box-shadow: 0 8px 24px rgba(0,0,0,.18); overflow: hidden; z-index: 50; }
   .acct-drop button { display: block; width: 100%; text-align: left; background: #fff; border: 0; padding: 11px 14px; font: inherit; font-weight: 700; color: #0f5a1c; cursor: pointer; }
   .acct-drop button:hover { background: #f1f7f1; }
+  .box h2.pn-tabs { display:flex; flex-wrap:wrap; gap:8px; align-items:center; text-transform:none; letter-spacing:0; font-size:12px; padding:10px 14px; }
+  .pn-tabs button { border:1px solid rgba(255,255,255,.55); background:transparent; color:#fff; border-radius:8px; padding:6px 12px; font-size:12px; font-weight:700; cursor:pointer; }
+  .pn-tabs button.on { background:#fff; color:#14532d; border-color:#fff; }
 </style>
 <link rel="stylesheet" href="/CUP-PORTAL/portal-controls.css">
 <script src="/CUP-PORTAL/portal-session.js" data-logout="/api/registrar/logout" data-login="/CUP-PORTAL/registrar/"></script>
@@ -517,11 +520,11 @@
         <p class="hint" id="gl-msg"></p>
         <div id="gl-list"><p class="hint">Loading grades…</p></div>
       </div></div></section>
-    <section class="panel" id="coacs-student"><div class="box"><h2>COACS | Student</h2><div class="body" style="padding:0">
-      <iframe src="/CUP-PORTAL/registrar/college-student.html?college=COACS" title="COACS Student" style="width:100%;min-height:900px;border:0;display:block"></iframe>
+    <section class="panel" id="coacs-student"><div class="box"><h2 class="pn-tabs" data-kind="student"></h2><div class="body" style="padding:0">
+      <iframe src="/CUP-PORTAL/registrar/college-student.html?college=COACS&framed=1" title="COACS Student" style="width:100%;min-height:900px;border:0;display:block"></iframe>
     </div></div></section>
-    <section class="panel" id="coacs-faculty"><div class="box"><h2>COACS | Faculty</h2><div class="body" style="padding:0">
-      <iframe src="/CUP-PORTAL/registrar/college-faculty.html?college=COACS" title="COACS Faculty" style="width:100%;min-height:900px;border:0;display:block"></iframe>
+    <section class="panel" id="coacs-faculty"><div class="box"><h2 class="pn-tabs" data-kind="faculty"></h2><div class="body" style="padding:0">
+      <iframe src="/CUP-PORTAL/registrar/college-faculty.html?college=COACS&framed=1" title="COACS Faculty" style="width:100%;min-height:900px;border:0;display:block"></iframe>
     </div></div></section>
     <section class="panel" id="coacs-account"><div class="box"><h2>COACS | Manage Account</h2><div class="body">
       <form class="acct" data-college="COACS" novalidate hidden>
@@ -541,11 +544,11 @@
       <iframe src="/CUP-PORTAL/registrar/college-evaluation.html?college=COACS" title="COACS Evaluation" style="width:100%;min-height:900px;border:0;display:block"></iframe>
     </div></div></section>
     <section class="panel" id="coacs-locked"><div class="box"><h2>COACS | Locked Account</h2><div class="body"><span class="soon">Not connected yet</span></div></div></section>
-    <section class="panel" id="cas-student"><div class="box"><h2>CAS | Student</h2><div class="body" style="padding:0">
-      <iframe src="/CUP-PORTAL/registrar/college-student.html?college=CAS" title="CAS Student" style="width:100%;min-height:900px;border:0;display:block"></iframe>
+    <section class="panel" id="cas-student"><div class="box"><h2 class="pn-tabs" data-kind="student"></h2><div class="body" style="padding:0">
+      <iframe src="/CUP-PORTAL/registrar/college-student.html?college=CAS&framed=1" title="CAS Student" style="width:100%;min-height:900px;border:0;display:block"></iframe>
     </div></div></section>
-    <section class="panel" id="cas-faculty"><div class="box"><h2>CAS | Faculty</h2><div class="body" style="padding:0">
-      <iframe src="/CUP-PORTAL/registrar/college-faculty.html?college=CAS" title="CAS Faculty" style="width:100%;min-height:900px;border:0;display:block"></iframe>
+    <section class="panel" id="cas-faculty"><div class="box"><h2 class="pn-tabs" data-kind="faculty"></h2><div class="body" style="padding:0">
+      <iframe src="/CUP-PORTAL/registrar/college-faculty.html?college=CAS&framed=1" title="CAS Faculty" style="width:100%;min-height:900px;border:0;display:block"></iframe>
     </div></div></section>
     <section class="panel" id="cas-account"><div class="box"><h2>CAS | Manage Account</h2><div class="body">
       <form class="acct" data-college="CAS" novalidate hidden>
@@ -565,11 +568,11 @@
       <iframe src="/CUP-PORTAL/registrar/college-evaluation.html?college=CAS" title="CAS Evaluation" style="width:100%;min-height:900px;border:0;display:block"></iframe>
     </div></div></section>
     <section class="panel" id="cas-locked"><div class="box"><h2>CAS | Locked Account</h2><div class="body"><span class="soon">Not connected yet</span></div></div></section>
-    <section class="panel" id="conm-student"><div class="box"><h2>CONM | Student</h2><div class="body" style="padding:0">
-      <iframe src="/CUP-PORTAL/registrar/college-student.html?college=CONM" title="CONM Student" style="width:100%;min-height:900px;border:0;display:block"></iframe>
+    <section class="panel" id="conm-student"><div class="box"><h2 class="pn-tabs" data-kind="student"></h2><div class="body" style="padding:0">
+      <iframe src="/CUP-PORTAL/registrar/college-student.html?college=CONM&framed=1" title="CONM Student" style="width:100%;min-height:900px;border:0;display:block"></iframe>
     </div></div></section>
-    <section class="panel" id="conm-faculty"><div class="box"><h2>CONM | Faculty</h2><div class="body" style="padding:0">
-      <iframe src="/CUP-PORTAL/registrar/college-faculty.html?college=CONM" title="CONM Faculty" style="width:100%;min-height:900px;border:0;display:block"></iframe>
+    <section class="panel" id="conm-faculty"><div class="box"><h2 class="pn-tabs" data-kind="faculty"></h2><div class="body" style="padding:0">
+      <iframe src="/CUP-PORTAL/registrar/college-faculty.html?college=CONM&framed=1" title="CONM Faculty" style="width:100%;min-height:900px;border:0;display:block"></iframe>
     </div></div></section>
     <section class="panel" id="conm-account"><div class="box"><h2>CONM | Manage Account</h2><div class="body">
       <form class="acct" data-college="CONM" novalidate hidden>
@@ -589,11 +592,11 @@
       <iframe src="/CUP-PORTAL/registrar/college-evaluation.html?college=CONM" title="CONM Evaluation" style="width:100%;min-height:900px;border:0;display:block"></iframe>
     </div></div></section>
     <section class="panel" id="conm-locked"><div class="box"><h2>CONM | Locked Account</h2><div class="body"><span class="soon">Not connected yet</span></div></div></section>
-    <section class="panel" id="coed-student"><div class="box"><h2>COEd | Student</h2><div class="body" style="padding:0">
-      <iframe src="/CUP-PORTAL/registrar/college-student.html?college=COED" title="COEd Student" style="width:100%;min-height:900px;border:0;display:block"></iframe>
+    <section class="panel" id="coed-student"><div class="box"><h2 class="pn-tabs" data-kind="student"></h2><div class="body" style="padding:0">
+      <iframe src="/CUP-PORTAL/registrar/college-student.html?college=COED&framed=1" title="COEd Student" style="width:100%;min-height:900px;border:0;display:block"></iframe>
     </div></div></section>
-    <section class="panel" id="coed-faculty"><div class="box"><h2>COEd | Faculty</h2><div class="body" style="padding:0">
-      <iframe src="/CUP-PORTAL/registrar/college-faculty.html?college=COED" title="COEd Faculty" style="width:100%;min-height:900px;border:0;display:block"></iframe>
+    <section class="panel" id="coed-faculty"><div class="box"><h2 class="pn-tabs" data-kind="faculty"></h2><div class="body" style="padding:0">
+      <iframe src="/CUP-PORTAL/registrar/college-faculty.html?college=COED&framed=1" title="COEd Faculty" style="width:100%;min-height:900px;border:0;display:block"></iframe>
     </div></div></section>
     <section class="panel" id="coed-account"><div class="box"><h2>COEd | Manage Account</h2><div class="body">
       <form class="acct" data-college="COED" novalidate hidden>
@@ -613,11 +616,11 @@
       <iframe src="/CUP-PORTAL/registrar/college-evaluation.html?college=COED" title="COED Evaluation" style="width:100%;min-height:900px;border:0;display:block"></iframe>
     </div></div></section>
     <section class="panel" id="coed-locked"><div class="box"><h2>COEd | Locked Account</h2><div class="body"><span class="soon">Not connected yet</span></div></div></section>
-    <section class="panel" id="cobm-student"><div class="box"><h2>CoBM | Student</h2><div class="body" style="padding:0">
-      <iframe src="/CUP-PORTAL/registrar/college-student.html?college=COBM" title="CoBM Student" style="width:100%;min-height:900px;border:0;display:block"></iframe>
+    <section class="panel" id="cobm-student"><div class="box"><h2 class="pn-tabs" data-kind="student"></h2><div class="body" style="padding:0">
+      <iframe src="/CUP-PORTAL/registrar/college-student.html?college=COBM&framed=1" title="CoBM Student" style="width:100%;min-height:900px;border:0;display:block"></iframe>
     </div></div></section>
-    <section class="panel" id="cobm-faculty"><div class="box"><h2>CoBM | Faculty</h2><div class="body" style="padding:0">
-      <iframe src="/CUP-PORTAL/registrar/college-faculty.html?college=COBM" title="CoBM Faculty" style="width:100%;min-height:900px;border:0;display:block"></iframe>
+    <section class="panel" id="cobm-faculty"><div class="box"><h2 class="pn-tabs" data-kind="faculty"></h2><div class="body" style="padding:0">
+      <iframe src="/CUP-PORTAL/registrar/college-faculty.html?college=COBM&framed=1" title="CoBM Faculty" style="width:100%;min-height:900px;border:0;display:block"></iframe>
     </div></div></section>
     <section class="panel" id="cobm-account"><div class="box"><h2>CoBM | Manage Account</h2><div class="body">
       <form class="acct" data-college="COBM" novalidate hidden>
@@ -637,11 +640,11 @@
       <iframe src="/CUP-PORTAL/registrar/college-evaluation.html?college=COBM" title="COBM Evaluation" style="width:100%;min-height:900px;border:0;display:block"></iframe>
     </div></div></section>
     <section class="panel" id="cobm-locked"><div class="box"><h2>CoBM | Locked Account</h2><div class="body"><span class="soon">Not connected yet</span></div></div></section>
-    <section class="panel" id="law-student"><div class="box"><h2>School of Law | Student</h2><div class="body" style="padding:0">
-      <iframe src="/CUP-PORTAL/registrar/college-student.html?college=LAW" title="School of Law Student" style="width:100%;min-height:900px;border:0;display:block"></iframe>
+    <section class="panel" id="law-student"><div class="box"><h2 class="pn-tabs" data-kind="student"></h2><div class="body" style="padding:0">
+      <iframe src="/CUP-PORTAL/registrar/college-student.html?college=LAW&framed=1" title="School of Law Student" style="width:100%;min-height:900px;border:0;display:block"></iframe>
     </div></div></section>
-    <section class="panel" id="law-faculty"><div class="box"><h2>School of Law | Faculty</h2><div class="body" style="padding:0">
-      <iframe src="/CUP-PORTAL/registrar/college-faculty.html?college=LAW" title="School of Law Faculty" style="width:100%;min-height:900px;border:0;display:block"></iframe>
+    <section class="panel" id="law-faculty"><div class="box"><h2 class="pn-tabs" data-kind="faculty"></h2><div class="body" style="padding:0">
+      <iframe src="/CUP-PORTAL/registrar/college-faculty.html?college=LAW&framed=1" title="School of Law Faculty" style="width:100%;min-height:900px;border:0;display:block"></iframe>
     </div></div></section>
     <section class="panel" id="law-account"><div class="box"><h2>School of Law | Manage Account</h2><div class="body">
       <form class="acct" data-college="LAW" novalidate hidden>
@@ -661,11 +664,11 @@
       <iframe src="/CUP-PORTAL/registrar/college-evaluation.html?college=LAW" title="LAW Evaluation" style="width:100%;min-height:900px;border:0;display:block"></iframe>
     </div></div></section>
     <section class="panel" id="law-locked"><div class="box"><h2>School of Law | Locked Account</h2><div class="body"><span class="soon">Not connected yet</span></div></div></section>
-    <section class="panel" id="gs-student"><div class="box"><h2>Graduate School | Student</h2><div class="body" style="padding:0">
-      <iframe src="/CUP-PORTAL/registrar/college-student.html?college=GS" title="Graduate School Student" style="width:100%;min-height:900px;border:0;display:block"></iframe>
+    <section class="panel" id="gs-student"><div class="box"><h2 class="pn-tabs" data-kind="student"></h2><div class="body" style="padding:0">
+      <iframe src="/CUP-PORTAL/registrar/college-student.html?college=GS&framed=1" title="Graduate School Student" style="width:100%;min-height:900px;border:0;display:block"></iframe>
     </div></div></section>
-    <section class="panel" id="gs-faculty"><div class="box"><h2>Graduate School | Faculty</h2><div class="body" style="padding:0">
-      <iframe src="/CUP-PORTAL/registrar/college-faculty.html?college=GS" title="Graduate School Faculty" style="width:100%;min-height:900px;border:0;display:block"></iframe>
+    <section class="panel" id="gs-faculty"><div class="box"><h2 class="pn-tabs" data-kind="faculty"></h2><div class="body" style="padding:0">
+      <iframe src="/CUP-PORTAL/registrar/college-faculty.html?college=GS&framed=1" title="Graduate School Faculty" style="width:100%;min-height:900px;border:0;display:block"></iframe>
     </div></div></section>
     <section class="panel" id="gs-account"><div class="box"><h2>Graduate School | Manage Account</h2><div class="body">
       <form class="acct" data-college="GS" novalidate hidden>
@@ -685,11 +688,11 @@
       <iframe src="/CUP-PORTAL/registrar/college-evaluation.html?college=GS" title="GS Evaluation" style="width:100%;min-height:900px;border:0;display:block"></iframe>
     </div></div></section>
     <section class="panel" id="gs-locked"><div class="box"><h2>Graduate School | Locked Account</h2><div class="body"><span class="soon">Not connected yet</span></div></div></section>
-    <section class="panel" id="tesda-student"><div class="box"><h2>TESDA-TVI | Student</h2><div class="body" style="padding:0">
-      <iframe src="/CUP-PORTAL/registrar/college-student.html?college=TESDA-TVI" title="TESDA-TVI Student" style="width:100%;min-height:900px;border:0;display:block"></iframe>
+    <section class="panel" id="tesda-student"><div class="box"><h2 class="pn-tabs" data-kind="student"></h2><div class="body" style="padding:0">
+      <iframe src="/CUP-PORTAL/registrar/college-student.html?college=TESDA-TVI&framed=1" title="TESDA-TVI Student" style="width:100%;min-height:900px;border:0;display:block"></iframe>
     </div></div></section>
-    <section class="panel" id="tesda-faculty"><div class="box"><h2>TESDA-TVI | Faculty</h2><div class="body" style="padding:0">
-      <iframe src="/CUP-PORTAL/registrar/college-faculty.html?college=TESDA-TVI" title="TESDA-TVI Faculty" style="width:100%;min-height:900px;border:0;display:block"></iframe>
+    <section class="panel" id="tesda-faculty"><div class="box"><h2 class="pn-tabs" data-kind="faculty"></h2><div class="body" style="padding:0">
+      <iframe src="/CUP-PORTAL/registrar/college-faculty.html?college=TESDA-TVI&framed=1" title="TESDA-TVI Faculty" style="width:100%;min-height:900px;border:0;display:block"></iframe>
     </div></div></section>
     <section class="panel" id="tesda-account"><div class="box"><h2>TESDA-TVI | Manage Account</h2><div class="body">
       <form class="acct" data-college="TESDA-TVI" novalidate hidden>
@@ -2416,6 +2419,43 @@
       });
     });
   })();
+</script>
+<script>
+(function () {
+  var KINDS = {
+    student: [['view', 'View Student'], ['new', 'New Student'], ['existing', 'Existing Student'], ['grades', 'Manage Grade']],
+    faculty: [['register', 'Register Faculty'], ['manage', 'Manage Faculty'], ['assign', 'Subject Assignments']]
+  };
+  var DEFAULT = { student: 'view', faculty: 'manage' };
+  function paint(h, active) {
+    h.querySelectorAll('button').forEach(function (b) {
+      b.className = b.getAttribute('data-tab') === active ? 'on' : '';
+    });
+  }
+  document.querySelectorAll('h2.pn-tabs').forEach(function (h) {
+    var kind = h.getAttribute('data-kind');
+    var frame = h.closest('section.panel').querySelector('iframe');
+    h.innerHTML = KINDS[kind].map(function (t) {
+      return '<button type="button" data-tab="' + t[0] + '">' + t[1] + '</button>';
+    }).join('');
+    paint(h, DEFAULT[kind]);
+    h.querySelectorAll('button').forEach(function (b) {
+      b.addEventListener('click', function () {
+        var t = b.getAttribute('data-tab');
+        paint(h, t);
+        if (frame && frame.contentWindow) frame.contentWindow.postMessage({ panelTab: t }, '*');
+      });
+    });
+  });
+  window.addEventListener('message', function (e) {
+    var t = e.data && e.data.conmStudentTab;
+    if (!t) return;
+    document.querySelectorAll('h2.pn-tabs[data-kind="student"]').forEach(function (h) {
+      var f = h.closest('section.panel').querySelector('iframe');
+      if (f && f.contentWindow === e.source) paint(h, t);
+    });
+  });
+})();
 </script>
 <script src="/CUP-PORTAL/portal-search.js"></script>
 <script>

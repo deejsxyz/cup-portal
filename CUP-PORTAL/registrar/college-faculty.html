@@ -504,8 +504,7 @@
 <script>
 (function () {
   // When framed by the College Registrar dashboard, its panel header holds these tabs.
-  var framed = false;
-  try { framed = !!(window.parent && window.parent !== window && window.parent.document.querySelector('.pn-head-btn')); } catch (e) {}
+  var framed = new URLSearchParams(location.search).get('framed') === '1';
   if (framed) {
     var tl = document.querySelector('[role="tablist"]');
     if (tl) {
