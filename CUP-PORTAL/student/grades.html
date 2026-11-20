@@ -609,8 +609,7 @@
             return '<li class="' + cls + '"><span class="num">' + (s.done ? '&#10003;' : s.n) + '</span><div><h3>' + s.label + '</h3></div></li>';
           }).join('');
           var n = $('proc-note');
-          if (res.j.officiallyEnrolled) { n.textContent = 'You are officially enrolled for this term.'; n.className = 'msg ok'; n.hidden = false; }
-          else { n.textContent = ''; n.hidden = true; }
+          n.textContent = ''; n.hidden = true;
         }).catch(function () { $('proc').innerHTML = '<li><p>Could not load your enrollment steps.</p></li>'; });
     }
     loadProcedure();
