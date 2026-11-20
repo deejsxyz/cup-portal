@@ -128,7 +128,7 @@
   function post(path, body) {
     return api(path, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(body || {}) });
   }
-  function toLogin() { window.location.href = '/CUP-PORTAL/cup-id/'; }
+  function toLogin() { window.location.href = '/CUP-PORTAL/id/'; }
 
   function tickClock() {
     var s = new Date().toLocaleString('en-US', { timeZone: 'Asia/Manila', weekday: 'long', year: 'numeric', month: 'long', day: 'numeric', hour: 'numeric', minute: '2-digit', second: '2-digit', hour12: true });
@@ -174,7 +174,7 @@
   function loadStudent(no) {
     $('msg').textContent = '';
     $('results').innerHTML = '';
-    api('/api/cup-id/student/' + encodeURIComponent(no)).then(function (res) {
+    api('/api/id/student/' + encodeURIComponent(no)).then(function (res) {
       if (res.status === 401) return toLogin();
       if (!res.ok) { $('msg').textContent = res.j.error || 'Could not load the student.'; return; }
       renderStudent(res.j.student);
@@ -187,7 +187,7 @@
     var q = $('q').value.trim();
     if (!q) { $('results').innerHTML = ''; return; }
     searchTimer = setTimeout(function () {
-      api('/api/cup-id/search?q=' + encodeURIComponent(q)).then(function (res) {
+      api('/api/id/search?q=' + encodeURIComponent(q)).then(function (res) {
         if (res.status === 401) return toLogin();
         if (!res.ok) return;
         $('results').innerHTML = res.j.students.map(function (s) {
@@ -246,7 +246,7 @@
     if (!current) return;
     var photo = $('shot').src;
     $('camSave').disabled = true;
-    post('/api/cup-id/student/' + encodeURIComponent(current.student_no) + '/photo', { photo: photo }).then(function (res) {
+    post('/api/id/student/' + encodeURIComponent(current.student_no) + '/photo', { photo: photo }).then(function (res) {
       $('camSave').disabled = false;
       if (res.status === 401) return toLogin();
       if (!res.ok) { $('camMsg').className = 'msg'; $('camMsg').textContent = res.j.error || 'Could not save the photo.'; return; }
@@ -260,10 +260,10 @@
 
   $('logout').addEventListener('click', function () {
     stopCam();
-    fetch('/api/cup-id/logout', { method: 'POST', credentials: 'same-origin' }).finally(toLogin);
+    fetch('/api/id/logout', { method: 'POST', credentials: 'same-origin' }).finally(toLogin);
   });
 
-  api('/api/cup-id/me').then(function (res) {
+  api('/api/id/me').then(function (res) {
     if (!res.ok) toLogin();
   }).catch(toLogin);
 })();

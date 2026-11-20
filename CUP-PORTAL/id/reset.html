@@ -3,7 +3,7 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<title>CUP ID Forgot Password</title>
+<title>CUP ID Reset Password</title>
 <link rel="icon" href="/images/favicon-cup.png">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
@@ -36,27 +36,36 @@
 </header>
 <main>
   <section class="card narrow">
-    <h2>Forgot Password</h2>
+    <h2>Reset Password</h2>
     <form id="form" novalidate>
-      <div class="field"><label for="em">Email address</label><input id="em" type="email" autocomplete="email" required></div>
-      <button class="go" id="go" type="submit">Send reset link</button>
+      <div class="field"><label for="p1">New password</label><input id="p1" type="password" autocomplete="new-password" required></div>
+      <div class="field"><label for="p2">Confirm new password</label><input id="p2" type="password" autocomplete="new-password" required></div>
+      <button class="go" id="go" type="submit">Save new password</button>
       <p class="msg" id="msg" role="status"></p>
-      <p style="margin-top:14px;font-size:.9rem"><a href="/CUP-PORTAL/cup-id/" style="color:var(--green);font-weight:700">Back to log in</a></p>
+      <p style="margin-top:14px;font-size:.9rem"><a href="/CUP-PORTAL/id/" style="color:var(--green);font-weight:700">Back to log in</a></p>
     </form>
   </section>
 </main>
 <script>
 (function () {
   var form = document.getElementById('form'), msg = document.getElementById('msg'), go = document.getElementById('go');
+  var token = new URLSearchParams(window.location.search).get('token') || '';
   form.addEventListener('submit', function (e) {
     e.preventDefault();
-    var email = document.getElementById('em').value.trim();
-    if (!email) { msg.textContent = 'Please enter your email address.'; return; }
-    go.disabled = true; go.textContent = 'Sending…';
-    fetch('/api/cup-id/forgot', { method: 'POST', credentials: 'same-origin', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ email: email }) })
-      .then(function (r) { return r.json(); })
-      .then(function (j) { msg.className = 'msg info'; msg.style.color = '#475569'; msg.textContent = j.message || 'Check your email.'; go.textContent = 'Send reset link'; go.disabled = false; })
-      .catch(function () { msg.textContent = 'Connection problem. Please try again.'; go.disabled = false; go.textContent = 'Send reset link'; });
+    var p1 = document.getElementById('p1').value, p2 = document.getElementById('p2').value;
+    msg.textContent = '';
+    if (!token) { msg.textContent = 'This reset link is invalid. Request a new one.'; return; }
+    if (p1.length < 8) { msg.textContent = 'Use at least 8 characters.'; return; }
+    if (p1 !== p2) { msg.textContent = 'The passwords do not match.'; return; }
+    go.disabled = true; go.textContent = 'Saving…';
+    fetch('/api/id/reset', { method: 'POST', credentials: 'same-origin', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ token: token, password: p1 }) })
+      .then(function (r) { return r.json().then(function (j) { return { ok: r.ok, j: j }; }); })
+      .then(function (res) {
+        if (res.ok && res.j.ok) { window.location.href = '/CUP-PORTAL/id/'; return; }
+        msg.textContent = res.j.error || 'Could not reset the password.';
+        go.disabled = false; go.textContent = 'Save new password';
+      })
+      .catch(function () { msg.textContent = 'Connection problem. Please try again.'; go.disabled = false; go.textContent = 'Save new password'; });
   });
   var el = document.getElementById('liveClock');
   var f = new Intl.DateTimeFormat('en-US', { timeZone: 'Asia/Manila', weekday: 'long', month: 'long', day: 'numeric', year: 'numeric', hour: 'numeric', minute: '2-digit', second: '2-digit', hour12: true });

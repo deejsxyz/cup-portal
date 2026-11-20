@@ -4580,7 +4580,7 @@ app.post('/api/csc/logout', (req, res) => {
 const CUPID_SESSION_MS = 8 * 60 * 60 * 1000;
 const cupIdAttempts = new Map();
 function readCupIdSession(req) {
-  const m = /(?:^|;\s*)cup_id_session=([^;]+)/.exec(req.headers.cookie || '');
+  const m = /(?:^|;\s*)id_session=([^;]+)/.exec(req.headers.cookie || '');
   if (!m) return null;
   const [body, sig] = m[1].split('.');
   if (!body || !sig) return null;
@@ -4599,7 +4599,7 @@ function requireCupId(req, res, next) {
   next();
 }
 // CUP ID login: the single CUP ID account is set in Render environment variables (CUP_ID_USERNAME and CUP_ID_PASSWORD).
-app.post('/api/cup-id/login', async (req, res) => {
+app.post('/api/id/login', async (req, res) => {
   const ip = req.ip || 'unknown';
   const now = Date.now();
   const rec = cupIdAttempts.get(ip) || { count: 0, resetAt: now + 15 * 60 * 1000 };
@@ -4619,7 +4619,7 @@ app.post('/api/cup-id/login', async (req, res) => {
     cupIdAttempts.delete(ip);
     const body = Buffer.from(JSON.stringify({ role: 'cupid', exp: now + CUPID_SESSION_MS })).toString('base64url');
     const secure = req.headers['x-forwarded-proto'] === 'https' ? '; Secure' : '';
-    res.setHeader('Set-Cookie', `cup_id_session=${body}.${signSession(body)}; Path=/; HttpOnly; SameSite=Lax${secure}`);
+    res.setHeader('Set-Cookie', `id_session=${body}.${signSession(body)}; Path=/; HttpOnly; SameSite=Lax${secure}`);
     return res.json({ ok: true });
   }
   rec.count += 1;
@@ -4653,7 +4653,7 @@ function cupIdReadResetToken(token) {
     return d;
   } catch { return null; }
 }
-app.post('/api/cup-id/forgot', async (req, res) => {
+app.post('/api/id/forgot', async (req, res) => {
   const email = String((req.body && req.body.email) || '').trim().toLowerCase().slice(0, 200);
   const cupEmail = String(process.env.CUP_ID_EMAIL || '').trim().toLowerCase();
   const generic = { ok: true, message: 'If that email belongs to the CUP ID account, a reset link has been sent to it.' };
@@ -4662,7 +4662,7 @@ app.post('/api/cup-id/forgot', async (req, res) => {
     const stored = await cupIdStoredHash();
     const exp = Date.now() + 30 * 60 * 1000;
     const token = cupIdResetToken(stored, exp);
-    const link = portalBase(req) + '/CUP-PORTAL/cup-id/reset.html?token=' + encodeURIComponent(token);
+    const link = portalBase(req) + '/CUP-PORTAL/id/reset.html?token=' + encodeURIComponent(token);
     await sendEmail(cupEmail, 'CUP ID portal password reset',
       'Use this link to reset your CUP ID portal password. It expires in 30 minutes.\n\n' + link + '\n\nIf you did not ask for this, ignore this email.',
       { html: '<p>Use this link to reset your CUP ID portal password. It expires in 30 minutes.</p><p><a href="' + link + '">Reset my password</a></p><p>If you did not ask for this, ignore this email.</p>' });
@@ -4671,7 +4671,7 @@ app.post('/api/cup-id/forgot', async (req, res) => {
   }
   res.json(generic);
 });
-app.post('/api/cup-id/reset', async (req, res) => {
+app.post('/api/id/reset', async (req, res) => {
   const token = String((req.body && req.body.token) || '');
   const password = String((req.body && req.body.password) || '').slice(0, 200);
   if (password.length < 8) return res.status(400).json({ error: 'Use at least 8 characters.' });
@@ -4688,14 +4688,14 @@ app.post('/api/cup-id/reset', async (req, res) => {
     res.status(500).json({ error: 'Could not reset the password. Please try again.' });
   }
 });
-app.post('/api/cup-id/logout', (req, res) => {
-  res.setHeader('Set-Cookie', 'cup_id_session=; Path=/; HttpOnly; SameSite=Lax; Max-Age=0');
+app.post('/api/id/logout', (req, res) => {
+  res.setHeader('Set-Cookie', 'id_session=; Path=/; HttpOnly; SameSite=Lax; Max-Age=0');
   res.json({ ok: true });
 });
-app.get('/api/cup-id/me', requireCupId, (req, res) => res.json({ role: 'cupid', name: 'CUP ID' }));
+app.get('/api/id/me', requireCupId, (req, res) => res.json({ role: 'cupid', name: 'CUP ID' }));
 
 // CUP ID dashboard: student lookup and photo, on the cup-id session.
-app.get('/api/cup-id/search', requireCupId, async (req, res) => {
+app.get('/api/id/search', requireCupId, async (req, res) => {
   const q = String(req.query.q || '').trim().slice(0, 100);
   if (!q) return res.json({ students: [] });
   try {
@@ -4709,7 +4709,7 @@ app.get('/api/cup-id/search', requireCupId, async (req, res) => {
     res.status(500).json({ error: 'Could not search students.' });
   }
 });
-app.get('/api/cup-id/student/:no', requireCupId, async (req, res) => {
+app.get('/api/id/student/:no', requireCupId, async (req, res) => {
   try {
     const { rows } = await pool.query(
       `SELECT student_no, college, first_name, COALESCE(middle_name,'') AS middle_name, last_name, COALESCE(name_extension,'') AS name_extension,
@@ -4722,7 +4722,7 @@ app.get('/api/cup-id/student/:no', requireCupId, async (req, res) => {
     res.status(500).json({ error: 'Could not load the student.' });
   }
 });
-app.post('/api/cup-id/student/:no/photo', requireCupId, async (req, res) => {
+app.post('/api/id/student/:no/photo', requireCupId, async (req, res) => {
   const photo = req.body && req.body.photo;
   if (typeof photo !== 'string' || photo.length > 2800000 || !isImageDataUrl(photo)) {
     return res.status(400).json({ error: 'Please capture a valid photo.' });
