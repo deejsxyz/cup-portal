@@ -356,6 +356,13 @@
     try { parent.postMessage({ s2Count: countEl.textContent }, '*'); } catch (err) {}
   }
 
+  // Live updates: refresh the roster and live counts without reopening the student being edited.
+  setInterval(function () {
+    if (document.hidden) return;
+    load();
+    if (current) loadCounts(current);
+  }, 4000);
+
   function load() {
     msgEl.textContent = '';
     gradesCache = null;

@@ -604,6 +604,12 @@
   loadPrereg();
   loadProcedure();
   loadEnrolled();
+  // Live updates: re-read the enrollment steps, window and subjects while the page is open.
+  // The pre-registration form is not reloaded, so anything being typed is kept.
+  setInterval(function () {
+    if (document.hidden) return;
+    applyEnrollWindow(); loadProcedure(); loadEnrolled();
+  }, 4000);
 })();
 </script>
 </body>
