@@ -4871,16 +4871,39 @@ app.post('/api/registrar/step2/:no/assign-section', requireCollegeRegistrar, asy
   const no = String(req.params.no || '').trim();
   const blockedS = await step2Blocked(no, college);
   if (blockedS) return res.status(400).json({ error: blockedS });
+  const client = await pool.connect();
   try {
-    const r = await pool.query(
+    await client.query('BEGIN');
+    const r = await client.query(
       `UPDATE reg_students SET year_level = $3, section = $4, step2_sectioned_at = now()
        WHERE student_no = $1 AND college = $2 AND status IN ('enrolled','pre-registered') RETURNING student_no`, [no, college, year, section]);
-    if (!r.rows.length) return res.status(404).json({ error: 'Student not found.' });
+    if (!r.rows.length) { await client.query('ROLLBACK'); return res.status(404).json({ error: 'Student not found.' }); }
+    // Keep the active term's enrollment record in step with the new section, so the student's
+    // Enrolled Subjects (section, schedule, instructor) follows the assignment.
+    const t = await gradingTerm();
+    if (t.term && t.ay) {
+      const en = await client.query(
+        'SELECT subjects FROM reg_enrollments WHERE student_no = $1 AND college = $2 AND term = $3 AND academic_year = $4 FOR UPDATE',
+        [no, college, t.term, t.ay]);
+      if (en.rows.length) {
+        const subs = (Array.isArray(en.rows[0].subjects) ? en.rows[0].subjects : []).map((x) => ({
+          ...x, instructor_id: null, instructor_name: '', days: '', start_time: '', end_time: '', room: ''
+        }));
+        await client.query(
+          'UPDATE reg_enrollments SET year_level = $5, section = $6, subjects = $7 WHERE student_no = $1 AND college = $2 AND term = $3 AND academic_year = $4',
+          [no, college, t.term, t.ay, Number(year), section, JSON.stringify(subs)]);
+        await syncEnrollmentsFromAssignments(client, college, t.term, t.ay, [{ years: [Number(year)], sections: [section] }]);
+      }
+    }
+    await client.query('COMMIT');
     logAction(req, 'College Registrar', 'Step 2 section assigned: ' + year + section, no + ' · ' + college);
     res.json({ ok: true, student_no: no });
   } catch (err) {
+    await client.query('ROLLBACK').catch(() => {});
     console.error(err);
     res.status(500).json({ error: 'Could not save the section.' });
+  } finally {
+    client.release();
   }
 });
 
