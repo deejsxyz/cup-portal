@@ -6920,16 +6920,17 @@ app.get('/api/student/enrolled-subjects', requirePortal('student'), async (req, 
   try {
     const t = await gradingTerm();
     const no = req.portal.student_no || '';
-    const st = no ? (await pool.query('SELECT step2_evaluated_at, step2_advised_at, step2_sectioned_at FROM reg_students WHERE student_no = $1', [no])).rows[0] : null;
+    const st = no ? (await pool.query('SELECT step2_evaluated_at, step2_advised_at, step2_sectioned_at, program, status FROM reg_students WHERE student_no = $1', [no])).rows[0] : null;
     const step2 = !!(st && st.step2_evaluated_at && st.step2_advised_at && st.step2_sectioned_at);
     const en = step2 ? (await pool.query(
       'SELECT year_level, section, subjects FROM reg_enrollments WHERE student_no = $1 AND term = $2 AND academic_year = $3',
       [no, t.term, t.ay])).rows[0] : null;
-    if (!en) return res.json({ term: t, enrolled: false, subjects: [] });
+    const info = { program: (st && st.program) || '', status: (st && st.status) || '' };
+    if (!en) return res.json({ term: t, enrolled: false, subjects: [], ...info });
     const subjects = (Array.isArray(en.subjects) ? en.subjects : []).map((x) => ({
       course_code: x.course_code || '', descriptive_title: x.descriptive_title || '', instructor_name: x.instructor_name || '',
       days: x.days || '', start_time: x.start_time || '', end_time: x.end_time || '', room: x.room || '' }));
-    res.json({ term: t, enrolled: true, year_level: en.year_level, section: en.section, subjects });
+    res.json({ term: t, enrolled: true, year_level: en.year_level, section: en.section, subjects, ...info });
   } catch (err) {
     console.error(err);
     res.status(500).json({ error: 'Could not load your enrolled subjects.' });
