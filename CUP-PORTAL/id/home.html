@@ -172,9 +172,14 @@
     var m = /\(([^)]+)\)\s*$/.exec(s.program || '');
     return (m ? m[1] : (s.program || '')) + s.year_level;
   }
+  // The card shows the number with dashes, XXXX-XXX-XXXX, e.g. 0924-536-5127.
+  function fmtPhone(v) {
+    var d = String(v || '').replace(/\D/g, '');
+    return d.length === 11 ? d.slice(0, 4) + '-' + d.slice(4, 7) + '-' + d.slice(7) : String(v || '');
+  }
   function backHtml(s) {
     if (!s) return '';
-    return '<div class="bf bf-name">' + esc(s.emergency_contact_name || '') + '</div><div class="bf bf-num">' + esc(s.emergency_contact_number || '') + '</div>';
+    return '<div class="bf bf-name">' + esc(s.emergency_contact_name || '') + '</div><div class="bf bf-num">' + esc(fmtPhone(s.emergency_contact_number)) + '</div>';
   }
   function refreshBack() {
     $('back').innerHTML = backHtml(current);
