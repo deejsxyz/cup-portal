@@ -166,7 +166,7 @@
     $('iStatus').innerHTML = s.status === 'enrolled' ? '<span class="ok">Officially enrolled</span>' : '<span class="no">' + esc(s.status) + '</span>';
     $('iProgram').textContent = s.program;
     $('iCollege').textContent = s.college;
-    $('iYear').textContent = yearLabel(s) + ' / ' + s.section;
+    $('iYear').textContent = yearLabel(s) + '-' + s.section;
     $('idName').textContent = fullName(s);
     $('idNo').textContent = s.student_no;
     $('idProgram').textContent = s.program;

@@ -60,7 +60,7 @@ function cupYr(p, y) { var m = /\(([^)]+)\)\s*$/.exec(p || ''); return (m ? m[1]
       '<h2>CERTIFICATE OF GRADES</h2>' +
       '<div class="info"><div><b>Student No.:</b> ' + esc(s.student_no) + '</div><div><b>College:</b> ' + esc(s.college) + '</div>' +
       '<div><b>Name:</b> ' + esc(name) + '</div><div><b>Program:</b> ' + esc(s.program) + '</div>' +
-      '<div><b>Year level / Section:</b> ' + esc(cupYr(s.program, s.year_level)) + ' / ' + esc(s.section) + '</div>' +
+      '<div><b>Year level / Section:</b> ' + esc(cupYr(s.program, s.year_level)) + '-' + esc(s.section) + '</div>' +
       '<div><b>A.Y. / Term:</b> ' + esc(t.academic_year) + ' · ' + esc(termLabel) + '</div></div>' +
       '<table><thead><tr><th>Subject code</th><th>Descriptive title</th><th class="n">Units</th><th class="n">Final grade</th><th class="n">Remarks</th></tr></thead><tbody>' +
       t.rows.map(function (r) {

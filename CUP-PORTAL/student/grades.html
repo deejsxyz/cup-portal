@@ -342,7 +342,7 @@
     $('gName').textContent = fullName(p).toUpperCase();
     $('gNo').textContent = p.student_no;
     $('gProgram').textContent = p.program || '';
-    $('gYear').textContent = PROG_ABBR(p.program) + p.year_level + (p.section ? ' / ' + p.section : '');
+    $('gYear').textContent = PROG_ABBR(p.program) + p.year_level + (p.section ? '-' + p.section : '');
     $('gStatus').innerHTML = p.status === 'enrolled' ? '<span class="badge">OFFICIALLY ENROLLED</span>' : '<span class="hint">' + esc(p.term_status || p.status || '') + '</span>';
     $('photo').src = p.photo || '/images/student-default-photo.webp';
     var next = p.photo_next_change ? new Date(p.photo_next_change) : null;
@@ -590,7 +590,7 @@
         .then(function (res) {
           var card = $('enrolled-card');
           if (!res.ok || !res.j.enrolled || !res.j.subjects.length) { card.hidden = true; return; }
-          $('enrolled-meta').textContent = PROG_ABBR(profile && profile.program) + (profile && profile.year_level != null ? profile.year_level : res.j.year_level) + ' / ' + res.j.section + ' · ' + res.j.term.term + ', A.Y. ' + res.j.term.ay;
+          $('enrolled-meta').textContent = PROG_ABBR(profile && profile.program) + (profile && profile.year_level != null ? profile.year_level : res.j.year_level) + '-' + res.j.section + ' · ' + res.j.term.term + ', A.Y. ' + res.j.term.ay;
           $('enrolled-rows').innerHTML = res.j.subjects.map(function (s) {
             var when = s.days ? shortDays(s.days) + ' ' + fmtTime(s.start_time) + (s.end_time ? ' – ' + fmtTime(s.end_time) : '') : 'TBA';
             return '<tr><td style="padding:6px;border-bottom:1px solid #d5e2d5">' + esc(s.course_code) + '</td><td style="padding:6px;border-bottom:1px solid #d5e2d5">' + esc(s.descriptive_title) + '</td><td style="padding:6px;border-bottom:1px solid #d5e2d5">' + esc(when) + '</td><td style="padding:6px;border-bottom:1px solid #d5e2d5">' + esc(s.room || '—') + '</td><td style="padding:6px;border-bottom:1px solid #d5e2d5">' + esc(s.instructor_name || 'TBA') + '</td></tr>';

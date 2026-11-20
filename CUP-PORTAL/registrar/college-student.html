@@ -245,6 +245,7 @@
 </div>
 
 <script>
+window.cupYr = function (p, y) { var m = /\(([^)]+)\)\s*$/.exec(p || ''); return (m ? m[1] : (p || '')) + (y == null ? '' : y); };
 (function () {
   var COLLEGE = (new URLSearchParams(location.search).get('college') || 'CONM').toUpperCase();
   /* Every registrar request names the college this page is for. */
@@ -1097,7 +1098,7 @@ function progAbbrOf(p) { var m = /\(([^)]+)\)\s*$/.exec(p || ''); return m ? m[1
         else official = '<span class="text-xs text-slate-400">Complete all 3 tasks</span>';
         official = '<td class="p-2">' + official + '</td>';
       }
-      return '<tr class="border-t border-slate-200"><td class="p-2 font-mono">' + no + '</td><td class="p-2">' + esc2(r.last_name + ', ' + r.first_name + (r.middle_name ? ' ' + r.middle_name.charAt(0) + '.' : '')) + '</td><td class="p-2">' + esc2(r.program) + '</td><td class="p-2">' + esc2((r.year_level || '') + (r.section ? ' / ' + r.section : '')) + '</td><td class="p-2">' + esc2(r.status === 'enrolled' ? 'Officially Enrolled' : 'Pre-registered') + '</td><td class="p-2">' + btn + '</td>' + official + '</tr>';
+      return '<tr class="border-t border-slate-200"><td class="p-2 font-mono">' + no + '</td><td class="p-2">' + esc2(r.last_name + ', ' + r.first_name + (r.middle_name ? ' ' + r.middle_name.charAt(0) + '.' : '')) + '</td><td class="p-2">' + esc2(r.program) + '</td><td class="p-2">' + esc2((r.year_level ? window.cupYr(r.program, r.year_level) : '') + (r.section ? '-' + r.section : '')) + '</td><td class="p-2">' + esc2(r.status === 'enrolled' ? 'Officially Enrolled' : 'Pre-registered') + '</td><td class="p-2">' + btn + '</td>' + official + '</tr>';
     }).join('');
     listEl.innerHTML = '<div style="overflow-x:auto"><table class="w-full text-xs"><thead class="bg-slate-100">' + head + '</thead><tbody>' + body + '</tbody></table></div>';
   }

@@ -1588,7 +1588,7 @@ function cupYr(p, y) { var m = /\(([^)]+)\)\s*$/.exec(p || ''); return (m ? m[1]
           var rows = (j.students || []).filter(function (s) { var c = $('#sr-college').value; return !c || s.college === c; });
           $('#sr-list').innerHTML = !rows.length ? '<p class="hint">No students found.</p>' : rows.map(function (s) {
             return '<div style="padding:6px 0;border-bottom:1px solid #d5e2d5"><a href="#" data-no="' + esc(s.student_no) + '">' + esc(s.last_name + ', ' + s.first_name) + '</a> · ' +
-              esc(s.student_no + ' · ' + s.college + ' · ' + s.program + ' · ' + cupYr(s.program, s.year_level) + ' / ' + s.section + ' · ' + s.status) + '</div>';
+              esc(s.student_no + ' · ' + s.college + ' · ' + s.program + ' · ' + cupYr(s.program, s.year_level) + '-' + s.section + ' · ' + s.status) + '</div>';
           }).join('');
         });
       }, 300);
