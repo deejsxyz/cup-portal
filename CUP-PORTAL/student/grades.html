@@ -528,7 +528,19 @@
             $('pr-state').textContent = 'Check your information, then submit. Once you submit, you cannot change it.';
             $('pr-state').className = 'msg info'; $('pr-state').hidden = false;
           }
+          applyEnrollWindow();
         }).catch(function () { $('pr-state').textContent = 'Could not load the form.'; $('pr-state').hidden = false; });
+    }
+    // Follows the registrar's enrollment switch and this college's enrollment dates. When closed, the form is read-only.
+    function applyEnrollWindow() {
+      fetch('/api/portal/enrollment-window', { credentials: 'same-origin' }).then(function (r) { return r.json(); })
+        .then(function (w) {
+          if (w.open) return;
+          $('pr-actions').hidden = true;
+          ['pr-email', 'pr-contact', 'pr-civil'].forEach(function (id) { $(id).disabled = true; });
+          $('pr-state').textContent = 'Enrollment is closed for your college. The pre-registration form is read-only.';
+          $('pr-state').className = 'msg info'; $('pr-state').hidden = false;
+        }).catch(function () {});
     }
     function prBody() { return { email: $('pr-email').value.trim(), contact_number: $('pr-contact').value.trim(), civil_status: $('pr-civil').value }; }
     $('pr-save').addEventListener('click', function () {

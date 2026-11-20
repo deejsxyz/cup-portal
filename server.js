@@ -4313,6 +4313,11 @@ async function blockIfEnrollmentClosed(req, res) {
   return true;
 }
 // Student Portal: open only when the master switch is on AND today is one of the student's college enrollment dates.
+async function enrollmentOpenFor(college) {
+  const st = await enrollmentSettings();
+  const dates = st.enrollment_schedule[college] || [];
+  return !!st.enrollment_open && dates.includes(manilaToday());
+}
 app.get('/api/portal/enrollment-window', requirePortal('student'), async (req, res) => {
   try {
     const st = await enrollmentSettings();
@@ -6627,6 +6632,7 @@ app.get('/api/student/prereg', requirePortal('student'), async (req, res) => {
 });
 app.put('/api/student/prereg', requirePortal('student'), async (req, res) => {
   try {
+    if (!(await enrollmentOpenFor(req.portal.college))) return res.status(403).json({ error: 'Enrollment is closed for your college right now.' });
     const t = await gradingTerm();
     if (!t.term || !t.ay) return res.status(400).json({ error: 'The active term is not set yet.' });
     const rec = await studentRecord(req.portal.student_no);
@@ -6650,6 +6656,7 @@ app.put('/api/student/prereg', requirePortal('student'), async (req, res) => {
 app.post('/api/student/prereg/submit', requirePortal('student'), async (req, res) => {
   const client = await pool.connect();
   try {
+    if (!(await enrollmentOpenFor(req.portal.college))) return res.status(403).json({ error: 'Enrollment is closed for your college right now.' });
     const t = await gradingTerm();
     if (!t.term || !t.ay) return res.status(400).json({ error: 'The active term is not set yet.' });
     const rec = await studentRecord(req.portal.student_no);
