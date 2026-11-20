@@ -6,45 +6,267 @@
 <title>CUP ID Portal</title>
 <link rel="icon" href="/images/favicon-cup.png">
 <style>
-  :root { --green: #106010; --dg: #0b4a0b; --gold: #f2c200; --ink: #222; --line: #d6dbd6; }
+  :root { --green: #106010; --dg: #0b4a0b; --gold: #f2c200; --ink: #222; --line: #d6dbd6; --bad: #b42318; }
   * { box-sizing: border-box; }
   html, body { margin: 0; background: #f4f6f4; color: var(--ink); }
   body { font-family: Arial, Helvetica, sans-serif; min-height: 100vh; }
-  header { background: var(--green); color: #fff; display: flex; justify-content: space-between; align-items: center; gap: 12px; padding: 14px 20px; flex-wrap: wrap; }
+  [hidden] { display: none !important; }
+  header { background: var(--green); color: #fff; display: flex; justify-content: space-between; align-items: center; gap: 12px; padding: 14px 20px; flex-wrap: wrap; border-bottom: 4px solid var(--gold); }
   header h1 { font-size: 1.05rem; margin: 0; font-weight: 800; }
-  header .who { font-size: .9rem; }
-  header button { background: var(--gold); color: #222; border: 0; border-radius: 4px; padding: 8px 14px; font-weight: 700; cursor: pointer; }
-  main { max-width: 900px; margin: 0 auto; padding: 24px 16px; }
-  .card { background: #fff; border: 1px solid var(--line); border-radius: 8px; padding: 20px; }
-  h2 { margin: 0 0 6px; color: var(--dg); font-size: 1.1rem; }
-  p { color: #475569; }
+  header .clock { font-weight: 700; font-size: .95rem; }
+  header button { background: var(--gold); color: #222; border: 0; border-radius: 4px; padding: 8px 14px; font-weight: 700; cursor: pointer; font: inherit; }
+  header button:disabled { opacity: .5; cursor: default; }
+  .light { background: #fff !important; color: var(--green) !important; border: 1px solid var(--line) !important; }
+  main { display: grid; grid-template-columns: minmax(280px, 1fr) minmax(300px, 1fr); gap: 20px; padding: 20px; max-width: 1100px; margin: 0 auto; }
+  .panel { background: #fff; border: 1px solid var(--line); border-radius: 8px; padding: 18px; }
+  .panel h2 { font-size: 1rem; margin: 0 0 12px; color: var(--dg); text-transform: uppercase; letter-spacing: .04em; }
+  .search input { width: 100%; height: 40px; border: 1px solid var(--line); border-radius: 4px; padding: 0 10px; font: inherit; }
+  .results { margin-top: 8px; max-height: 200px; overflow: auto; }
+  .results button { display: block; width: 100%; text-align: left; background: #fff; color: var(--ink); border: 0; border-bottom: 1px solid #eef2ee; padding: 8px 6px; font: inherit; cursor: pointer; }
+  .results button:hover { background: #f1f7f1; }
+  .info { margin-top: 14px; display: grid; grid-template-columns: 1fr 1fr; gap: 10px 14px; }
+  .info div span { display: block; font-size: .75rem; color: #6b7280; text-transform: uppercase; letter-spacing: .04em; }
+  .info div b { font-size: .97rem; }
+  .info .wide { grid-column: 1 / -1; }
+  .ok { color: var(--green); }
+  .no { color: var(--bad); }
+  .cam { margin-top: 16px; border-top: 1px solid #eef2ee; padding-top: 14px; }
+  .cam h2 { font-size: 1rem; margin: 0 0 10px; color: var(--dg); text-transform: uppercase; letter-spacing: .04em; }
+  .cam video, .cam img, .cam canvas { width: 100%; max-width: 280px; border-radius: 6px; display: block; background: #e6ece6; }
+  .cam .row { display: flex; gap: 8px; flex-wrap: wrap; margin-top: 10px; }
+  .cam .row button { border: 0; border-radius: 4px; padding: 9px 14px; font: inherit; font-weight: 700; cursor: pointer; background: var(--gold); color: #222; }
+  .cam .row button.light { background: #fff; color: var(--green); border: 1px solid var(--line); }
+  .cam .row button:disabled { opacity: .5; cursor: default; }
+  .msg { font-size: .9rem; min-height: 1.2em; margin: 8px 0 0; color: var(--bad); }
+  .msg.ok { color: var(--green); }
+  .tabs { display: flex; gap: 6px; margin-bottom: 12px; }
+  .tabs button { flex: 1; padding: 8px; border: 1px solid var(--line); background: #fff; color: var(--green); border-radius: 4px; cursor: pointer; font: inherit; font-weight: 700; }
+  .tabs button.on { background: var(--green); color: #fff; border-color: var(--green); }
+  .idcard { width: 100%; max-width: 360px; aspect-ratio: 85.6 / 54; margin: 0 auto; border-radius: 12px; border: 2px solid var(--green); background: linear-gradient(135deg, #fff 0%, #eef6ee 100%); position: relative; overflow: hidden; box-shadow: 0 4px 14px rgba(0,0,0,.12); }
+  .idcard .band { position: absolute; left: 0; right: 0; top: 0; height: 22%; background: var(--green); color: #fff; font-weight: 700; font-size: .8rem; display: flex; align-items: center; justify-content: center; letter-spacing: .05em; }
+  .idcard .body { position: absolute; inset: 22% 4% 4% 4%; display: flex; gap: 10px; align-items: center; }
+  .idcard .photo { width: 32%; aspect-ratio: 1 / 1.2; border-radius: 6px; background: #dfe7df center/cover no-repeat; border: 2px solid var(--gold); flex: none; }
+  .idcard .txt { font-size: .8rem; line-height: 1.35; min-width: 0; }
+  .idcard .txt b { display: block; font-size: .95rem; color: var(--dg); }
+  .idcard.back { display: flex; align-items: center; justify-content: center; text-align: center; padding: 16px; color: #6b7280; font-size: .9rem; }
+  .design-note { margin-top: 12px; text-align: center; color: #6b7280; font-size: .8rem; }
+  @media (max-width: 760px) { main { grid-template-columns: 1fr; padding: 14px; } }
 </style>
 </head>
 <body>
 <header>
   <h1>CUP ID PORTAL</h1>
-  <div><span class="who" id="who"></span> <button id="logout" type="button">Log out</button></div>
+  <div style="display:flex;gap:14px;align-items:center;flex-wrap:wrap">
+    <span class="clock" id="liveClock"></span>
+    <button id="logout" type="button">Log out</button>
+  </div>
 </header>
+
 <main>
-  <section class="card">
-    <h2>Welcome</h2>
-    <p>CUP ID generation will be added here.</p>
+  <section class="panel" aria-label="Student information">
+    <h2>Student information</h2>
+    <div class="search"><input id="q" type="search" placeholder="Student number or name" autocomplete="off"></div>
+    <div class="results" id="results"></div>
+
+    <div class="info" id="info" hidden>
+      <div class="wide"><span>Full name</span><b id="iName"></b></div>
+      <div><span>Student number</span><b id="iNo"></b></div>
+      <div><span>Status</span><b id="iStatus"></b></div>
+      <div class="wide"><span>Program</span><b id="iProgram"></b></div>
+      <div><span>College</span><b id="iCollege"></b></div>
+      <div><span>Year / Section</span><b id="iYear"></b></div>
+    </div>
+    <p class="msg" id="msg"></p>
+
+    <div class="cam" id="camBox" hidden>
+      <h2>Photo</h2>
+      <video id="video" autoplay playsinline hidden></video>
+      <canvas id="canvas" hidden></canvas>
+      <img id="shot" alt="Captured photo" hidden>
+      <div class="row">
+        <button class="light" id="camOpen" type="button">Open camera</button>
+        <button class="light" id="camTake" type="button" hidden>Capture</button>
+        <button class="light" id="camRetake" type="button" hidden>Retake</button>
+        <button id="camSave" type="button" hidden>Save photo</button>
+      </div>
+      <p class="msg" id="camMsg"></p>
+    </div>
+  </section>
+
+  <section class="panel" aria-label="ID preview">
+    <h2>ID preview</h2>
+    <div class="tabs">
+      <button type="button" id="tabFront" class="on">Front</button>
+      <button type="button" id="tabBack">Back</button>
+    </div>
+    <div id="front" class="idcard" aria-label="ID front">
+      <div class="band">CITY UNIVERSITY OF PASAY</div>
+      <div class="body">
+        <div class="photo" id="idPhoto"></div>
+        <div class="txt">
+          <b id="idName">No student selected</b>
+          <div id="idNo"></div>
+          <div id="idProgram"></div>
+          <div id="idYear"></div>
+        </div>
+      </div>
+    </div>
+    <div id="back" class="idcard back" hidden>Back design to follow.</div>
+    <p class="design-note">Front and back layout will be updated to the approved ID design.</p>
   </section>
 </main>
+
 <script>
-  (function () {
-    fetch('/api/cup-id/me', { credentials: 'same-origin' }).then(function (r) {
-      if (!r.ok) { window.location.href = '/CUP-PORTAL/cup-id/'; return null; }
-      return r.json();
-    }).then(function (j) {
-      if (j) document.getElementById('who').textContent = j.name || '';
-    }).catch(function () { window.location.href = '/CUP-PORTAL/cup-id/'; });
-    document.getElementById('logout').addEventListener('click', function () {
-      fetch('/api/cup-id/logout', { method: 'POST', credentials: 'same-origin' }).finally(function () {
-        window.location.href = '/CUP-PORTAL/cup-id/';
-      });
+(function () {
+  function $(id) { return document.getElementById(id); }
+  function esc(s) { return String(s == null ? '' : s).replace(/[&<>"']/g, function (c) { return { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]; }); }
+  function api(path, opts) {
+    return fetch(path, Object.assign({ credentials: 'same-origin' }, opts || {})).then(function (r) {
+      return r.json().catch(function () { return {}; }).then(function (j) { return { ok: r.ok, status: r.status, j: j }; });
     });
-  })();
+  }
+  function post(path, body) {
+    return api(path, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(body || {}) });
+  }
+  function toLogin() { window.location.href = '/CUP-PORTAL/cup-id/'; }
+
+  function tickClock() {
+    var s = new Date().toLocaleString('en-US', { timeZone: 'Asia/Manila', weekday: 'long', year: 'numeric', month: 'long', day: 'numeric', hour: 'numeric', minute: '2-digit', second: '2-digit', hour12: true });
+    $('liveClock').textContent = '📅 ' + s.replace(/, (\d{4}), /, ', $1 at ').replace(/ (AM|PM)$/, ' $1');
+  }
+  tickClock();
+  setInterval(tickClock, 1000);
+
+  function showSide(front) {
+    $('front').hidden = !front;
+    $('back').hidden = front;
+    $('tabFront').classList.toggle('on', front);
+    $('tabBack').classList.toggle('on', !front);
+  }
+  $('tabFront').addEventListener('click', function () { showSide(true); });
+  $('tabBack').addEventListener('click', function () { showSide(false); });
+
+  var current = null;
+  var stream = null;
+
+  function fullName(s) {
+    return [s.last_name + ',', s.first_name, s.middle_name, s.name_extension].filter(Boolean).join(' ');
+  }
+  function renderStudent(s) {
+    current = s;
+    $('info').hidden = false;
+    $('camBox').hidden = false;
+    $('iName').textContent = fullName(s);
+    $('iNo').textContent = s.student_no;
+    $('iStatus').innerHTML = s.status === 'enrolled' ? '<span class="ok">Officially enrolled</span>' : '<span class="no">' + esc(s.status) + '</span>';
+    $('iProgram').textContent = s.program;
+    $('iCollege').textContent = s.college;
+    $('iYear').textContent = 'Year ' + s.year_level + ' / ' + s.section;
+    $('idName').textContent = fullName(s);
+    $('idNo').textContent = s.student_no;
+    $('idProgram').textContent = s.program;
+    $('idYear').textContent = 'Year ' + s.year_level + ' · ' + s.college;
+    $('idPhoto').style.backgroundImage = s.photo ? 'url("' + s.photo + '")' : 'none';
+    $('camMsg').textContent = '';
+    resetCam();
+  }
+
+  function loadStudent(no) {
+    $('msg').textContent = '';
+    $('results').innerHTML = '';
+    api('/api/cup-id/student/' + encodeURIComponent(no)).then(function (res) {
+      if (res.status === 401) return toLogin();
+      if (!res.ok) { $('msg').textContent = res.j.error || 'Could not load the student.'; return; }
+      renderStudent(res.j.student);
+    });
+  }
+
+  var searchTimer = null;
+  $('q').addEventListener('input', function () {
+    clearTimeout(searchTimer);
+    var q = $('q').value.trim();
+    if (!q) { $('results').innerHTML = ''; return; }
+    searchTimer = setTimeout(function () {
+      api('/api/cup-id/search?q=' + encodeURIComponent(q)).then(function (res) {
+        if (res.status === 401) return toLogin();
+        if (!res.ok) return;
+        $('results').innerHTML = res.j.students.map(function (s) {
+          return '<button type="button" data-no="' + esc(s.student_no) + '">' + esc(s.student_no) + ' · ' + esc(s.last_name + ', ' + s.first_name) + '</button>';
+        }).join('') || '<p class="msg">No students found.</p>';
+      });
+    }, 250);
+  });
+  $('results').addEventListener('click', function (e) {
+    var b = e.target.closest('button[data-no]');
+    if (b) loadStudent(b.getAttribute('data-no'));
+  });
+
+  function stopCam() {
+    if (stream) { stream.getTracks().forEach(function (t) { t.stop(); }); stream = null; }
+  }
+  function resetCam() {
+    stopCam();
+    $('video').hidden = true;
+    $('canvas').hidden = true;
+    $('shot').hidden = true;
+    $('camOpen').hidden = false;
+    $('camTake').hidden = true;
+    $('camRetake').hidden = true;
+    $('camSave').hidden = true;
+  }
+  $('camOpen').addEventListener('click', function () {
+    $('camMsg').className = 'msg';
+    $('camMsg').textContent = '';
+    if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) {
+      $('camMsg').textContent = 'This browser cannot open the camera.';
+      return;
+    }
+    navigator.mediaDevices.getUserMedia({ video: { facingMode: 'user' }, audio: false }).then(function (s) {
+      stream = s;
+      $('video').srcObject = s;
+      $('video').hidden = false;
+      $('camOpen').hidden = true;
+      $('camTake').hidden = false;
+    }).catch(function () { $('camMsg').textContent = 'Camera access was denied or is not available.'; });
+  });
+  $('camTake').addEventListener('click', function () {
+    var v = $('video'), c = $('canvas');
+    c.width = v.videoWidth; c.height = v.videoHeight;
+    c.getContext('2d').drawImage(v, 0, 0, c.width, c.height);
+    $('shot').src = c.toDataURL('image/jpeg', 0.85);
+    stopCam();
+    v.hidden = true;
+    $('shot').hidden = false;
+    $('camTake').hidden = true;
+    $('camRetake').hidden = false;
+    $('camSave').hidden = false;
+  });
+  $('camRetake').addEventListener('click', function () { resetCam(); $('camOpen').click(); });
+  $('camSave').addEventListener('click', function () {
+    if (!current) return;
+    var photo = $('shot').src;
+    $('camSave').disabled = true;
+    post('/api/cup-id/student/' + encodeURIComponent(current.student_no) + '/photo', { photo: photo }).then(function (res) {
+      $('camSave').disabled = false;
+      if (res.status === 401) return toLogin();
+      if (!res.ok) { $('camMsg').className = 'msg'; $('camMsg').textContent = res.j.error || 'Could not save the photo.'; return; }
+      $('camMsg').className = 'msg ok';
+      $('camMsg').textContent = 'Photo saved.';
+      current.photo = photo;
+      $('idPhoto').style.backgroundImage = 'url("' + photo + '")';
+      resetCam();
+    });
+  });
+
+  $('logout').addEventListener('click', function () {
+    stopCam();
+    fetch('/api/cup-id/logout', { method: 'POST', credentials: 'same-origin' }).finally(toLogin);
+  });
+
+  api('/api/cup-id/me').then(function (res) {
+    if (!res.ok) toLogin();
+  }).catch(toLogin);
+})();
 </script>
 </body>
 </html>

@@ -4694,6 +4694,51 @@ app.post('/api/cup-id/logout', (req, res) => {
 });
 app.get('/api/cup-id/me', requireCupId, (req, res) => res.json({ role: 'cupid', name: 'CUP ID' }));
 
+// CUP ID dashboard: student lookup and photo, on the cup-id session.
+app.get('/api/cup-id/search', requireCupId, async (req, res) => {
+  const q = String(req.query.q || '').trim().slice(0, 100);
+  if (!q) return res.json({ students: [] });
+  try {
+    const { rows } = await pool.query(
+      `SELECT student_no, first_name, last_name, program, college FROM reg_students
+        WHERE student_no ILIKE $1 OR (first_name || ' ' || last_name) ILIKE $1 OR (last_name || ' ' || first_name) ILIKE $1
+        ORDER BY last_name, first_name LIMIT 20`, ['%' + q + '%']);
+    res.json({ students: rows });
+  } catch (err) {
+    console.error(err);
+    res.status(500).json({ error: 'Could not search students.' });
+  }
+});
+app.get('/api/cup-id/student/:no', requireCupId, async (req, res) => {
+  try {
+    const { rows } = await pool.query(
+      `SELECT student_no, college, first_name, COALESCE(middle_name,'') AS middle_name, last_name, COALESCE(name_extension,'') AS name_extension,
+              program, year_level, section, status, photo
+         FROM reg_students WHERE student_no = $1`, [String(req.params.no || '').trim()]);
+    if (!rows.length) return res.status(404).json({ error: 'Student not found.' });
+    res.json({ student: rows[0] });
+  } catch (err) {
+    console.error(err);
+    res.status(500).json({ error: 'Could not load the student.' });
+  }
+});
+app.post('/api/cup-id/student/:no/photo', requireCupId, async (req, res) => {
+  const photo = req.body && req.body.photo;
+  if (typeof photo !== 'string' || photo.length > 2800000 || !isImageDataUrl(photo)) {
+    return res.status(400).json({ error: 'Please capture a valid photo.' });
+  }
+  try {
+    const r = await pool.query('UPDATE reg_students SET photo = $2, photo_changed_at = now() WHERE student_no = $1 RETURNING student_no',
+      [String(req.params.no || '').trim(), photo]);
+    if (!r.rowCount) return res.status(404).json({ error: 'Student not found.' });
+    res.json({ ok: true });
+  } catch (err) {
+    console.error(err);
+    res.status(500).json({ error: 'Could not save the photo.' });
+  }
+});
+
+
 app.get('/api/csc/me', requireCsc, (req, res) => res.json({ role: 'csc' }));
 app.get('/api/csc/students', requireCsc, async (req, res) => {
   const college = String(req.query.college || '');
