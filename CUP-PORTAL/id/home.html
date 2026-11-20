@@ -149,6 +149,11 @@
   var current = null;
   var stream = null;
 
+  // Program code followed by the year level, e.g. BSOA4.
+  function yearLabel(s) {
+    var m = /\(([^)]+)\)\s*$/.exec(s.program || '');
+    return (m ? m[1] : (s.program || '')) + s.year_level;
+  }
   function fullName(s) {
     return [s.last_name + ',', s.first_name, s.middle_name, s.name_extension].filter(Boolean).join(' ');
   }
@@ -161,11 +166,11 @@
     $('iStatus').innerHTML = s.status === 'enrolled' ? '<span class="ok">Officially enrolled</span>' : '<span class="no">' + esc(s.status) + '</span>';
     $('iProgram').textContent = s.program;
     $('iCollege').textContent = s.college;
-    $('iYear').textContent = 'Year ' + s.year_level + ' / ' + s.section;
+    $('iYear').textContent = yearLabel(s) + ' / ' + s.section;
     $('idName').textContent = fullName(s);
     $('idNo').textContent = s.student_no;
     $('idProgram').textContent = s.program;
-    $('idYear').textContent = 'Year ' + s.year_level + ' · ' + s.college;
+    $('idYear').textContent = yearLabel(s) + ' · ' + s.college;
     $('idPhoto').style.backgroundImage = s.photo ? 'url("' + s.photo + '")' : 'none';
     $('camMsg').textContent = '';
     resetCam();
