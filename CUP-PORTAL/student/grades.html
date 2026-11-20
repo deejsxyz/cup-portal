@@ -111,10 +111,14 @@
 <main>
   <!-- Enrollment: content comes later -->
   <section id="tab-enroll" hidden>
-  <section class="card">
+  <section class="card" id="proc-card">
     <h2>Enrollment Procedure</h2>
     <ol class="proc" id="proc"><li><p>Loading…</p></li></ol>
     <p class="msg" id="proc-note" hidden></p>
+  </section>
+
+  <section id="enroll-closed" hidden style="text-align:center;padding:120px 16px">
+    <h2 style="margin:0;font-size:1.6rem;letter-spacing:.08em;color:#1f3d1f">ENROLLMENT IS NOT YET OPEN</h2>
   </section>
 
   <section class="card" id="prereg">
@@ -531,15 +535,16 @@
           applyEnrollWindow();
         }).catch(function () { $('pr-state').textContent = 'Could not load the form.'; $('pr-state').hidden = false; });
     }
-    // Follows the registrar's enrollment switch and this college's enrollment dates. When closed, the form is read-only.
+    // Follows the registrar's enrollment switch and this college's enrollment dates.
+    // When closed, the tab is blank except for "ENROLLMENT IS NOT YET OPEN".
     function applyEnrollWindow() {
       fetch('/api/portal/enrollment-window', { credentials: 'same-origin' }).then(function (r) { return r.json(); })
         .then(function (w) {
-          if (w.open) return;
-          $('pr-actions').hidden = true;
-          ['pr-email', 'pr-contact', 'pr-civil'].forEach(function (id) { $(id).disabled = true; });
-          $('pr-state').textContent = 'Enrollment is closed for your college. The pre-registration form is read-only.';
-          $('pr-state').className = 'msg info'; $('pr-state').hidden = false;
+          var closed = !w.open;
+          $('enroll-closed').hidden = !closed;
+          $('prereg').hidden = closed;
+          $('proc-card').hidden = closed;
+          if (closed) $('enrolled-card').hidden = true;
         }).catch(function () {});
     }
     function prBody() { return { email: $('pr-email').value.trim(), contact_number: $('pr-contact').value.trim(), civil_status: $('pr-civil').value }; }
@@ -588,7 +593,8 @@
         }).catch(function () { $('proc').innerHTML = '<li><p>Could not load your enrollment steps.</p></li>'; });
     }
     loadProcedure();
-  window.cupRefreshEnroll = function () { loadPrereg(); loadProcedure(); loadEnrolled(); };
+  window.cupRefreshEnroll = function () { applyEnrollWindow(); loadPrereg(); loadProcedure(); loadEnrolled(); };
+  applyEnrollWindow();
   loadPrereg();
   loadProcedure();
   loadEnrolled();
