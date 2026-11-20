@@ -6672,6 +6672,25 @@ app.post('/api/student/prereg/submit', requirePortal('student'), async (req, res
     client.release();
   }
 });
+// Enrolled subjects for the active term (read-only on the student portal): the subjects the College Registrar assigned in Step 2.
+app.get('/api/student/enrolled-subjects', requirePortal('student'), async (req, res) => {
+  try {
+    const t = await gradingTerm();
+    const no = req.portal.student_no || '';
+    const st = no ? (await pool.query('SELECT step2_evaluated_at, step2_advised_at, step2_sectioned_at FROM reg_students WHERE student_no = $1', [no])).rows[0] : null;
+    const step2 = !!(st && st.step2_evaluated_at && st.step2_advised_at && st.step2_sectioned_at);
+    const en = step2 ? (await pool.query(
+      'SELECT year_level, section, subjects FROM reg_enrollments WHERE student_no = $1 AND term = $2 AND academic_year = $3',
+      [no, t.term, t.ay])).rows[0] : null;
+    if (!en) return res.json({ term: t, enrolled: false, subjects: [] });
+    const subjects = (Array.isArray(en.subjects) ? en.subjects : []).map((x) => ({
+      course_code: x.course_code || '', descriptive_title: x.descriptive_title || '', instructor_name: x.instructor_name || '' }));
+    res.json({ term: t, enrolled: true, year_level: en.year_level, section: en.section, subjects });
+  } catch (err) {
+    console.error(err);
+    res.status(500).json({ error: 'Could not load your enrolled subjects.' });
+  }
+});
 app.get('/api/student/enrollment-steps', requirePortal('student'), async (req, res) => {
   try {
     const no = req.portal.student_no || '';
