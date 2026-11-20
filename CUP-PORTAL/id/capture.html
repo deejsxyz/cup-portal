@@ -65,7 +65,13 @@
 (function () {
   function $(id) { return document.getElementById(id); }
   var params = new URLSearchParams(window.location.search);
-  var no = params.get('no') || '';
+  var no = '';
+  var stream = null;
+  var captured = null;
+  var bc = ('BroadcastChannel' in window) ? new BroadcastChannel('cup-id-sync') : null;
+
+  function setMsg(text, ok) { $('msg').className = ok ? 'msg ok' : 'msg'; $('msg').textContent = text; }
+
   function cardName(s) {
     var first = String(s.first_name || '').trim();
     var mi = String(s.middle_name || '').trim().charAt(0);
@@ -80,31 +86,16 @@
     var f = FRONT_TPL[college];
     return f ? "url('/CUP-PORTAL/id/Front%20ID/" + f + "')" : "url('/CUP-PORTAL/id/front-design.png')";
   }
-  var stream = null;
-  var captured = null;
-
-  function setMsg(text, ok) { $('msg').className = ok ? 'msg ok' : 'msg'; $('msg').textContent = text; }
-
-  if (!no) { setMsg('No student was chosen. Close this window and pick a student on the ID page.', false); $('start').disabled = true; return; }
-
-  fetch('/api/id/student/' + encodeURIComponent(no), { credentials: 'same-origin' }).then(function (r) {
-    if (r.status === 401) { setMsg('Your ID System session has ended. Log in again on the ID page.', false); return null; }
-    return r.json().then(function (j) { return { ok: r.ok, j: j }; });
-  }).then(function (res) {
-    if (!res) return;
-    if (!res.ok) { setMsg(res.j.error || 'Could not load the student.', false); return; }
-    var s = res.j.student;
-    $('who').textContent = [s.last_name + ',', s.first_name, s.middle_name].filter(Boolean).join(' ') + ' · ' + s.student_no;
-    $('pFront').style.backgroundImage = frontTemplate(s.college);
-    $('pName').textContent = cardName(s);
-    $('pNo').textContent = s.student_no;
-    $('pProgram').textContent = String(s.program || '').replace(/\s*\([^)]*\)\s*$/, '');
-    setPreviewPhoto(s.photo);
-  });
   function setPreviewPhoto(url) {
     $('pPhoto').style.backgroundImage = url ? 'url("' + url + '")' : 'none';
   }
 
+  function stopCam() { if (stream) { stream.getTracks().forEach(function (t) { t.stop(); }); stream = null; } }
+  function showCaptureButtons(captureMode) {
+    $('take').hidden = !captureMode;
+    $('retake').hidden = true;
+    $('save').hidden = true;
+  }
   function startCam() {
     setMsg('', false);
     if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) { setMsg('This browser cannot open the camera.', false); return; }
@@ -113,16 +104,65 @@
       $('video').srcObject = s;
       $('video').hidden = false;
       $('start').hidden = true;
-      $('take').hidden = false;
-      $('retake').hidden = true;
-      $('save').hidden = true;
-      captured = null;
+      showCaptureButtons(true);
     }).catch(function (e) {
       $('start').hidden = false;
       setMsg('Camera not available: ' + (e && e.name ? e.name : 'unknown error') + '. Allow camera access for this site and close other apps using the camera.', false);
     });
   }
-  function stopCam() { if (stream) { stream.getTracks().forEach(function (t) { t.stop(); }); stream = null; } }
+  function resumeCam() {
+    if (stream) {
+      $('video').hidden = false;
+      $('video').play();
+      showCaptureButtons(true);
+    } else {
+      startCam();
+    }
+  }
+
+  function clearPreview() {
+    no = '';
+    captured = null;
+    stopCam();
+    $('video').hidden = true;
+    $('start').hidden = true;
+    showCaptureButtons(false);
+    $('who').textContent = 'No student selected';
+    $('pFront').style.backgroundImage = frontTemplate('');
+    $('pName').textContent = '';
+    $('pNo').textContent = '';
+    $('pProgram').textContent = '';
+    setPreviewPhoto(null);
+    setMsg('Choose a student on the ID page.', false);
+  }
+
+  function loadStudent(n) {
+    if (n === no) return;
+    no = n;
+    captured = null;
+    setMsg('', false);
+    showCaptureButtons(false);
+    fetch('/api/id/student/' + encodeURIComponent(n), { credentials: 'same-origin' }).then(function (r) {
+      if (r.status === 401) { setMsg('Your ID System session has ended. Log in again on the ID page.', false); return null; }
+      return r.json().then(function (j) { return { ok: r.ok, j: j }; });
+    }).then(function (res) {
+      if (!res || no !== n) return;
+      if (!res.ok) { setMsg(res.j.error || 'Could not load the student.', false); return; }
+      var s = res.j.student;
+      $('who').textContent = [s.last_name + ',', s.first_name, s.middle_name].filter(Boolean).join(' ') + ' · ' + s.student_no;
+      $('pFront').style.backgroundImage = frontTemplate(s.college);
+      $('pName').textContent = cardName(s);
+      $('pNo').textContent = s.student_no;
+      $('pProgram').textContent = String(s.program || '').replace(/\s*\([^)]*\)\s*$/, '');
+      setPreviewPhoto(s.photo);
+      resumeCam();
+    });
+  }
+
+  if (bc) bc.onmessage = function (e) {
+    var n = (e.data && e.data.no) || '';
+    if (!n) clearPreview(); else loadStudent(n);
+  };
 
   $('start').addEventListener('click', startCam);
   $('take').addEventListener('click', function () {
@@ -139,34 +179,42 @@
   });
   $('retake').addEventListener('click', function () {
     captured = null;
+    setMsg('', false);
     $('video').play();
     $('retake').hidden = true;
     $('save').hidden = true;
     $('take').hidden = false;
-    setMsg('', false);
+    if (no) {
+      fetch('/api/id/student/' + encodeURIComponent(no), { credentials: 'same-origin' }).then(function (r) { return r.json(); })
+        .then(function (j) { if (j.student && no) setPreviewPhoto(j.student.photo); }).catch(function () {});
+    }
   });
   $('save').addEventListener('click', function () {
     var photo = captured;
     if (!photo) { setMsg('Capture a photo first.', false); return; }
+    var n = no;
     $('save').disabled = true;
-    fetch('/api/id/student/' + encodeURIComponent(no) + '/photo', {
+    fetch('/api/id/student/' + encodeURIComponent(n) + '/photo', {
       method: 'POST', credentials: 'same-origin', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ photo: photo })
     }).then(function (r) { return r.json().catch(function () { return {}; }).then(function (j) { return { ok: r.ok, status: r.status, j: j }; }); })
       .then(function (res) {
         $('save').disabled = false;
         if (res.status === 401) { setMsg('Your ID System session has ended. Log in again on the ID page.', false); return; }
         if (!res.ok) { setMsg(res.j.error || 'Could not save the photo.', false); return; }
+        if (bc) bc.postMessage({ photo: { no: n, url: photo } });
         if (window.opener && !window.opener.closed && typeof window.opener.cupIdPhotoSaved === 'function') {
-          window.opener.cupIdPhotoSaved(no, photo);
+          window.opener.cupIdPhotoSaved(n, photo);
         }
-        setMsg('Photo saved.', true);
+        captured = null;
         setPreviewPhoto(photo);
+        setMsg('Photo saved.', true);
       })
       .catch(function () { $('save').disabled = false; setMsg('Could not reach the server. Try again.', false); });
   });
   window.addEventListener('beforeunload', stopCam);
 
-  startCam();
+  var initial = params.get('no') || '';
+  if (initial) loadStudent(initial); else clearPreview();
 })();
 </script>
 </body>

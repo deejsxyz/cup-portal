@@ -180,12 +180,34 @@
   function refreshBack() {
     $('back').innerHTML = backHtml(current);
   }
-  window.cupIdPhotoSaved = function (no, url) {
+  // Live sync with the photo capture window (same browser).
+  var bc = ('BroadcastChannel' in window) ? new BroadcastChannel('cup-id-sync') : null;
+  function broadcast(s) { if (bc) bc.postMessage({ no: s ? s.student_no : '' }); }
+  function applyPhoto(no, url) {
     if (!current || current.student_no !== no) return;
     current.photo = url;
     $('idPhoto').style.backgroundImage = 'url("' + url + '")';
     refreshBack();
+  }
+  window.cupIdPhotoSaved = applyPhoto;
+  if (bc) bc.onmessage = function (e) {
+    if (e.data && e.data.photo) applyPhoto(e.data.photo.no, e.data.photo.url);
   };
+  function clearStudent() {
+    current = null;
+    $('info').hidden = true;
+    $('camBox').hidden = true;
+    $('contactBox').hidden = true;
+    $('msg').textContent = '';
+    $('idName').textContent = '';
+    $('idNo').textContent = '';
+    $('idProgram').textContent = '';
+    $('idPhoto').style.backgroundImage = 'none';
+    $('front').style.backgroundImage = frontTemplate('');
+    $('back').innerHTML = '';
+    resetCam();
+    broadcast(null);
+  }
   function fullName(s) {
     return [s.last_name + ',', s.first_name, s.middle_name, s.name_extension].filter(Boolean).join(' ');
   }
@@ -241,6 +263,7 @@
     refreshBack();
     $('camMsg').textContent = '';
     resetCam();
+    broadcast(s);
   }
 
   function loadStudent(no) {
@@ -257,7 +280,7 @@
   $('q').addEventListener('input', function () {
     clearTimeout(searchTimer);
     var q = $('q').value.trim();
-    if (!q) { $('results').innerHTML = ''; return; }
+    if (!q) { $('results').innerHTML = ''; clearStudent(); return; }
     searchTimer = setTimeout(function () {
       api('/api/id/search?q=' + encodeURIComponent(q)).then(function (res) {
         if (res.status === 401) return toLogin();
