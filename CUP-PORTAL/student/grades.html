@@ -143,7 +143,7 @@
     <h2>Enrolled Subjects</h2>
     <p class="hint" id="enrolled-meta"></p>
     <div style="overflow-x:auto"><table style="width:100%;border-collapse:collapse;font-size:.95rem">
-      <thead><tr><th style="text-align:left;padding:6px;border-bottom:1px solid #d5e2d5">Code</th><th style="text-align:left;padding:6px;border-bottom:1px solid #d5e2d5">Descriptive title</th><th style="text-align:left;padding:6px;border-bottom:1px solid #d5e2d5">Instructor</th></tr></thead>
+      <thead><tr><th style="text-align:left;padding:6px;border-bottom:1px solid #d5e2d5">Code</th><th style="text-align:left;padding:6px;border-bottom:1px solid #d5e2d5">Descriptive title</th><th style="text-align:left;padding:6px;border-bottom:1px solid #d5e2d5">Schedule</th><th style="text-align:left;padding:6px;border-bottom:1px solid #d5e2d5">Room</th><th style="text-align:left;padding:6px;border-bottom:1px solid #d5e2d5">Instructor</th></tr></thead>
       <tbody id="enrolled-rows"></tbody>
     </table></div>
   </section>
@@ -566,6 +566,11 @@
     });
     loadPrereg();
     // Read-only: shows the subjects the Registrar assigned in Step 2. Nothing here can be edited.
+    function fmtTime(v) {
+      if (!v) return '';
+      var p = String(v).split(':'), h = Number(p[0]);
+      return (h % 12 || 12) + ':' + (p[1] || '00') + ' ' + (h >= 12 ? 'PM' : 'AM');
+    }
     function loadEnrolled() {
       fetch('/api/student/enrolled-subjects', { credentials: 'same-origin' }).then(function (r) { return r.json().then(function (j) { return { ok: r.ok, j: j }; }); })
         .then(function (res) {
@@ -573,7 +578,8 @@
           if (!res.ok || !res.j.enrolled || !res.j.subjects.length) { card.hidden = true; return; }
           $('enrolled-meta').textContent = 'Year ' + res.j.year_level + ', Section ' + res.j.section + ' · ' + res.j.term.term + ', A.Y. ' + res.j.term.ay;
           $('enrolled-rows').innerHTML = res.j.subjects.map(function (s) {
-            return '<tr><td style="padding:6px;border-bottom:1px solid #d5e2d5">' + esc(s.course_code) + '</td><td style="padding:6px;border-bottom:1px solid #d5e2d5">' + esc(s.descriptive_title) + '</td><td style="padding:6px;border-bottom:1px solid #d5e2d5">' + esc(s.instructor_name || 'TBA') + '</td></tr>';
+            var when = s.days ? s.days + ' ' + fmtTime(s.start_time) + (s.end_time ? ' – ' + fmtTime(s.end_time) : '') : 'TBA';
+            return '<tr><td style="padding:6px;border-bottom:1px solid #d5e2d5">' + esc(s.course_code) + '</td><td style="padding:6px;border-bottom:1px solid #d5e2d5">' + esc(s.descriptive_title) + '</td><td style="padding:6px;border-bottom:1px solid #d5e2d5">' + esc(when) + '</td><td style="padding:6px;border-bottom:1px solid #d5e2d5">' + esc(s.room || '—') + '</td><td style="padding:6px;border-bottom:1px solid #d5e2d5">' + esc(s.instructor_name || 'TBA') + '</td></tr>';
           }).join('');
           card.hidden = false;
         }).catch(function () { $('enrolled-card').hidden = true; });

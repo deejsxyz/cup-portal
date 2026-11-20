@@ -6691,7 +6691,8 @@ app.get('/api/student/enrolled-subjects', requirePortal('student'), async (req, 
       [no, t.term, t.ay])).rows[0] : null;
     if (!en) return res.json({ term: t, enrolled: false, subjects: [] });
     const subjects = (Array.isArray(en.subjects) ? en.subjects : []).map((x) => ({
-      course_code: x.course_code || '', descriptive_title: x.descriptive_title || '', instructor_name: x.instructor_name || '' }));
+      course_code: x.course_code || '', descriptive_title: x.descriptive_title || '', instructor_name: x.instructor_name || '',
+      days: x.days || '', start_time: x.start_time || '', end_time: x.end_time || '', room: x.room || '' }));
     res.json({ term: t, enrolled: true, year_level: en.year_level, section: en.section, subjects });
   } catch (err) {
     console.error(err);
