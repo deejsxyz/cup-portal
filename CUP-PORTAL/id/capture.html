@@ -22,6 +22,12 @@
   .msg { font-size: .9rem; min-height: 1.2em; margin: 10px 0 0; color: var(--bad); }
   .msg.ok { color: var(--green); }
   .hint { color: #6b7280; font-size: .85rem; margin: 0 0 10px; }
+  .idcard { width: 100%; max-width: 240px; aspect-ratio: 54 / 85.6; margin: 0 auto; border-radius: 12px; border: 2px solid var(--green); background: linear-gradient(170deg, #fff 0%, #eef6ee 100%); position: relative; overflow: hidden; box-shadow: 0 4px 14px rgba(0,0,0,.12); }
+  .idcard .band { position: absolute; left: 0; right: 0; top: 0; height: 16%; background: var(--green); color: #fff; font-weight: 700; font-size: .7rem; display: flex; align-items: center; justify-content: center; text-align: center; letter-spacing: .04em; }
+  .idcard .body { position: absolute; inset: 20% 6% 4% 6%; display: flex; flex-direction: column; gap: 8px; align-items: center; text-align: center; }
+  .idcard .photo { width: 46%; aspect-ratio: 1 / 1; border-radius: 6px; background: #dfe7df center/cover no-repeat; border: 2px solid var(--gold); flex: none; }
+  .idcard .txt { font-size: .7rem; line-height: 1.3; min-width: 0; }
+  .idcard .txt b { display: block; font-size: .9rem; color: var(--dg); }
   @media (max-width: 720px) { main { grid-template-columns: 1fr; } }
 </style>
 </head>
@@ -45,9 +51,19 @@
     <p class="msg" id="msg"></p>
   </section>
   <section class="panel">
-    <h2>Instructions</h2>
-    <p class="hint">Keep this window on the second monitor. Center the face in the frame, then click Capture.</p>
-    <p class="hint">Save photo updates the student's ID on the main page and the student's portal photo.</p>
+    <h2>ID preview</h2>
+    <div class="idcard" aria-label="ID front">
+      <div class="band">CITY UNIVERSITY OF PASAY</div>
+      <div class="body">
+        <div class="photo" id="pPhoto"></div>
+        <div class="txt">
+          <b id="pName">Loading…</b>
+          <div id="pNo"></div>
+          <div id="pProgram"></div>
+          <div id="pYear"></div>
+        </div>
+      </div>
+    </div>
   </section>
 </main>
 <script>
@@ -69,7 +85,16 @@
     if (!res.ok) { setMsg(res.j.error || 'Could not load the student.', false); return; }
     var s = res.j.student;
     $('who').textContent = [s.last_name + ',', s.first_name, s.middle_name].filter(Boolean).join(' ') + ' · ' + s.student_no;
+    $('pName').textContent = [s.last_name + ',', s.first_name, s.middle_name, s.name_extension].filter(Boolean).join(' ');
+    $('pNo').textContent = s.student_no;
+    var m = /\(([^)]+)\)\s*$/.exec(s.program || '');
+    $('pProgram').textContent = s.program || '';
+    $('pYear').textContent = (m ? m[1] : (s.program || '')) + s.year_level + (s.section ? '-' + s.section : '') + ' · ' + (s.college || '');
+    setPreviewPhoto(s.photo);
   });
+  function setPreviewPhoto(url) {
+    $('pPhoto').style.backgroundImage = url ? 'url("' + url + '")' : 'none';
+  }
 
   function startCam() {
     setMsg('', false);
@@ -96,6 +121,7 @@
     c.width = side; c.height = side;
     c.getContext('2d').drawImage(v, (v.videoWidth - side) / 2, (v.videoHeight - side) / 2, side, side, 0, 0, side, side);
     $('shot').src = c.toDataURL('image/jpeg', 0.85);
+    setPreviewPhoto($('shot').src);
     stopCam();
     $('video').hidden = true;
     $('shot').hidden = false;
@@ -122,6 +148,7 @@
           window.opener.cupIdPhotoSaved(no, photo);
         }
         setMsg('Photo saved.', true);
+        setPreviewPhoto(photo);
       })
       .catch(function () { $('save').disabled = false; setMsg('Could not reach the server. Try again.', false); });
   });
