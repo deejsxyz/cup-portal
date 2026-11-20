@@ -4576,6 +4576,72 @@ app.post('/api/csc/logout', (req, res) => {
   res.setHeader('Set-Cookie', 'csc_session=; Path=/; HttpOnly; SameSite=Lax; Max-Age=0');
   res.json({ ok: true });
 });
+// ----- CUP ID portal: accounts created by the University Registrar (role 'cupid'), for the University Vice President -----
+const CUPID_SESSION_MS = 8 * 60 * 60 * 1000;
+const cupIdAttempts = new Map();
+function readCupIdSession(req) {
+  const m = /(?:^|;\s*)cup_id_session=([^;]+)/.exec(req.headers.cookie || '');
+  if (!m) return null;
+  const [body, sig] = m[1].split('.');
+  if (!body || !sig) return null;
+  const good = signSession(body);
+  if (sig.length !== good.length || !crypto.timingSafeEqual(Buffer.from(sig), Buffer.from(good))) return null;
+  try {
+    const d = JSON.parse(Buffer.from(body, 'base64url').toString());
+    if (d.role !== 'cupid' || !d.exp || d.exp < Date.now()) return null;
+    return { role: 'cupid', id: d.id };
+  } catch { return null; }
+}
+async function requireCupId(req, res, next) {
+  const s = readCupIdSession(req);
+  if (!s) return res.status(401).json({ error: 'Not logged in.' });
+  try {
+    const { rows } = await pool.query("SELECT 1 FROM accounts WHERE id = $1 AND role = 'cupid' AND archived_at IS NULL", [s.id]);
+    if (!rows.length) return res.status(401).json({ error: 'Not logged in.' });
+  } catch (err) {
+    console.error(err);
+    return res.status(500).json({ error: 'Could not check your sign-in.' });
+  }
+  req.cupId = s;
+  next();
+}
+app.post('/api/cup-id/login', async (req, res) => {
+  const ip = req.ip || 'unknown';
+  const now = Date.now();
+  const rec = cupIdAttempts.get(ip) || { count: 0, resetAt: now + 15 * 60 * 1000 };
+  if (now > rec.resetAt) { rec.count = 0; rec.resetAt = now + 15 * 60 * 1000; }
+  if (rec.count >= 10) return res.status(429).json({ error: 'Too many attempts. Try again in a few minutes.' });
+  const username = String((req.body && req.body.username) || '').trim().slice(0, 200);
+  const password = String((req.body && req.body.password) || '').slice(0, 200);
+  if (!username || !password) return res.status(400).json({ error: 'Please enter your username and password.' });
+  try {
+    const { rows } = await pool.query("SELECT id, password_hash, must_change_password FROM accounts WHERE role = 'cupid' AND archived_at IS NULL AND (username = $1 OR email = $1)", [username.toLowerCase()]);
+    const row = rows[0];
+    if (row && verifyPassword(password, row.password_hash)) {
+      if (row.must_change_password) return res.status(403).json({ error: 'Your password must be reset by the University Registrar before you can sign in.' });
+      cupIdAttempts.delete(ip);
+      const body = Buffer.from(JSON.stringify({ role: 'cupid', id: row.id, exp: now + CUPID_SESSION_MS })).toString('base64url');
+      const secure = req.headers['x-forwarded-proto'] === 'https' ? '; Secure' : '';
+      res.setHeader('Set-Cookie', `cup_id_session=${body}.${signSession(body)}; Path=/; HttpOnly; SameSite=Lax${secure}`);
+      return res.json({ ok: true });
+    }
+  } catch (err) {
+    console.error(err);
+    return res.status(500).json({ error: 'Could not log in. Please try again.' });
+  }
+  rec.count += 1;
+  cupIdAttempts.set(ip, rec);
+  res.status(401).json({ error: 'Incorrect username or password.' });
+});
+app.post('/api/cup-id/logout', (req, res) => {
+  res.setHeader('Set-Cookie', 'cup_id_session=; Path=/; HttpOnly; SameSite=Lax; Max-Age=0');
+  res.json({ ok: true });
+});
+app.get('/api/cup-id/me', requireCupId, async (req, res) => {
+  const { rows } = await pool.query("SELECT first_name, last_name FROM accounts WHERE id = $1", [req.cupId.id]);
+  res.json({ role: 'cupid', name: rows.length ? [rows[0].first_name, rows[0].last_name].filter(Boolean).join(' ') : '' });
+});
+
 app.get('/api/csc/me', requireCsc, (req, res) => res.json({ role: 'csc' }));
 app.get('/api/csc/students', requireCsc, async (req, res) => {
   const college = String(req.query.college || '');

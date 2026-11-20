@@ -1,0 +1,74 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>CUP ID Login</title>
+<link rel="icon" href="/images/favicon-cup.png">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Libre+Franklin:wght@400;600;700;800&display=swap">
+<style>
+  :root { --green: #106010; --dg: #0b4a0b; --gold: #f2c200; --ink: #222; --line: #d6dbd6; }
+  * { box-sizing: border-box; }
+  html, body { margin: 0; background: #f4f6f4; color: var(--ink); }
+  body { font-family: 'Libre Franklin', Arial, Helvetica, sans-serif; min-height: 100vh; display: flex; flex-direction: column; }
+  header { background: var(--green); color: #fff; padding: 16px 20px; text-align: center; }
+  header h1 { font-size: 1.1rem; margin: 0; font-weight: 800; letter-spacing: .02em; }
+  header p { margin: 4px 0 0; color: var(--gold); font-weight: 700; font-size: .9rem; }
+  main { flex: 1; display: flex; align-items: center; justify-content: center; padding: 24px 16px; }
+  .card { background: #fff; border: 1px solid var(--line); border-radius: 10px; padding: 28px 24px; width: 100%; max-width: 380px; box-shadow: 0 6px 20px rgba(0,0,0,.06); }
+  h2 { margin: 0 0 4px; color: var(--dg); font-size: 1.25rem; }
+  .sub { margin: 0 0 18px; color: #5b6b5b; font-size: .92rem; }
+  label { display: block; font-size: .85rem; font-weight: 700; color: #334155; margin-bottom: 12px; }
+  input { display: block; width: 100%; margin-top: 6px; padding: 10px 12px; border: 1px solid var(--line); border-radius: 6px; font: inherit; font-size: 1rem; }
+  input:focus { outline: 2px solid var(--gold); border-color: var(--green); }
+  button { width: 100%; margin-top: 6px; padding: 11px; border: 0; border-radius: 6px; background: var(--green); color: #fff; font: inherit; font-weight: 800; font-size: 1rem; cursor: pointer; }
+  button:hover { background: var(--dg); }
+  button:disabled { opacity: .6; cursor: default; }
+  .msg { margin: 12px 0 0; font-size: .9rem; min-height: 1.2em; color: #b91c1c; }
+  .msg.info { color: #475569; }
+</style>
+</head>
+<body>
+<header>
+  <h1>CUP ID PORTAL</h1>
+</header>
+<main>
+  <form class="card" id="login" novalidate>
+    <h2>Sign in</h2>
+    <p class="sub">Use the account created for you by the University Registrar.</p>
+    <label>Username<input id="username" name="username" autocomplete="username" autocapitalize="none" required></label>
+    <label>Password<input id="password" type="password" name="password" autocomplete="current-password" required></label>
+    <button type="submit" id="go">Sign in</button>
+    <p class="msg" id="msg" role="status"></p>
+  </form>
+</main>
+<script>
+  (function () {
+    var form = document.getElementById('login'), msg = document.getElementById('msg'), go = document.getElementById('go');
+    form.addEventListener('submit', function (e) {
+      e.preventDefault();
+      var username = document.getElementById('username').value.trim();
+      var password = document.getElementById('password').value;
+      msg.textContent = '';
+      if (!username || !password) { msg.textContent = 'Please enter your username and password.'; return; }
+      go.disabled = true; go.textContent = 'Signing in…';
+      fetch('/api/cup-id/login', {
+        method: 'POST', credentials: 'same-origin', headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ username: username, password: password })
+      }).then(function (r) { return r.json().then(function (j) { return { ok: r.ok, j: j }; }); })
+        .then(function (res) {
+          if (res.ok && res.j.ok) { window.location.href = '/CUP-PORTAL/cup-id/home.html'; return; }
+          msg.textContent = res.j.error || 'Could not sign in.';
+          go.disabled = false; go.textContent = 'Sign in';
+        })
+        .catch(function () {
+          msg.textContent = 'Could not reach the server. Please try again.';
+          go.disabled = false; go.textContent = 'Sign in';
+        });
+    });
+  })();
+</script>
+</body>
+</html>

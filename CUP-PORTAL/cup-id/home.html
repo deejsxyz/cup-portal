@@ -1,0 +1,50 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>CUP ID Portal</title>
+<link rel="icon" href="/images/favicon-cup.png">
+<style>
+  :root { --green: #106010; --dg: #0b4a0b; --gold: #f2c200; --ink: #222; --line: #d6dbd6; }
+  * { box-sizing: border-box; }
+  html, body { margin: 0; background: #f4f6f4; color: var(--ink); }
+  body { font-family: Arial, Helvetica, sans-serif; min-height: 100vh; }
+  header { background: var(--green); color: #fff; display: flex; justify-content: space-between; align-items: center; gap: 12px; padding: 14px 20px; flex-wrap: wrap; }
+  header h1 { font-size: 1.05rem; margin: 0; font-weight: 800; }
+  header .who { font-size: .9rem; }
+  header button { background: var(--gold); color: #222; border: 0; border-radius: 4px; padding: 8px 14px; font-weight: 700; cursor: pointer; }
+  main { max-width: 900px; margin: 0 auto; padding: 24px 16px; }
+  .card { background: #fff; border: 1px solid var(--line); border-radius: 8px; padding: 20px; }
+  h2 { margin: 0 0 6px; color: var(--dg); font-size: 1.1rem; }
+  p { color: #475569; }
+</style>
+</head>
+<body>
+<header>
+  <h1>CUP ID PORTAL</h1>
+  <div><span class="who" id="who"></span> <button id="logout" type="button">Log out</button></div>
+</header>
+<main>
+  <section class="card">
+    <h2>Welcome</h2>
+    <p>CUP ID generation will be added here.</p>
+  </section>
+</main>
+<script>
+  (function () {
+    fetch('/api/cup-id/me', { credentials: 'same-origin' }).then(function (r) {
+      if (!r.ok) { window.location.href = '/CUP-PORTAL/cup-id/'; return null; }
+      return r.json();
+    }).then(function (j) {
+      if (j) document.getElementById('who').textContent = j.name || '';
+    }).catch(function () { window.location.href = '/CUP-PORTAL/cup-id/'; });
+    document.getElementById('logout').addEventListener('click', function () {
+      fetch('/api/cup-id/logout', { method: 'POST', credentials: 'same-origin' }).finally(function () {
+        window.location.href = '/CUP-PORTAL/cup-id/';
+      });
+    });
+  })();
+</script>
+</body>
+</html>
