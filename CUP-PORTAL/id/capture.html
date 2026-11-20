@@ -1,0 +1,133 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>CUP ID System · Photo capture</title>
+<style>
+  :root { --green: #106010; --dg: #0b4a0b; --gold: #f2c200; --line: #d6dbd6; --bad: #b42318; }
+  * { box-sizing: border-box; }
+  html, body { margin: 0; background: #f4f6f4; color: #222; font-family: Arial, Helvetica, sans-serif; min-height: 100vh; }
+  header { background: var(--green); color: #fff; padding: 12px 16px; border-bottom: 4px solid var(--gold); }
+  header h1 { font-size: 1rem; margin: 0; }
+  header p { margin: 4px 0 0; color: var(--gold); font-weight: 700; font-size: .85rem; }
+  main { padding: 16px; display: grid; grid-template-columns: 1fr 1fr; gap: 14px; }
+  .panel { background: #fff; border: 1px solid var(--line); border-radius: 8px; padding: 14px; }
+  h2 { font-size: .95rem; margin: 0 0 10px; color: var(--dg); text-transform: uppercase; letter-spacing: .04em; }
+  video, img, canvas { width: 100%; border-radius: 6px; display: block; background: #e6ece6; aspect-ratio: 3 / 4; object-fit: cover; }
+  .row { display: flex; gap: 8px; flex-wrap: wrap; margin-top: 10px; }
+  button { border: 0; border-radius: 4px; padding: 10px 14px; font: inherit; font-weight: 700; cursor: pointer; background: var(--gold); color: #222; }
+  button.light { background: #fff; color: var(--green); border: 1px solid var(--line); }
+  button:disabled { opacity: .5; cursor: default; }
+  .msg { font-size: .9rem; min-height: 1.2em; margin: 10px 0 0; color: var(--bad); }
+  .msg.ok { color: var(--green); }
+  .hint { color: #6b7280; font-size: .85rem; margin: 0 0 10px; }
+  @media (max-width: 720px) { main { grid-template-columns: 1fr; } }
+</style>
+</head>
+<body>
+<header>
+  <h1>CUP ID SYSTEM · PHOTO CAPTURE</h1>
+  <p id="who"></p>
+</header>
+<main>
+  <section class="panel">
+    <h2>Live camera</h2>
+    <video id="video" autoplay playsinline></video>
+    <canvas id="canvas" hidden></canvas>
+    <img id="shot" alt="Captured photo" hidden>
+    <div class="row">
+      <button class="light" id="start" type="button">Start camera</button>
+      <button id="take" type="button" hidden>Capture</button>
+      <button class="light" id="retake" type="button" hidden>Retake</button>
+      <button id="save" type="button" hidden>Save photo</button>
+    </div>
+    <p class="msg" id="msg"></p>
+  </section>
+  <section class="panel">
+    <h2>Instructions</h2>
+    <p class="hint">Keep this window on the second monitor. Center the face in the frame, then click Capture.</p>
+    <p class="hint">Save photo updates the student's ID on the main page and the student's portal photo.</p>
+  </section>
+</main>
+<script>
+(function () {
+  function $(id) { return document.getElementById(id); }
+  var params = new URLSearchParams(window.location.search);
+  var no = params.get('no') || '';
+  var stream = null;
+
+  function setMsg(text, ok) { $('msg').className = ok ? 'msg ok' : 'msg'; $('msg').textContent = text; }
+
+  if (!no) { setMsg('No student was chosen. Close this window and pick a student on the ID page.', false); $('start').disabled = true; return; }
+
+  fetch('/api/id/student/' + encodeURIComponent(no), { credentials: 'same-origin' }).then(function (r) {
+    if (r.status === 401) { setMsg('Your ID System session has ended. Log in again on the ID page.', false); return null; }
+    return r.json().then(function (j) { return { ok: r.ok, j: j }; });
+  }).then(function (res) {
+    if (!res) return;
+    if (!res.ok) { setMsg(res.j.error || 'Could not load the student.', false); return; }
+    var s = res.j.student;
+    $('who').textContent = [s.last_name + ',', s.first_name, s.middle_name].filter(Boolean).join(' ') + ' · ' + s.student_no;
+  });
+
+  function startCam() {
+    setMsg('', false);
+    if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) { setMsg('This browser cannot open the camera.', false); return; }
+    navigator.mediaDevices.getUserMedia({ video: { facingMode: 'user' }, audio: false }).then(function (s) {
+      stream = s;
+      $('video').srcObject = s;
+      $('video').hidden = false;
+      $('shot').hidden = true;
+      $('start').hidden = true;
+      $('take').hidden = false;
+      $('retake').hidden = true;
+      $('save').hidden = true;
+    }).catch(function (e) {
+      setMsg('Camera not available: ' + (e && e.name ? e.name : 'unknown error') + '. Allow camera access for this site and close other apps using the camera.', false);
+    });
+  }
+  function stopCam() { if (stream) { stream.getTracks().forEach(function (t) { t.stop(); }); stream = null; } }
+
+  $('start').addEventListener('click', startCam);
+  $('take').addEventListener('click', function () {
+    var v = $('video'), c = $('canvas');
+    c.width = v.videoWidth; c.height = v.videoHeight;
+    c.getContext('2d').drawImage(v, 0, 0, c.width, c.height);
+    $('shot').src = c.toDataURL('image/jpeg', 0.85);
+    stopCam();
+    $('video').hidden = true;
+    $('shot').hidden = false;
+    $('take').hidden = true;
+    $('retake').hidden = false;
+    $('save').hidden = false;
+  });
+  $('retake').addEventListener('click', function () {
+    $('retake').hidden = true;
+    $('save').hidden = true;
+    startCam();
+  });
+  $('save').addEventListener('click', function () {
+    var photo = $('shot').src;
+    $('save').disabled = true;
+    fetch('/api/id/student/' + encodeURIComponent(no) + '/photo', {
+      method: 'POST', credentials: 'same-origin', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ photo: photo })
+    }).then(function (r) { return r.json().catch(function () { return {}; }).then(function (j) { return { ok: r.ok, status: r.status, j: j }; }); })
+      .then(function (res) {
+        $('save').disabled = false;
+        if (res.status === 401) { setMsg('Your ID System session has ended. Log in again on the ID page.', false); return; }
+        if (!res.ok) { setMsg(res.j.error || 'Could not save the photo.', false); return; }
+        if (window.opener && !window.opener.closed && typeof window.opener.cupIdPhotoSaved === 'function') {
+          window.opener.cupIdPhotoSaved(no, photo);
+        }
+        setMsg('Photo saved.', true);
+      })
+      .catch(function () { $('save').disabled = false; setMsg('Could not reach the server. Try again.', false); });
+  });
+  window.addEventListener('beforeunload', stopCam);
+
+  startCam();
+})();
+</script>
+</body>
+</html>

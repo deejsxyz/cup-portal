@@ -108,6 +108,7 @@
         <button class="light" id="camRetake" type="button" hidden>Retake</button>
         <button id="camSave" type="button" hidden>Save photo</button>
       </div>
+      <button class="light" id="camWindow" type="button">Open capture window (second monitor)</button>
       <p class="msg" id="camMsg"></p>
     </div>
   </section>
@@ -179,6 +180,12 @@
   function refreshBack() {
     $('back').innerHTML = backHtml(current);
   }
+  window.cupIdPhotoSaved = function (no, url) {
+    if (!current || current.student_no !== no) return;
+    current.photo = url;
+    $('idPhoto').style.backgroundImage = 'url("' + url + '")';
+    refreshBack();
+  };
   function fullName(s) {
     return [s.last_name + ',', s.first_name, s.middle_name, s.name_extension].filter(Boolean).join(' ');
   }
@@ -323,6 +330,10 @@
     });
   });
 
+  $('camWindow').addEventListener('click', function () {
+    if (!current) { $('msg').textContent = 'Choose a student first.'; return; }
+    window.open('/CUP-PORTAL/id/capture.html?no=' + encodeURIComponent(current.student_no), 'cupIdCapture', 'width=760,height=640');
+  });
   $('cSave').addEventListener('click', function () {
     if (!current) return;
     var name = $('cName').value.trim(), number = $('cNumber').value.replace(/\D/g, '');
