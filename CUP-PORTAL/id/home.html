@@ -91,7 +91,7 @@
     <div class="contact" id="contactBox" hidden>
       <h2>Contact person in case of emergency</h2>
       <label>Name<input id="cName" maxlength="120" autocomplete="off"></label>
-      <label>Number<input id="cNumber" inputmode="numeric" maxlength="11" autocomplete="off" placeholder="09XXXXXXXXX"></label>
+      <label>Number<input id="cNumber" inputmode="numeric" maxlength="13" autocomplete="off" placeholder="0924-536-5127"></label>
       <button class="btn-save" id="cSave" type="button">Save contact</button>
       <p class="msg" id="cMsg"></p>
     </div>
@@ -187,6 +187,11 @@
   function fullName(s) {
     return [s.last_name + ',', s.first_name, s.middle_name, s.name_extension].filter(Boolean).join(' ');
   }
+  // Dashes are added as the number is typed: XXXX-XXX-XXXX.
+  $('cNumber').addEventListener('input', function () {
+    var d = this.value.replace(/\D/g, '').slice(0, 11);
+    this.value = d.length > 7 ? d.slice(0, 4) + '-' + d.slice(4, 7) + '-' + d.slice(7) : d.length > 4 ? d.slice(0, 4) + '-' + d.slice(4) : d;
+  });
   function renderStudent(s) {
     current = s;
     $('info').hidden = false;
@@ -204,7 +209,7 @@
     $('idPhoto').style.backgroundImage = s.photo ? 'url("' + s.photo + '")' : 'none';
     $('contactBox').hidden = false;
     $('cName').value = s.emergency_contact_name || '';
-    $('cNumber').value = s.emergency_contact_number || '';
+    $('cNumber').value = fmtPhone(s.emergency_contact_number);
     $('cMsg').textContent = '';
     refreshBack();
     $('camMsg').textContent = '';
@@ -300,7 +305,7 @@
 
   $('cSave').addEventListener('click', function () {
     if (!current) return;
-    var name = $('cName').value.trim(), number = $('cNumber').value.trim();
+    var name = $('cName').value.trim(), number = $('cNumber').value.replace(/\D/g, '');
     if (!name || !number) { $('cMsg').className = 'msg'; $('cMsg').textContent = 'Enter the contact person name and number.'; return; }
     if (!/^0\d{10}$/.test(number)) { $('cMsg').className = 'msg'; $('cMsg').textContent = 'The contact number must be 11 digits and start with 0.'; return; }
     $('cSave').disabled = true;

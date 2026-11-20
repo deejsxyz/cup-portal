@@ -4724,9 +4724,10 @@ app.get('/api/id/student/:no', requireCupId, async (req, res) => {
 });
 app.post('/api/id/student/:no/contact', requireCupId, async (req, res) => {
   const name = String((req.body && req.body.name) || '').trim().slice(0, 120);
-  const number = String((req.body && req.body.number) || '').trim();
-  if (!name || !number) return res.status(400).json({ error: 'Enter the contact person name and number.' });
-  if (!/^0\d{10}$/.test(number)) return res.status(400).json({ error: 'The contact number must be 11 digits and start with 0.' });
+  const digits = String((req.body && req.body.number) || '').replace(/\D/g, '');
+  if (!name || !digits) return res.status(400).json({ error: 'Enter the contact person name and number.' });
+  if (!/^0\d{10}$/.test(digits)) return res.status(400).json({ error: 'The contact number must be 11 digits and start with 0.' });
+  const number = digits.slice(0, 4) + '-' + digits.slice(4, 7) + '-' + digits.slice(7);
   try {
     const r = await pool.query('UPDATE reg_students SET emergency_contact_name = $2, emergency_contact_number = $3 WHERE student_no = $1 RETURNING student_no',
       [String(req.params.no || '').trim(), name, number]);
