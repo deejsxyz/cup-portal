@@ -337,6 +337,7 @@
     w.document.open();
     w.document.write('<!doctype html><html><head><meta charset="utf-8"><title>CUP ID</title><style>' +
       '@page { size: 54mm 85.6mm; margin: 0; } html, body { margin: 0; padding: 0; }' +
+      '* { -webkit-print-color-adjust: exact; print-color-adjust: exact; }' +
       '.card { width: 54mm; height: 85.6mm; position: relative; overflow: hidden; page-break-after: always; font-family: Arial, Helvetica, sans-serif; }' +
       '.card:last-child { page-break-after: auto; }' +
       '.front { border: 0.3mm solid #106010; background: #fff; }' +
@@ -355,7 +356,20 @@
       '</body></html>');
     w.document.close();
     w.focus();
-    setTimeout(function () { w.print(); }, 300);
+    // Wait for the card images to load before opening the print dialog, so the background and photo are printed.
+    var urls = [location.origin + '/CUP-PORTAL/id/back-design.png'];
+    var pm = /url\(["']?([^"')]+)["']?\)/.exec(photo || '');
+    if (pm) urls.push(pm[1]);
+    Promise.all(urls.map(function (u) {
+      return new Promise(function (resolve) {
+        var im = new Image();
+        im.onload = im.onerror = resolve;
+        im.src = u;
+        setTimeout(resolve, 3000);
+      });
+    })).then(function () {
+      setTimeout(function () { w.print(); }, 250);
+    });
   });
   $('logout').addEventListener('click', function () {
     stopCam();
