@@ -272,7 +272,7 @@
         '<td>' + (from + i + 1) + '</td>' +
         '<td style="font-family:monospace;font-weight:700">' + esc(s.student_no) + '</td>' +
         '<td style="text-transform:uppercase;font-weight:700">' + esc(s.last_name) + ', ' + esc(s.first_name) + ' ' + esc(s.middle_name || '') + '</td>' +
-        '<td>' + esc(progAbbrOf(s.program)) + '-' + esc(s.year_level) + esc(s.section) + '</td>' +
+        '<td>' + esc(progAbbrOf(s.program) + s.year_level + (s.section ? '-' + s.section : '')) + '</td>' +
         '<td><select class="g">' + opts + '</select></td>' +
         '<td class="rem">' + esc(remark(current)) + '</td>' +
         '<td>' + esc(s.instructor || '') + '</td></tr>';

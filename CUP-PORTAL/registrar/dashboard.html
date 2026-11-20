@@ -941,7 +941,7 @@ function cupYr(p, y) { var m = /\(([^)]+)\)\s*$/.exec(p || ''); return (m ? m[1]
       box._empty = 'No accounts found.';
       box._size = 10; box._page = 1; box._items = []; box._showAll = false;
       box._rowFn = function (u) {
-        var cells = student ? [keyOf(u), u.name, u.college, u.program || '', yearText(u.year_level)] : [keyOf(u), u.name, u.college, u.email || ''];
+        var cells = student ? [keyOf(u), u.name, u.college, u.program || '', cupYr(u.program, u.year_level)] : [keyOf(u), u.name, u.college, u.email || ''];
         return '<tr>' + cells.map(function (c) { return '<td>' + esc(c) + '</td>'; }).join('') + '<td>' + statusPill(u) +
           '</td><td><button type="button" class="btn green sm" data-reset="' + u.id + '" data-label="' + esc(keyOf(u)) + '">Reset password</button></td></tr>';
       };
@@ -984,7 +984,7 @@ function cupYr(p, y) { var m = /\(([^)]+)\)\s*$/.exec(p || ''); return (m ? m[1]
       box._empty = mode === 'archive' ? 'No active accounts found.' : 'No archived accounts found.';
       box._head = student ? ['', 'Student number', 'Name', 'College', 'Program', 'Year Level', 'Major'] : ['', 'Username', 'Name', role === 'csc' ? 'Position' : 'College', 'Email'];
       box._rowFn = function (u) {
-        var cells = student ? [keyOf(u), u.name, u.college, u.program || '', yearText(u.year_level), u.major || ''] : [keyOf(u), u.name, u.college, u.email || ''];
+        var cells = student ? [keyOf(u), u.name, u.college, u.program || '', cupYr(u.program, u.year_level), u.major || ''] : [keyOf(u), u.name, u.college, u.email || ''];
         return '<tr><td><input type="checkbox" data-id="' + u.id + '"' + (box._sel.has(u.id) ? ' checked' : '') + '></td>' +
           cells.map(function (c) { return '<td>' + esc(c) + '</td>'; }).join('') + '</tr>';
       };
@@ -1922,7 +1922,7 @@ function cupYr(p, y) { var m = /\(([^)]+)\)\s*$/.exec(p || ''); return (m ? m[1]
           if (!rows.length) { list.innerHTML = '<p class="hint">No officially enrolled students yet.</p>'; return; }
           var html = '<div class="overflow"><table><thead><tr><th>Student No.</th><th>Last Name</th><th>First Name</th><th>Middle Name</th><th>Program</th><th>Year</th><th>Section</th><th>Email</th></tr></thead><tbody>';
           rows.forEach(function (s) {
-            html += '<tr><td>' + esc(s.student_no) + '</td><td>' + esc(s.last_name) + '</td><td>' + esc(s.first_name) + '</td><td>' + esc(s.middle_name) + '</td><td>' + esc(s.program) + '</td><td>' + esc(s.year_level) + '</td><td>' + esc(s.section) + '</td><td>' + esc(s.email) + '</td></tr>';
+            html += '<tr><td>' + esc(s.student_no) + '</td><td>' + esc(s.last_name) + '</td><td>' + esc(s.first_name) + '</td><td>' + esc(s.middle_name) + '</td><td>' + esc(s.program) + '</td><td>' + esc(cupYr(s.program, s.year_level)) + '</td><td>' + esc(s.section) + '</td><td>' + esc(s.email) + '</td></tr>';
           });
           list.innerHTML = html + '</tbody></table></div>';
         })
