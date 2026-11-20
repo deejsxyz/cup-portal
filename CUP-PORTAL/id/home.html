@@ -43,11 +43,12 @@
   .tabs button { flex: 1; padding: 8px; border: 1px solid var(--line); background: #fff; color: var(--green); border-radius: 4px; cursor: pointer; font: inherit; font-weight: 700; }
   .tabs button.on { background: var(--green); color: #fff; border-color: var(--green); }
   .idcard { width: 100%; max-width: 240px; aspect-ratio: 54 / 85.6; margin: 0 auto; border-radius: 12px; border: 2px solid var(--green); background: linear-gradient(170deg, #fff 0%, #eef6ee 100%); position: relative; overflow: hidden; box-shadow: 0 4px 14px rgba(0,0,0,.12); }
-  .idcard .band { position: absolute; left: 0; right: 0; top: 0; height: 16%; background: var(--green); color: #fff; font-weight: 700; font-size: .7rem; display: flex; align-items: center; justify-content: center; letter-spacing: .04em; text-align: center; }
-  .idcard .body { position: absolute; inset: 20% 6% 4% 6%; display: flex; flex-direction: column; gap: 8px; align-items: center; text-align: center; }
-  .idcard .photo { width: 46%; aspect-ratio: 1 / 1.2; border-radius: 6px; background: #dfe7df center/cover no-repeat; border: 2px solid var(--gold); flex: none; }
-  .idcard .txt { font-size: .7rem; line-height: 1.3; min-width: 0; }
-  .idcard .txt b { display: block; font-size: .95rem; color: var(--dg); }
+  .idcard.front-tpl { background: url('/CUP-PORTAL/id/front-design.png') center / cover no-repeat; border-color: var(--green); }
+  .idcard .f-photo { position: absolute; left: 32.9%; top: 39.2%; width: 34.2%; height: 24.9%; background: #fff center/cover no-repeat; border: 1px solid #555; }
+  .idcard .f-name, .idcard .f-no { position: absolute; left: 6%; right: 6%; text-align: center; font-weight: 700; color: #111; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .idcard .f-name { bottom: 25.2%; height: 4%; font-size: .9rem; display: flex; align-items: flex-end; justify-content: center; }
+  .idcard .f-no { bottom: 15.9%; height: 4%; font-size: .82rem; display: flex; align-items: flex-end; justify-content: center; }
+  .idcard .f-prog { position: absolute; left: 4%; right: 4%; top: 89.8%; height: 8.2%; color: #fff; font-weight: 700; font-size: .72rem; line-height: 1.1; display: flex; align-items: center; justify-content: center; text-align: center; }
   .idcard.back { background: url('/CUP-PORTAL/id/back-design.png') center / cover no-repeat; border-color: var(--green); }
   .contact { margin-top: 16px; border-top: 1px solid #eef2ee; padding-top: 14px; }
   .contact h2 { font-size: 1rem; margin: 0 0 10px; color: var(--dg); text-transform: uppercase; letter-spacing: .04em; }
@@ -117,17 +118,11 @@
       <button type="button" id="tabFront" class="on">Front</button>
       <button type="button" id="tabBack">Back</button>
     </div>
-    <div id="front" class="idcard" aria-label="ID front">
-      <div class="band">CITY UNIVERSITY OF PASAY</div>
-      <div class="body">
-        <div class="photo" id="idPhoto"></div>
-        <div class="txt">
-          <b id="idName">No student selected</b>
-          <div id="idNo"></div>
-          <div id="idProgram"></div>
-          <div id="idYear"></div>
-        </div>
-      </div>
+    <div id="front" class="idcard front-tpl" aria-label="ID front">
+      <div class="f-photo" id="idPhoto"></div>
+      <div class="f-name" id="idName"></div>
+      <div class="f-no" id="idNo"></div>
+      <div class="f-prog" id="idProgram"></div>
     </div>
     <div id="back" class="idcard back" hidden></div>
     <button class="print-btn" id="printBtn" type="button">Print ID</button>
@@ -213,7 +208,6 @@
     $('idName').textContent = fullName(s);
     $('idNo').textContent = s.student_no;
     $('idProgram').textContent = s.program;
-    $('idYear').textContent = yearLabel(s) + ' · ' + s.college;
     $('idPhoto').style.backgroundImage = s.photo ? 'url("' + s.photo + '")' : 'none';
     $('contactBox').hidden = false;
     $('cName').value = s.emergency_contact_name || '';
@@ -340,12 +334,12 @@
       '* { -webkit-print-color-adjust: exact; print-color-adjust: exact; }' +
       '.card { width: 54mm; height: 85.6mm; position: relative; overflow: hidden; page-break-after: always; font-family: Arial, Helvetica, sans-serif; }' +
       '.card:last-child { page-break-after: auto; }' +
-      '.front { border: 0.3mm solid #106010; background: #fff; }' +
-      '.band { position: absolute; left: 0; right: 0; top: 0; height: 14mm; background: #106010; color: #fff; font-weight: 700; font-size: 2.2mm; display: flex; align-items: center; justify-content: center; text-align: center; }' +
-      '.body { position: absolute; left: 3mm; right: 3mm; top: 17mm; bottom: 3mm; display: flex; flex-direction: column; align-items: center; text-align: center; gap: 2mm; }' +
-      '.photo { width: 24mm; height: 28mm; border: 0.5mm solid #f2c200; border-radius: 1mm; background: #dfe7df center/cover no-repeat; background-image: ' + (photo || 'none') + '; }' +
-      '.txt { font-size: 2.6mm; line-height: 1.3; }' +
-      '.txt b { display: block; font-size: 3mm; color: #0b4a0b; }' +
+      '.front { background: url(' + location.origin + '/CUP-PORTAL/id/front-design.png) center / cover no-repeat; }' +
+      '.f-photo { position: absolute; left: 32.9%; top: 39.2%; width: 34.2%; height: 24.9%; background: #fff center/cover no-repeat; border: 0.2mm solid #555; background-image: ' + (photo || 'none') + '; }' +
+      '.f-name, .f-no { position: absolute; left: 6%; right: 6%; text-align: center; font-weight: 700; color: #111; white-space: nowrap; overflow: hidden; display: flex; justify-content: center; }' +
+      '.f-name { bottom: 25.2%; height: 4%; font-size: 3.4mm; align-items: flex-end; }' +
+      '.f-no { bottom: 15.9%; height: 4%; font-size: 3mm; align-items: flex-end; }' +
+      '.f-prog { position: absolute; left: 4%; right: 4%; top: 89.8%; height: 8.2%; color: #fff; font-weight: 700; font-size: 2.5mm; line-height: 1.1; display: flex; align-items: center; justify-content: center; text-align: center; }' +
       '.back { background: url(' + location.origin + '/CUP-PORTAL/id/back-design.png) center / cover no-repeat; }' +
       '.bf { position: absolute; left: 6%; right: 6%; text-align: center; font-weight: 700; color: #111; font-size: 3.2mm; line-height: 1.2; white-space: nowrap; overflow: hidden; }' +
       '.bf-name { bottom: 22.2%; height: 6%; display: flex; align-items: flex-end; justify-content: center; }' +
