@@ -16,7 +16,7 @@ const pool = new Pool({
 // Photo uploads (base64) need a larger body limit; every other route keeps 10kb.
 app.use((req, res, next) => (req.path.startsWith('/api/cat/sections/attachments')
   ? express.json({ limit: '9mb' })
-  : req.path.startsWith('/api/cat/sections/photo') || req.path === '/api/cat/profile/photo'
+  : req.path.startsWith('/api/cat/sections/photo') || req.path === '/api/cat/profile/photo' || req.path === '/api/student/photo' || /^\/api\/id\/student\/[^/]+\/photo$/.test(req.path)
   ? express.json({ limit: '3mb' })
   : req.path.startsWith('/api/admin/import') || req.path.startsWith('/api/registrar/')
   ? express.json({ limit: '10mb' })
