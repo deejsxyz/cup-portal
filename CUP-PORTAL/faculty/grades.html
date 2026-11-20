@@ -159,7 +159,7 @@
   function esc(v) { return String(v == null ? '' : v).replace(/[&<>"']/g, function (c) { return { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]; }); }
   function remark(g) {
     if (['1.00','1.25','1.50','1.75','2.00','2.25','2.50','2.75','3.00'].indexOf(g) !== -1) return 'PASSED';
-    return { '4.00': 'CONDITIONAL', '5.00': 'FAILED', 'X': 'ABSENT FROM EXAMINATION', 'INC': 'INCOMPLETE', 'W': 'DROPPED', 'NG': 'NO GRADE' }[g] || '';
+    return { '4.00': 'FAILED', '5.00': 'FAILED', 'X': 'ABSENT FROM EXAMINATION', 'INC': 'INCOMPLETE', 'W': 'DROPPED', 'NG': 'NO GRADE' }[g] || '';
   }
   function api(path, opts) {
     return fetch(path, Object.assign({ credentials: 'same-origin' }, opts || {})).then(function (r) { return r.json().then(function (j) { return { ok: r.ok, j: j }; }); });
