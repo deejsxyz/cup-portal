@@ -4898,6 +4898,12 @@ app.post('/api/registrar/enroll-official/:no', requireSuperAdmin, async (req, re
     if (cur.rows[0].status !== 'pre-registered') return res.status(400).json({ error: 'This student is already officially enrolled.' });
     const missing = enrollMissing(cur.rows[0]);
     if (missing.length) return res.status(400).json({ error: 'Not yet done: ' + missing.join(', ') + '.' });
+    // The student must have subjects for the active term before becoming officially enrolled.
+    const gt = await gradingTerm();
+    const subj = await pool.query(
+      'SELECT 1 FROM reg_enrollments WHERE student_no = $1 AND term = $2 AND academic_year = $3 AND jsonb_array_length(subjects) > 0',
+      [no, gt.term, gt.ay]);
+    if (!subj.rowCount) return res.status(400).json({ error: 'No subjects are assigned for this term yet. Assign the student\'s subjects in Step 2 first.' });
     await pool.query("UPDATE reg_students SET status = 'enrolled' WHERE student_no = $1 AND college = $2 AND status = 'pre-registered'", [no, college]);
     logAction(req, 'University Registrar', 'Officially Enrolled (Submission of Advising Slip)', no + ' · ' + college);
     res.json({ ok: true, student_no: no });
