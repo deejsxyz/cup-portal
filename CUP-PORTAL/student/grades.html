@@ -598,6 +598,7 @@
             $('enrolled-rows').innerHTML = '';
             return;
           }
+          card.hidden = false;
           $('enrolled-meta').textContent = PROG_ABBR(profile && profile.program) + (profile && profile.year_level != null ? profile.year_level : res.j.year_level) + '-' + res.j.section + ' · ' + res.j.term.term + ', A.Y. ' + res.j.term.ay;
           $('enrolled-rows').innerHTML = res.j.subjects.map(function (s) {
             var when = s.days ? shortDays(s.days) + ' ' + fmtTime(s.start_time) + (s.end_time ? ' – ' + fmtTime(s.end_time) : '') : 'TBA';
