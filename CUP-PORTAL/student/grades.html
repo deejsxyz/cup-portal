@@ -606,7 +606,7 @@
             return '<tr><td style="padding:6px;border-bottom:1px solid #d5e2d5">' + esc(s.course_code) + '</td><td style="padding:6px;border-bottom:1px solid #d5e2d5">' + esc(s.descriptive_title) + '</td><td style="padding:6px;border-bottom:1px solid #d5e2d5">' + esc(when) + '</td><td style="padding:6px;border-bottom:1px solid #d5e2d5">' + esc(s.room || '—') + '</td><td style="padding:6px;border-bottom:1px solid #d5e2d5">' + esc(s.instructor_name || 'TBA') + '</td></tr>';
           }).join('');
           card.hidden = false;
-        }).catch(function () { $('enrolled-card').hidden = true; });
+        }).catch(function (e) { console.error('Enrolled subjects error:', e); $('enrolled-card').hidden = true; });
     }
     function loadProcedure() {
       fetch('/api/student/enrollment-steps', { credentials: 'same-origin' }).then(function (r) { return r.json().then(function (j) { return { ok: r.ok, j: j }; }); })
