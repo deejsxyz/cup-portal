@@ -187,10 +187,18 @@
   function fullName(s) {
     return [s.last_name + ',', s.first_name, s.middle_name, s.name_extension].filter(Boolean).join(' ');
   }
+  // Live preview: the back of the card follows the name and number while they are typed.
+  function previewContact() {
+    if (!current) return;
+    var d = $('cNumber').value.replace(/\D/g, '');
+    $('back').innerHTML = backHtml({ emergency_contact_name: $('cName').value.trim(), emergency_contact_number: d.length === 11 ? fmtPhone(d) : $('cNumber').value });
+  }
+  $('cName').addEventListener('input', previewContact);
   // Dashes are added as the number is typed: XXXX-XXX-XXXX.
   $('cNumber').addEventListener('input', function () {
     var d = this.value.replace(/\D/g, '').slice(0, 11);
     this.value = d.length > 7 ? d.slice(0, 4) + '-' + d.slice(4, 7) + '-' + d.slice(7) : d.length > 4 ? d.slice(0, 4) + '-' + d.slice(4) : d;
+    previewContact();
   });
   function renderStudent(s) {
     current = s;
