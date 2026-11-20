@@ -4713,13 +4713,27 @@ app.get('/api/id/student/:no', requireCupId, async (req, res) => {
   try {
     const { rows } = await pool.query(
       `SELECT student_no, college, first_name, COALESCE(middle_name,'') AS middle_name, last_name, COALESCE(name_extension,'') AS name_extension,
-              program, year_level, section, status, photo
+              program, year_level, section, status, photo, COALESCE(emergency_contact_name,'') AS emergency_contact_name, COALESCE(emergency_contact_number,'') AS emergency_contact_number
          FROM reg_students WHERE student_no = $1`, [String(req.params.no || '').trim()]);
     if (!rows.length) return res.status(404).json({ error: 'Student not found.' });
     res.json({ student: rows[0] });
   } catch (err) {
     console.error(err);
     res.status(500).json({ error: 'Could not load the student.' });
+  }
+});
+app.post('/api/id/student/:no/contact', requireCupId, async (req, res) => {
+  const name = String((req.body && req.body.name) || '').trim().slice(0, 120);
+  const number = String((req.body && req.body.number) || '').trim().slice(0, 30);
+  if (!name || !number) return res.status(400).json({ error: 'Enter the contact person name and number.' });
+  try {
+    const r = await pool.query('UPDATE reg_students SET emergency_contact_name = $2, emergency_contact_number = $3 WHERE student_no = $1 RETURNING student_no',
+      [String(req.params.no || '').trim(), name, number]);
+    if (!r.rowCount) return res.status(404).json({ error: 'Student not found.' });
+    res.json({ ok: true });
+  } catch (err) {
+    console.error(err);
+    res.status(500).json({ error: 'Could not save the contact.' });
   }
 });
 app.post('/api/id/student/:no/photo', requireCupId, async (req, res) => {
@@ -6146,6 +6160,8 @@ pool.query(`CREATE TABLE IF NOT EXISTS cat_sections (
   .then(() => pool.query('ALTER TABLE reg_students ADD COLUMN IF NOT EXISTS birthday_changed BOOLEAN NOT NULL DEFAULT FALSE'))
   .then(() => pool.query('ALTER TABLE reg_students ADD COLUMN IF NOT EXISTS photo TEXT'))
   .then(() => pool.query('ALTER TABLE reg_students ADD COLUMN IF NOT EXISTS photo_changed_at TIMESTAMPTZ'))
+  .then(() => pool.query('ALTER TABLE reg_students ADD COLUMN IF NOT EXISTS emergency_contact_name TEXT'))
+  .then(() => pool.query('ALTER TABLE reg_students ADD COLUMN IF NOT EXISTS emergency_contact_number TEXT'))
   .then(() => pool.query('ALTER TABLE reg_students ADD COLUMN IF NOT EXISTS civil_status TEXT'))
   .then(() => pool.query(`CREATE TABLE IF NOT EXISTS reg_subject_assignments (id SERIAL PRIMARY KEY, user_id INT NOT NULL REFERENCES reg_users(id), college TEXT NOT NULL, course_code TEXT NOT NULL, term TEXT NOT NULL, academic_year TEXT NOT NULL, years INT[] NOT NULL, sections TEXT[] NOT NULL, created_at TIMESTAMPTZ NOT NULL DEFAULT now())`))
   .then(() => pool.query(`CREATE TABLE IF NOT EXISTS reg_enrollments (student_no TEXT NOT NULL REFERENCES reg_students(student_no), term TEXT NOT NULL, academic_year TEXT NOT NULL, college TEXT NOT NULL, year_level INT NOT NULL, section TEXT NOT NULL DEFAULT 'A', subjects JSONB NOT NULL DEFAULT '[]', enrolled_at TIMESTAMPTZ NOT NULL DEFAULT now(), PRIMARY KEY (student_no, term, academic_year))`))
