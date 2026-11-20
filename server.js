@@ -4648,6 +4648,7 @@ app.post('/api/registrar/step6/:no/:task', requireRegistrar, async (req, res, ne
     if (!done && req.params.task === 'advising') {
       await pool.query("UPDATE reg_students SET status = 'pre-registered' WHERE student_no = $1 AND college = $2 AND status = 'enrolled'", [no, college]);
     }
+    await refreshEnrollmentRecord(pool, no, college);
     logAction(req, 'Registrar Office', (done ? 'Step 6 done: ' : 'Step 6 undone: ') + STEP6_LABELS[req.params.task], no + ' · ' + college);
     res.json({ ok: true, student_no: no, done_at: r.rows[0].done_at });
   } catch (err) {
@@ -4735,6 +4736,7 @@ app.post('/api/registrar/step6/:no/official', requireRegistrar, async (req, res)
          AND advising_slip_at IS NOT NULL AND coe_printed_at IS NOT NULL AND id_validated_at IS NOT NULL
        RETURNING student_no`, [no, college]);
     if (!r.rows.length) return res.status(400).json({ error: 'Complete all three Step 6 tasks first.' });
+    await refreshEnrollmentRecord(pool, no, college);
     logAction(req, 'Registrar Office', 'Tagged Officially Enrolled (Step 6 complete)', no + ' · ' + college);
     res.json({ ok: true, student_no: no });
   } catch (err) {
@@ -4800,6 +4802,7 @@ app.post('/api/registrar/step2/:no/:task', requireCollegeRegistrar, async (req, 
       `UPDATE reg_students SET ${col} = CASE WHEN $3 THEN COALESCE(${col}, now()) ELSE NULL END
        WHERE student_no = $1 AND college = $2 AND status IN ('enrolled','pre-registered') RETURNING student_no, ${col} AS done_at`, [no, college, done]);
     if (!r.rows.length) return res.status(404).json({ error: 'Student not found.' });
+    await refreshEnrollmentRecord(pool, no, college);
     logAction(req, 'College Registrar', (done ? 'Step 2 done: ' : 'Step 2 undone: ') + STEP2_LABELS[req.params.task], no + ' · ' + college);
     res.json({ ok: true, student_no: no, done_at: r.rows[0].done_at });
   } catch (err) {
@@ -4822,6 +4825,7 @@ app.post('/api/registrar/step2/:no/nstp', requireCollegeRegistrar, async (req, r
       `UPDATE reg_students SET nstp_subject = NULLIF($3, '') WHERE student_no = $1 AND college = $2 AND status IN ('enrolled','pre-registered') RETURNING student_no, nstp_subject`,
       [no, college, subject]);
     if (!r.rows.length) return res.status(404).json({ error: 'Student not found.' });
+    await refreshEnrollmentRecord(pool, no, college);
     logAction(req, 'College Registrar', 'NSTP subject set', no + ' · ' + (subject || 'none') + ' · ' + college);
     res.json({ ok: true, student_no: no, nstp_subject: r.rows[0].nstp_subject || '' });
   } catch (err) {
@@ -4862,6 +4866,36 @@ app.get('/api/registrar/step2/section-counts', requireCollegeRegistrar, async (r
 });
 
 // Section Assignment: save year level and section for the student, and mark the task done
+// Keeps the active term's enrollment record in step with the student record after any enrollment-step change:
+// year level, section, the chosen NSTP subject, and the instructor and schedule of the current section.
+async function refreshEnrollmentRecord(db, no, college) {
+  const t = await gradingTerm();
+  if (!t.term || !t.ay) return;
+  const st = await db.query('SELECT year_level, section, nstp_subject FROM reg_students WHERE student_no = $1 AND college = $2', [no, college]);
+  if (!st.rows.length) return;
+  const en = await db.query(
+    'SELECT year_level, section, subjects FROM reg_enrollments WHERE student_no = $1 AND college = $2 AND term = $3 AND academic_year = $4 FOR UPDATE',
+    [no, college, t.term, t.ay]);
+  if (!en.rows.length) return;
+  const s = st.rows[0], e = en.rows[0];
+  const yr = Number(s.year_level), sec = String(s.section || '');
+  let subs = Array.isArray(e.subjects) ? e.subjects : [];
+  if (yr !== Number(e.year_level) || sec !== String(e.section || '')) {
+    // Instructor and schedule belonged to the old section; they are filled again from the new section below.
+    subs = subs.map((x) => ({ ...x, instructor_id: null, instructor_name: '', days: '', start_time: '', end_time: '', room: '' }));
+  }
+  const nstp = String(s.nstp_subject || '');
+  subs = subs.filter((x) => !NSTP_CODES.includes(x.course_code) || x.course_code === nstp);
+  if (nstp && !subs.some((x) => x.course_code === nstp)) {
+    const c = await db.query('SELECT descriptive_title FROM reg_courses WHERE course_code = $1 ORDER BY (CASE WHEN college = $2 THEN 0 ELSE 1 END) LIMIT 1', [nstp, college]);
+    subs.push({ course_code: nstp, descriptive_title: c.rows.length ? c.rows[0].descriptive_title : '', instructor_id: null, instructor_name: '' });
+  }
+  await db.query(
+    'UPDATE reg_enrollments SET year_level = $5, section = $6, subjects = $7 WHERE student_no = $1 AND college = $2 AND term = $3 AND academic_year = $4',
+    [no, college, t.term, t.ay, yr, sec, JSON.stringify(subs)]);
+  await syncEnrollmentsFromAssignments(db, college, t.term, t.ay, [{ years: [yr], sections: [sec] }]);
+}
+
 app.post('/api/registrar/step2/:no/assign-section', requireCollegeRegistrar, async (req, res) => {
   const body = req.body || {};
   const college = regCollege(req, body.college);
@@ -4878,23 +4912,7 @@ app.post('/api/registrar/step2/:no/assign-section', requireCollegeRegistrar, asy
       `UPDATE reg_students SET year_level = $3, section = $4, step2_sectioned_at = now()
        WHERE student_no = $1 AND college = $2 AND status IN ('enrolled','pre-registered') RETURNING student_no`, [no, college, year, section]);
     if (!r.rows.length) { await client.query('ROLLBACK'); return res.status(404).json({ error: 'Student not found.' }); }
-    // Keep the active term's enrollment record in step with the new section, so the student's
-    // Enrolled Subjects (section, schedule, instructor) follows the assignment.
-    const t = await gradingTerm();
-    if (t.term && t.ay) {
-      const en = await client.query(
-        'SELECT subjects FROM reg_enrollments WHERE student_no = $1 AND college = $2 AND term = $3 AND academic_year = $4 FOR UPDATE',
-        [no, college, t.term, t.ay]);
-      if (en.rows.length) {
-        const subs = (Array.isArray(en.rows[0].subjects) ? en.rows[0].subjects : []).map((x) => ({
-          ...x, instructor_id: null, instructor_name: '', days: '', start_time: '', end_time: '', room: ''
-        }));
-        await client.query(
-          'UPDATE reg_enrollments SET year_level = $5, section = $6, subjects = $7 WHERE student_no = $1 AND college = $2 AND term = $3 AND academic_year = $4',
-          [no, college, t.term, t.ay, Number(year), section, JSON.stringify(subs)]);
-        await syncEnrollmentsFromAssignments(client, college, t.term, t.ay, [{ years: [Number(year)], sections: [section] }]);
-      }
-    }
+    await refreshEnrollmentRecord(client, no, college);
     await client.query('COMMIT');
     logAction(req, 'College Registrar', 'Step 2 section assigned: ' + year + section, no + ' · ' + college);
     res.json({ ok: true, student_no: no });
