@@ -224,7 +224,8 @@
     $('idName').textContent = cardName(s);
     $('front').style.backgroundImage = frontTemplate(s.college);
     $('idNo').textContent = s.student_no;
-    $('idProgram').textContent = s.program;
+    // ID card shows the program name only, without the abbreviation in brackets
+    $('idProgram').textContent = String(s.program || '').replace(/\s*\([^)]*\)\s*$/, '');
     $('idPhoto').style.backgroundImage = s.photo ? 'url("' + s.photo + '")' : 'none';
     $('contactBox').hidden = false;
     $('cName').value = s.emergency_contact_name || '';
