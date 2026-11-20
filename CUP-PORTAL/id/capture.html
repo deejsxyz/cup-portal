@@ -41,9 +41,8 @@
     <h2>Live camera</h2>
     <video id="video" autoplay playsinline></video>
     <canvas id="canvas" hidden></canvas>
-    <img id="shot" alt="Captured photo" hidden>
     <div class="row">
-      <button class="light" id="start" type="button">Start camera</button>
+      <button class="light" id="start" type="button" hidden>Start camera</button>
       <button id="take" type="button" hidden>Capture</button>
       <button class="light" id="retake" type="button" hidden>Retake</button>
       <button id="save" type="button" hidden>Save photo</button>
@@ -72,6 +71,7 @@
   var params = new URLSearchParams(window.location.search);
   var no = params.get('no') || '';
   var stream = null;
+  var captured = null;
 
   function setMsg(text, ok) { $('msg').className = ok ? 'msg ok' : 'msg'; $('msg').textContent = text; }
 
@@ -103,12 +103,13 @@
       stream = s;
       $('video').srcObject = s;
       $('video').hidden = false;
-      $('shot').hidden = true;
       $('start').hidden = true;
       $('take').hidden = false;
       $('retake').hidden = true;
       $('save').hidden = true;
+      captured = null;
     }).catch(function (e) {
+      $('start').hidden = false;
       setMsg('Camera not available: ' + (e && e.name ? e.name : 'unknown error') + '. Allow camera access for this site and close other apps using the camera.', false);
     });
   }
@@ -120,22 +121,24 @@
     var side = Math.min(v.videoWidth, v.videoHeight);
     c.width = side; c.height = side;
     c.getContext('2d').drawImage(v, (v.videoWidth - side) / 2, (v.videoHeight - side) / 2, side, side, 0, 0, side, side);
-    $('shot').src = c.toDataURL('image/jpeg', 0.85);
-    setPreviewPhoto($('shot').src);
-    stopCam();
-    $('video').hidden = true;
-    $('shot').hidden = false;
+    captured = c.toDataURL('image/jpeg', 0.85);
+    setPreviewPhoto(captured);
+    v.pause();
     $('take').hidden = true;
     $('retake').hidden = false;
     $('save').hidden = false;
   });
   $('retake').addEventListener('click', function () {
+    captured = null;
+    $('video').play();
     $('retake').hidden = true;
     $('save').hidden = true;
-    startCam();
+    $('take').hidden = false;
+    setMsg('', false);
   });
   $('save').addEventListener('click', function () {
-    var photo = $('shot').src;
+    var photo = captured;
+    if (!photo) { setMsg('Capture a photo first.', false); return; }
     $('save').disabled = true;
     fetch('/api/id/student/' + encodeURIComponent(no) + '/photo', {
       method: 'POST', credentials: 'same-origin', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ photo: photo })
