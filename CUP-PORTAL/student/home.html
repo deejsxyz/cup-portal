@@ -202,12 +202,13 @@
       $('total').textContent = Math.round(total * 100) / 100;
     }
 
+function cupYr(p, y) { var m = /\(([^)]+)\)\s*$/.exec(p || ''); return (m ? m[1] : (p || '')) + (y == null ? '' : y); }
     function render(d) {
       state = d;
       $('who').textContent = d.student.name;
       $('s-num').textContent = d.student.number;
       $('s-prog').textContent = d.student.program;
-      $('s-year').textContent = d.student.yearLevel + (d.student.yearLevel === 2 ? 'nd' : d.student.yearLevel === 3 ? 'rd' : 'th') + ' Year';
+      $('s-year').textContent = cupYr(d.student.program, d.student.yearLevel);
       $('s-term').textContent = 'A.Y. ' + d.term.ay + ' · ' + (d.term.semester === 2 ? '2nd' : '1st') + ' Semester';
 
       $('n-closed').hidden = d.term.open;

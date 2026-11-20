@@ -864,6 +864,7 @@
     var ROLE_LABEL = { student: 'STUDENT', faculty: 'FACULTY', registrar: 'COLLEGE REGISTRAR', university: 'UNIVERSITY REGISTRAR STAFF', nstp: 'NSTP', csc: 'CSC' };
     var STAFF_ROLES = ['registrar', 'university', 'nstp', 'csc'];
     function keyOf(u) { return u.role === 'student' ? u.student_no : u.username; }
+function cupYr(p, y) { var m = /\(([^)]+)\)\s*$/.exec(p || ''); return (m ? m[1] : (p || '')) + (y == null ? '' : y); }
     function yearText(n) { for (var i = 0; i < YEAR_LIST.length; i++) { if (String(YEAR_LIST[i][0]) === String(n)) return YEAR_LIST[i][1]; } return ''; }
     function statusPill(u) {
       if (u.archived_at) return '<span class="pill archived">Archived</span>';
@@ -1587,7 +1588,7 @@
           var rows = (j.students || []).filter(function (s) { var c = $('#sr-college').value; return !c || s.college === c; });
           $('#sr-list').innerHTML = !rows.length ? '<p class="hint">No students found.</p>' : rows.map(function (s) {
             return '<div style="padding:6px 0;border-bottom:1px solid #d5e2d5"><a href="#" data-no="' + esc(s.student_no) + '">' + esc(s.last_name + ', ' + s.first_name) + '</a> · ' +
-              esc(s.student_no + ' · ' + s.college + ' · ' + s.program + ' · Year ' + s.year_level + ' ' + s.section + ' · ' + s.status) + '</div>';
+              esc(s.student_no + ' · ' + s.college + ' · ' + s.program + ' · ' + cupYr(s.program, s.year_level) + ' / ' + s.section + ' · ' + s.status) + '</div>';
           }).join('');
         });
       }, 300);
