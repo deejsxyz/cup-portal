@@ -181,7 +181,7 @@
     <div class="card profile">
       <img class="photo" id="photo" alt="Student photo">
       <div class="row"><label class="btn light" for="photoInput" style="margin:0">Change photo</label></div>
-      <input type="file" id="photoInput" accept="image/png,image/jpeg" hidden>
+      <input type="file" id="photoInput" accept=".jpg,.jpeg,.png,image/jpeg,image/png" hidden>
       <p class="hint" id="photoHint" style="margin:6px 0 0">You can change your photo once a month.</p>
       <p class="msg" id="photoMsg"></p>
 
@@ -367,6 +367,7 @@
     var f = e.target.files && e.target.files[0];
     $('photoMsg').textContent = '';
     if (!f) return;
+    if (!/^image\/(jpeg|png)$/.test(f.type)) { $('photoMsg').textContent = 'Choose a JPG or PNG image.'; e.target.value = ''; return; }
     if (f.size > 2 * 1024 * 1024) { $('photoMsg').textContent = 'Choose an image up to 2 MB.'; e.target.value = ''; return; }
     var reader = new FileReader();
     reader.onload = function () {

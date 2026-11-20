@@ -2889,7 +2889,7 @@ app.put('/api/student/birthday', requirePortal('student'), async (req, res) => {
 const PHOTO_CHANGE_DAYS = 30;
 app.post('/api/student/photo', requirePortal('student'), async (req, res) => {
   const photo = req.body && req.body.photo;
-  if (typeof photo !== 'string' || photo.length > 2800000 || !isImageDataUrl(photo)) return res.status(400).json({ error: 'Upload a JPG or PNG image up to 2 MB.' });
+  if (typeof photo !== 'string' || photo.length > 2800000 || !isJpegPngDataUrl(photo)) return res.status(400).json({ error: 'Upload a JPG or PNG image up to 2 MB.' });
   // The photo can be changed once a month. The first upload is always allowed.
   const r = await pool.query(
     `UPDATE reg_students SET photo = $2, photo_changed_at = now()
@@ -4740,7 +4740,7 @@ app.post('/api/id/student/:no/contact', requireCupId, async (req, res) => {
 });
 app.post('/api/id/student/:no/photo', requireCupId, async (req, res) => {
   const photo = req.body && req.body.photo;
-  if (typeof photo !== 'string' || photo.length > 2800000 || !isImageDataUrl(photo)) {
+  if (typeof photo !== 'string' || photo.length > 2800000 || !isJpegPngDataUrl(photo)) {
     return res.status(400).json({ error: 'Please capture a valid photo.' });
   }
   try {
@@ -5861,6 +5861,10 @@ app.get('/api/cat/contact-check', async (req, res) => {
 });
 
 // Checks the base64 payload really is a PNG, JPEG or WEBP file (by its first bytes), not just a label.
+// Student and CUP ID photos: JPEG or PNG only.
+function isJpegPngDataUrl(v) {
+  return /^data:image\/(png|jpeg);base64,/.test(String(v || '')) && isImageDataUrl(v);
+}
 function isImageDataUrl(v) {
   const m = /^data:image\/(png|jpeg|webp);base64,([A-Za-z0-9+/]+={0,2})$/.exec(String(v || ''));
   if (!m) return false;
