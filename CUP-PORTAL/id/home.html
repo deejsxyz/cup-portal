@@ -195,6 +195,22 @@
     this.value = d.length > 7 ? d.slice(0, 4) + '-' + d.slice(4, 7) + '-' + d.slice(7) : d.length > 4 ? d.slice(0, 4) + '-' + d.slice(4) : d;
     previewContact();
   });
+  // ID card format: FIRST NAME M.I. LAST NAME (extension after), all caps
+  function cardName(s) {
+    var first = String(s.first_name || '').trim();
+    var mi = String(s.middle_name || '').trim().charAt(0);
+    var parts = [first, mi ? mi + '.' : '', String(s.last_name || '').trim(), String(s.name_extension || '').trim()];
+    return parts.filter(Boolean).join(' ').toUpperCase();
+  }
+  // Front template per college (files in CUP-PORTAL/id/Front ID). Colleges without a file use front-design.png.
+  var FRONT_TPL = {
+    COACS: 'COACS.jpg', CAS: 'CAS.jpg', CONM: 'CONM.jpg', COED: 'COED.jpg',
+    COBM: 'COBM.jpg', LAW: 'LAW.jpg', 'TESDA-TVI': 'TESDA.jpg'
+  };
+  function frontTemplate(college) {
+    var f = FRONT_TPL[college];
+    return f ? "url('/CUP-PORTAL/id/Front%20ID/" + f + "')" : "url('/CUP-PORTAL/id/front-design.png')";
+  }
   function renderStudent(s) {
     current = s;
     $('info').hidden = false;
@@ -205,7 +221,8 @@
     $('iProgram').textContent = s.program;
     $('iCollege').textContent = s.college;
     $('iYear').textContent = yearLabel(s) + '-' + s.section;
-    $('idName').textContent = fullName(s);
+    $('idName').textContent = cardName(s);
+    $('front').style.backgroundImage = frontTemplate(s.college);
     $('idNo').textContent = s.student_no;
     $('idProgram').textContent = s.program;
     $('idPhoto').style.backgroundImage = s.photo ? 'url("' + s.photo + '")' : 'none';
@@ -328,13 +345,14 @@
     if (!w) { $('msg').textContent = 'Allow pop-ups for this site to print the ID.'; return; }
     var front = $('front').innerHTML.replace(/class="idcard"/, '');
     var photo = $('idPhoto').style.backgroundImage;
+    var frontBg = $('front').style.backgroundImage || frontTemplate('');
     w.document.open();
     w.document.write('<!doctype html><html><head><meta charset="utf-8"><title>CUP ID</title><style>' +
       '@page { size: 54mm 85.6mm; margin: 0; } html, body { margin: 0; padding: 0; }' +
       '* { -webkit-print-color-adjust: exact; print-color-adjust: exact; }' +
       '.card { width: 54mm; height: 85.6mm; position: relative; overflow: hidden; page-break-after: always; font-family: Arial, Helvetica, sans-serif; }' +
       '.card:last-child { page-break-after: auto; }' +
-      '.front { background: url(' + location.origin + '/CUP-PORTAL/id/front-design.png) center / cover no-repeat; }' +
+      '.front { background-image: ' + frontBg.replace(/url\('\//, "url('" + location.origin + '/') + '; background-size: cover; background-position: center; background-repeat: no-repeat; }' +
       '.f-photo { position: absolute; left: 32.9%; top: 39.2%; width: 34.2%; height: 24.9%; background: #fff center/cover no-repeat; border: 0.2mm solid #555; background-image: ' + (photo || 'none') + '; }' +
       '.f-name, .f-no { position: absolute; left: 6%; right: 6%; text-align: center; font-weight: 700; color: #111; white-space: nowrap; overflow: hidden; display: flex; justify-content: center; }' +
       '.f-name { bottom: 25.2%; height: 4%; font-size: 3.4mm; align-items: flex-end; }' +
