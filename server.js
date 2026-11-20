@@ -805,6 +805,86 @@ app.use('/api/nstp/', (req, res, next) => {
   next();
 });
 
+// ---- CUP ID System: its own login (credentials in ID_SYSTEM_USERNAME / ID_SYSTEM_PASSWORD), student lookup and photo.
+const idAttempts = new Map();
+function readIdSession(req) {
+  const d = readRegCookie(req);
+  return d && d.role === 'idsystem' ? { role: 'idsystem' } : null;
+}
+function requireIdSystem(req, res, next) {
+  if (!readIdSession(req)) return res.status(401).json({ error: 'Not logged in.' });
+  setRegCookie(req, res, { role: 'idsystem' });
+  next();
+}
+app.post('/api/id/login', (req, res) => {
+  const ip = req.ip || 'unknown';
+  const now = Date.now();
+  const rec = idAttempts.get(ip) || { count: 0, resetAt: now + 15 * 60 * 1000 };
+  if (now > rec.resetAt) { rec.count = 0; rec.resetAt = now + 15 * 60 * 1000; }
+  if (rec.count >= 10) return res.status(429).json({ error: 'Too many attempts. Try again in a few minutes.' });
+  const username = String((req.body && req.body.username) || '').trim().slice(0, 200);
+  const password = String((req.body && req.body.password) || '').slice(0, 200);
+  if (!username || !password) return res.status(400).json({ error: 'Please enter your username and password.' });
+  const u = process.env.ID_SYSTEM_USERNAME || '';
+  const p = process.env.ID_SYSTEM_PASSWORD || '';
+  if (!u || !p) return res.status(503).json({ error: 'The CUP ID System login is not set up yet.' });
+  if (regSafeEqual(username, u) && regSafeEqual(password, p)) {
+    idAttempts.delete(ip);
+    setRegCookie(req, res, { role: 'idsystem' });
+    return res.json({ ok: true });
+  }
+  rec.count += 1;
+  idAttempts.set(ip, rec);
+  res.status(401).json({ error: 'Incorrect username or password.' });
+});
+app.post('/api/id/logout', (req, res) => {
+  res.setHeader('Set-Cookie', 'reg_session=; Path=/; HttpOnly; SameSite=Lax; Max-Age=0');
+  res.json({ ok: true });
+});
+app.get('/api/id/me', requireIdSystem, (req, res) => res.json({ ok: true }));
+app.get('/api/id/search', requireIdSystem, async (req, res) => {
+  const q = String(req.query.q || '').trim().slice(0, 100);
+  if (!q) return res.json({ students: [] });
+  try {
+    const { rows } = await pool.query(
+      `SELECT student_no, first_name, last_name, program, college FROM reg_students
+        WHERE student_no ILIKE $1 OR (first_name || ' ' || last_name) ILIKE $1 OR (last_name || ' ' || first_name) ILIKE $1
+        ORDER BY last_name, first_name LIMIT 20`, ['%' + q + '%']);
+    res.json({ students: rows });
+  } catch (err) {
+    console.error(err);
+    res.status(500).json({ error: 'Could not search students.' });
+  }
+});
+app.get('/api/id/student/:no', requireIdSystem, async (req, res) => {
+  try {
+    const { rows } = await pool.query(
+      `SELECT student_no, college, first_name, COALESCE(middle_name,'') AS middle_name, last_name, COALESCE(name_extension,'') AS name_extension,
+              program, year_level, section, status, photo
+         FROM reg_students WHERE student_no = $1`, [String(req.params.no || '').trim()]);
+    if (!rows.length) return res.status(404).json({ error: 'Student not found.' });
+    res.json({ student: rows[0] });
+  } catch (err) {
+    console.error(err);
+    res.status(500).json({ error: 'Could not load the student.' });
+  }
+});
+app.post('/api/id/student/:no/photo', requireIdSystem, async (req, res) => {
+  const photo = req.body && req.body.photo;
+  if (typeof photo !== 'string' || photo.length > 2800000 || !isImageDataUrl(photo)) {
+    return res.status(400).json({ error: 'Please capture a valid photo.' });
+  }
+  try {
+    const r = await pool.query('UPDATE reg_students SET photo = $2, photo_changed_at = now() WHERE student_no = $1 RETURNING student_no',
+      [String(req.params.no || '').trim(), photo]);
+    if (!r.rowCount) return res.status(404).json({ error: 'Student not found.' });
+    res.json({ ok: true });
+  } catch (err) {
+    console.error(err);
+    res.status(500).json({ error: 'Could not save the photo.' });
+  }
+});
+
 app.post('/api/registrar/login', async (req, res) => {
   const ip = req.ip || 'unknown';
   const now = Date.now();
