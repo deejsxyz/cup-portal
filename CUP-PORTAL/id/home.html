@@ -42,14 +42,26 @@
   .tabs { display: flex; gap: 6px; margin-bottom: 12px; }
   .tabs button { flex: 1; padding: 8px; border: 1px solid var(--line); background: #fff; color: var(--green); border-radius: 4px; cursor: pointer; font: inherit; font-weight: 700; }
   .tabs button.on { background: var(--green); color: #fff; border-color: var(--green); }
-  .idcard { width: 100%; max-width: 360px; aspect-ratio: 85.6 / 54; margin: 0 auto; border-radius: 12px; border: 2px solid var(--green); background: linear-gradient(135deg, #fff 0%, #eef6ee 100%); position: relative; overflow: hidden; box-shadow: 0 4px 14px rgba(0,0,0,.12); }
-  .idcard .band { position: absolute; left: 0; right: 0; top: 0; height: 22%; background: var(--green); color: #fff; font-weight: 700; font-size: .8rem; display: flex; align-items: center; justify-content: center; letter-spacing: .05em; }
-  .idcard .body { position: absolute; inset: 22% 4% 4% 4%; display: flex; gap: 10px; align-items: center; }
-  .idcard .photo { width: 32%; aspect-ratio: 1 / 1.2; border-radius: 6px; background: #dfe7df center/cover no-repeat; border: 2px solid var(--gold); flex: none; }
-  .idcard .txt { font-size: .8rem; line-height: 1.35; min-width: 0; }
+  .idcard { width: 100%; max-width: 240px; aspect-ratio: 54 / 85.6; margin: 0 auto; border-radius: 12px; border: 2px solid var(--green); background: linear-gradient(170deg, #fff 0%, #eef6ee 100%); position: relative; overflow: hidden; box-shadow: 0 4px 14px rgba(0,0,0,.12); }
+  .idcard .band { position: absolute; left: 0; right: 0; top: 0; height: 16%; background: var(--green); color: #fff; font-weight: 700; font-size: .7rem; display: flex; align-items: center; justify-content: center; letter-spacing: .04em; text-align: center; }
+  .idcard .body { position: absolute; inset: 20% 6% 4% 6%; display: flex; flex-direction: column; gap: 8px; align-items: center; text-align: center; }
+  .idcard .photo { width: 46%; aspect-ratio: 1 / 1.2; border-radius: 6px; background: #dfe7df center/cover no-repeat; border: 2px solid var(--gold); flex: none; }
+  .idcard .txt { font-size: .7rem; line-height: 1.3; min-width: 0; }
   .idcard .txt b { display: block; font-size: .95rem; color: var(--dg); }
-  .idcard.back { display: flex; align-items: center; justify-content: center; text-align: center; padding: 16px; color: #6b7280; font-size: .9rem; }
+  .idcard.back { background: url('/CUP-PORTAL/id/back-design.png') center / cover no-repeat; border-color: var(--green); }
   .design-note { margin-top: 12px; text-align: center; color: #6b7280; font-size: .8rem; }
+  .print-btn { display: block; width: 100%; margin-top: 12px; border: 0; border-radius: 4px; padding: 10px; background: var(--gold); color: #222; font: inherit; font-weight: 700; cursor: pointer; }
+  #printArea { display: none; }
+  @page { size: 54mm 85.6mm; margin: 0; }
+  @media print {
+    body * { visibility: hidden; }
+    #printArea, #printArea * { visibility: visible; }
+    #printArea { display: block; position: absolute; left: 0; top: 0; }
+    #printArea .idcard { width: 54mm; height: 85.6mm; max-width: none; aspect-ratio: auto; border-radius: 0; border: 0; box-shadow: none; page-break-after: always; }
+    #printArea .idcard:last-child { page-break-after: auto; }
+    #printArea .idcard .photo { border-width: 1px; }
+    .idcard .band { font-size: 2.2mm; }
+  }
   @media (max-width: 760px) { main { grid-template-columns: 1fr; padding: 14px; } }
 </style>
 </head>
@@ -111,9 +123,13 @@
         </div>
       </div>
     </div>
-    <div id="back" class="idcard back" hidden>Back design to follow.</div>
-    <p class="design-note">Front and back layout will be updated to the approved ID design.</p>
+    <div id="back" class="idcard back" hidden></div>
+    <button class="print-btn" id="printBtn" type="button">Print ID</button>
   </section>
+  <div id="printArea" aria-hidden="true">
+    <div class="idcard" id="pFront"></div>
+    <div class="idcard back" id="pBack"></div>
+  </div>
 </main>
 
 <script>
@@ -263,6 +279,13 @@
     });
   });
 
+  $('printBtn').addEventListener('click', function () {
+    if (!current) { $('msg').textContent = 'Choose a student first.'; return; }
+    $('pFront').innerHTML = $('front').innerHTML;
+    $('pFront').className = 'idcard';
+    $('pBack').className = 'idcard back';
+    window.print();
+  });
   $('logout').addEventListener('click', function () {
     stopCam();
     fetch('/api/id/logout', { method: 'POST', credentials: 'same-origin' }).finally(toLogin);
