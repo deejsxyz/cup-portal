@@ -1238,7 +1238,7 @@ const ALLOWED_GRADES = ['1.00', '1.25', '1.50', '1.75', '2.00', '2.25', '2.50', 
 function computeServerRemark(grade) {
   const passed = ['1.00', '1.25', '1.50', '1.75', '2.00', '2.25', '2.50', '2.75', '3.00'];
   if (passed.includes(grade)) return 'PASSED';
-  if (grade === '4.00') return 'FAILED';
+  if (grade === '4.00') return 'CONDITIONAL';
   if (grade === '5.00') return 'FAILED';
   if (grade === 'X') return 'ABSENT FROM EXAMINATION';
   if (grade === 'INC') return 'INCOMPLETE';
@@ -1844,7 +1844,7 @@ const REG_GRADES = ['1.00', '1.25', '1.50', '1.75', '2.00', '2.25', '2.50', '2.7
 const REG_SEMESTERS = ['1st Semester', '2nd Semester', 'Summer'];
 function registrarRemark(grade) {
   if (['1.00','1.25','1.50','1.75','2.00','2.25','2.50','2.75','3.00'].includes(grade)) return 'PASSED';
-  if (grade === '4.00') return 'FAILED';
+  if (grade === '4.00') return 'CONDITIONAL';
   if (grade === '5.00') return 'FAILED';
   if (grade === 'X') return 'ABSENT FROM EXAMINATION';
   if (grade === 'INC') return 'INCOMPLETE';
@@ -2152,6 +2152,7 @@ function reportRemark(g) {
   if (v === 'X') return 'ABSENT FROM EXAMINATION';
   const n = Number(v);
   if (!Number.isFinite(n)) return '';
+  if (n === 4) return 'CONDITIONAL';
   return n <= 3 ? 'PASSED' : 'FAILED';
 }
 function reportGrade(g) {
@@ -2457,7 +2458,7 @@ app.get('/api/faculty/report-of-grades.xlsx', requirePortal('faculty'), async (r
         ws.getCell(at('D47')).value = { formula: over((n, last) => "COUNTIF('" + n + "'!V12:V" + last + ",\"FAILED\")") };
         ws.getCell(at('D48')).value = { formula: over((n, last) => "COUNTIF('" + n + "'!V12:V" + last + ",\"INCOMPLETE\")") };
         ws.getCell(at('D49')).value = { formula: over((n, last) => "COUNTIF('" + n + "'!V12:V" + last + ",\"DROPPED\")") };
-        ws.getCell(at('D50')).value = null;
+        ws.getCell(at('D50')).value = { formula: over((n, last) => "COUNTIF('" + n + "'!V12:V" + last + ",\"CONDITIONAL\")") };
         ws.getCell(at('D51')).value = { formula: over((n, last) => "COUNTIF('" + n + "'!V12:V" + last + ",\"ABSENT FROM EXAMINATION\")") };
         ws.getCell(at('D52')).value = null;
         ws.getCell(at('D53')).value = null;
@@ -2523,6 +2524,7 @@ app.get('/api/faculty/report-of-grades.pdf', requirePortal('faculty'), async (re
       ['Failed:', countRemark('FAILED')],
       ['Incomplete:', countRemark('INCOMPLETE')],
       ['Dropped:', countRemark('DROPPED')],
+      ['Conditional:', countRemark('CONDITIONAL')],
       ['Absent from Examination:', countRemark('ABSENT FROM EXAMINATION')],
     ];
 
