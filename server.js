@@ -1003,6 +1003,7 @@ app.get('/api/nstp/students', requireNstp, async (req, res) => {
                          COALESCE(s.nstp_subject, '') AS nstp_subject, s.nstp_enrolled_at, u.name AS instructor
                     FROM reg_students s LEFT JOIN reg_users u ON u.id = s.nstp_instructor_id
                    WHERE s.college = $1 AND s.status IN ('enrolled','pre-registered') AND s.step1_status = 'verified'
+                     AND NOT ${nstpPassedSql('s')}
                    ORDER BY s.year_level, s.section, s.last_name, s.first_name`, [college]),
       pool.query("SELECT student_no, course_code, final_grade FROM reg_grades WHERE college = $1 AND course_code = ANY($2::text[]) AND status = 'approved'", [college, NSTP_CODES]),
     ]);
@@ -4588,7 +4589,7 @@ app.get('/api/csc/students', requireCsc, async (req, res) => {
        FROM reg_students WHERE college = $1 AND status IN ('enrolled','pre-registered')
          AND step1_status = 'verified'
          AND step2_evaluated_at IS NOT NULL AND step2_advised_at IS NOT NULL AND step2_sectioned_at IS NOT NULL
-         AND (${NSTP_PASSED_SQL} OR nstp_enrolled_at IS NOT NULL)
+         AND (${nstpPassedSql()} OR nstp_enrolled_at IS NOT NULL)
          AND EXISTS (SELECT 1 FROM reg_preregistrations p WHERE p.student_no = reg_students.student_no AND p.term = $2 AND p.academic_year = $3)
        ORDER BY last_name, first_name`, [college, pt.term, pt.ay]);
     res.json({ students: rows });
@@ -4673,8 +4674,8 @@ const ENROLL_CHECKS = [
 function enrollMissing(r) { return ENROLL_CHECKS.filter((c) => !c.ok(r)).map((c) => c.label); }
 // True when the student has an approved PASSED grade (3.00 or better) in NSTP 1 (NSTP 101, NSTP 1 or ROTC 1) and in NSTP 2 (NSTP 102).
 // Such a student skips NSTP enrollment and Step 3 is complete automatically.
-const NSTP_PASSED_SQL = `(EXISTS (SELECT 1 FROM reg_grades g WHERE g.student_no = reg_students.student_no AND g.course_code IN ('NSTP 101','NSTP 1','ROTC 1') AND g.status = 'approved' AND g.final_grade::text ~ '^[0-9]+(\\.[0-9]+)?$' AND g.final_grade::text::numeric <= 3) AND EXISTS (SELECT 1 FROM reg_grades g WHERE g.student_no = reg_students.student_no AND g.course_code = 'NSTP 102' AND g.status = 'approved' AND g.final_grade::text ~ '^[0-9]+(\\.[0-9]+)?$' AND g.final_grade::text::numeric <= 3))`;
-const ENROLL_ROW_SQL = `SELECT student_no, status, year_level, COALESCE(nstp_subject, '') AS nstp_subject, nstp_enrolled_at, ${NSTP_PASSED_SQL} AS nstp_passed, step1_status, step2_evaluated_at, step2_advised_at, step2_sectioned_at, csc_paid_at, advising_slip_at, coe_printed_at, id_validated_at
+const nstpPassedSql = (t = 'reg_students') => `(EXISTS (SELECT 1 FROM reg_grades g WHERE g.student_no = ${t}.student_no AND g.course_code IN ('NSTP 101','NSTP 1','ROTC 1') AND g.status = 'approved' AND g.final_grade::text ~ '^[0-9]+(\\.[0-9]+)?$' AND g.final_grade::text::numeric <= 3) AND EXISTS (SELECT 1 FROM reg_grades g WHERE g.student_no = ${t}.student_no AND g.course_code = 'NSTP 102' AND g.status = 'approved' AND g.final_grade::text ~ '^[0-9]+(\\.[0-9]+)?$' AND g.final_grade::text::numeric <= 3))`;
+const ENROLL_ROW_SQL = `SELECT student_no, status, year_level, COALESCE(nstp_subject, '') AS nstp_subject, nstp_enrolled_at, ${nstpPassedSql()} AS nstp_passed, step1_status, step2_evaluated_at, step2_advised_at, step2_sectioned_at, csc_paid_at, advising_slip_at, coe_printed_at, id_validated_at
   FROM reg_students WHERE student_no = $1 AND college = $2`;
 // Readiness for the Submission of Advising Slip page: which steps are still not done.
 app.get('/api/registrar/enroll-readiness/:no', requireSuperAdmin, async (req, res) => {
@@ -6747,7 +6748,7 @@ app.get('/api/student/enrollment-steps', requirePortal('student'), async (req, r
   try {
     const no = req.portal.student_no || '';
     const r = no ? (await pool.query(
-      `SELECT student_no, status, year_level, COALESCE(nstp_subject, '') AS nstp_subject, nstp_enrolled_at, ${NSTP_PASSED_SQL} AS nstp_passed, step1_status,
+      `SELECT student_no, status, year_level, COALESCE(nstp_subject, '') AS nstp_subject, nstp_enrolled_at, ${nstpPassedSql()} AS nstp_passed, step1_status,
               step2_evaluated_at, step2_advised_at, step2_sectioned_at, csc_paid_at, advising_slip_at
          FROM reg_students WHERE student_no = $1`, [no])).rows[0] : null;
     const row = r || {};
