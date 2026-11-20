@@ -3,7 +3,7 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<title>CUP ID Login</title>
+<title>CUP ID Portal</title>
 <link rel="icon" href="/images/favicon-cup.png">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
@@ -12,63 +12,72 @@
   :root { --green: #106010; --dg: #0b4a0b; --gold: #f2c200; --ink: #222; --line: #d6dbd6; }
   * { box-sizing: border-box; }
   html, body { margin: 0; background: #f4f6f4; color: var(--ink); }
-  body { font-family: 'Libre Franklin', Arial, Helvetica, sans-serif; min-height: 100vh; display: flex; flex-direction: column; }
-  header { background: var(--green); color: #fff; padding: 16px 20px; text-align: center; }
-  header h1 { font-size: 1.1rem; margin: 0; font-weight: 800; letter-spacing: .02em; }
-  header p { margin: 4px 0 0; color: var(--gold); font-weight: 700; font-size: .9rem; }
-  main { flex: 1; display: flex; align-items: center; justify-content: center; padding: 24px 16px; }
-  .card { background: #fff; border: 1px solid var(--line); border-radius: 10px; padding: 28px 24px; width: 100%; max-width: 380px; box-shadow: 0 6px 20px rgba(0,0,0,.06); }
-  h2 { margin: 0 0 4px; color: var(--dg); font-size: 1.25rem; }
-  .sub { margin: 0 0 18px; color: #5b6b5b; font-size: .92rem; }
-  label { display: block; font-size: .85rem; font-weight: 700; color: #334155; margin-bottom: 12px; }
-  input { display: block; width: 100%; margin-top: 6px; padding: 10px 12px; border: 1px solid var(--line); border-radius: 6px; font: inherit; font-size: 1rem; }
-  input:focus { outline: 2px solid var(--gold); border-color: var(--green); }
-  button { width: 100%; margin-top: 6px; padding: 11px; border: 0; border-radius: 6px; background: var(--green); color: #fff; font: inherit; font-weight: 800; font-size: 1rem; cursor: pointer; }
-  button:hover { background: var(--dg); }
-  button:disabled { opacity: .6; cursor: default; }
-  .msg { margin: 12px 0 0; font-size: .9rem; min-height: 1.2em; color: #b91c1c; }
-  .msg.info { color: #475569; }
+  body { font-family: 'Libre Franklin', Arial, Helvetica, sans-serif; min-height: 100vh; }
+  header { background: var(--green); color: #fff; display: flex; align-items: center; justify-content: space-between; gap: 12px; padding: 12px 20px; flex-wrap: wrap; }
+  header .brand { display: flex; align-items: center; gap: 12px; }
+  header img { width: 52px; height: 52px; background: transparent; padding: 0; }
+  header h1 { font-size: 1.05rem; margin: 0; font-weight: 800; }
+  header .live-clock { font-size: 13px; font-weight: 700; white-space: nowrap; }
+  .card { background: #fff; border: 1px solid var(--line); border-radius: 8px; padding: 18px; }
+  h2 { font-size: 1.1rem; margin: 0 0 6px; color: var(--dg); }
+  .field { margin-bottom: 12px; }
+  .field label { display: block; font-size: .85rem; font-weight: 700; margin-bottom: 4px; }
+  .field input { width: 100%; padding: 10px; border: 1px solid var(--line); border-radius: 4px; font: inherit; }
+  .go { background: var(--green); color: #fff; border: 0; border-radius: 4px; padding: 11px 18px; font: inherit; font-weight: 700; cursor: pointer; width: 100%; }
+  .go:disabled { opacity: .6; cursor: default; }
+  .msg { min-height: 1.2em; font-size: .92rem; margin: 10px 0 0; color: #b42318; }
+  .narrow { max-width: 380px; margin: 40px auto; }
 </style>
 </head>
 <body>
 <header>
-  <h1>CUP ID PORTAL</h1>
+  <div class="brand"><img src="/images/cup-logo-seal.png" alt="CUP seal"><h1>CUP ID Portal</h1></div>
+  <span id="liveClock" class="live-clock"></span>
 </header>
 <main>
-  <form class="card" id="login" novalidate>
-    <h2>Sign in</h2>
-    <p class="sub">Enter the CUP ID account username and password.</p>
-    <label>Username<input id="username" name="username" autocomplete="username" autocapitalize="none" required></label>
-    <label>Password<input id="password" type="password" name="password" autocomplete="current-password" required></label>
-    <button type="submit" id="go">Sign in</button>
-    <p class="msg" id="msg" role="status"></p>
-  </form>
+  <section class="card narrow">
+    <h2>CUP ID Portal Login</h2>
+    <form id="loginForm" novalidate>
+      <div class="field"><label for="lu">Username</label><input id="lu" autocomplete="username" autocapitalize="none" required></div>
+      <div class="field"><label for="lp">Password</label><input id="lp" type="password" autocomplete="current-password" required></div>
+      <button class="go" id="go" type="submit">Log in</button>
+      <p class="msg" id="loginMsg" role="status"></p>
+    </form>
+  </section>
 </main>
 <script>
-  (function () {
-    var form = document.getElementById('login'), msg = document.getElementById('msg'), go = document.getElementById('go');
-    form.addEventListener('submit', function (e) {
-      e.preventDefault();
-      var username = document.getElementById('username').value.trim();
-      var password = document.getElementById('password').value;
-      msg.textContent = '';
-      if (!username || !password) { msg.textContent = 'Please enter your username and password.'; return; }
-      go.disabled = true; go.textContent = 'Signing in…';
-      fetch('/api/cup-id/login', {
-        method: 'POST', credentials: 'same-origin', headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ username: username, password: password })
-      }).then(function (r) { return r.json().then(function (j) { return { ok: r.ok, j: j }; }); })
-        .then(function (res) {
-          if (res.ok && res.j.ok) { window.location.href = '/CUP-PORTAL/cup-id/home.html'; return; }
-          msg.textContent = res.j.error || 'Could not sign in.';
-          go.disabled = false; go.textContent = 'Sign in';
-        })
-        .catch(function () {
-          msg.textContent = 'Could not reach the server. Please try again.';
-          go.disabled = false; go.textContent = 'Sign in';
-        });
-    });
-  })();
+(function () {
+  var form = document.getElementById('loginForm'), msg = document.getElementById('loginMsg'), go = document.getElementById('go');
+  form.addEventListener('submit', function (e) {
+    e.preventDefault();
+    msg.textContent = '';
+    var username = document.getElementById('lu').value.trim();
+    var password = document.getElementById('lp').value;
+    if (!username || !password) { msg.textContent = 'Please enter your username and password.'; return; }
+    go.disabled = true; go.textContent = 'Logging in…';
+    fetch('/api/cup-id/login', {
+      method: 'POST', credentials: 'same-origin', headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ username: username, password: password })
+    }).then(function (r) { return r.json().then(function (j) { return { ok: r.ok, j: j }; }); })
+      .then(function (res) {
+        if (res.ok && res.j.ok) { window.location.href = '/CUP-PORTAL/cup-id/home.html'; return; }
+        msg.textContent = res.j.error || 'Could not log in.';
+        go.disabled = false; go.textContent = 'Log in';
+      })
+      .catch(function () {
+        msg.textContent = 'Connection problem. Please try again.';
+        go.disabled = false; go.textContent = 'Log in';
+      });
+  });
+  var el = document.getElementById('liveClock');
+  var f = new Intl.DateTimeFormat('en-US', { timeZone: 'Asia/Manila', weekday: 'long', month: 'long', day: 'numeric', year: 'numeric', hour: 'numeric', minute: '2-digit', second: '2-digit', hour12: true });
+  function tick() {
+    var p = {};
+    f.formatToParts(new Date()).forEach(function (x) { p[x.type] = x.value; });
+    el.textContent = '📅 ' + p.weekday + ', ' + p.month + ' ' + p.day + ', ' + p.year + ' at ' + p.hour + ':' + p.minute + ':' + p.second + ' ' + p.dayPeriod;
+  }
+  tick(); setInterval(tick, 1000);
+})();
 </script>
 </body>
 </html>
