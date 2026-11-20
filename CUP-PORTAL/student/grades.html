@@ -122,7 +122,7 @@
   </section>
 
   <section class="card" id="prereg">
-    <h2>Pre-Registration</h2>
+    <h2 id="prereg-title">Pre-Registration</h2>
     <p class="msg" id="pr-state" hidden></p>
     <form id="pr-form" novalidate>
       <div class="pr-grid" id="pr-locked"></div>
@@ -526,9 +526,18 @@
           ['pr-email', 'pr-contact', 'pr-civil'].forEach(function (id) { $(id).disabled = done; });
           $('pr-actions').hidden = done;
           if (done) {
-            $('pr-state').innerHTML = '<span class="pr-status">Pre-registered for A.Y. ' + j.term.ay + ', ' + j.term.term + '.</span> This cannot be undone. The Registrar can now see your records.';
-            $('pr-state').className = 'msg ok'; $('pr-state').hidden = false;
+            fetch('/api/student/enrollment-steps', { credentials: 'same-origin' }).then(function (r) { return r.json(); }).then(function (st) {
+              var official = !!st.officiallyEnrolled;
+              $('prereg-title').textContent = official ? 'OFFICIALLY ENROLLED' : 'Pre-Registration';
+              if (official) {
+                $('pr-state').innerHTML = '<span class="pr-status">Officially Enrolled for A.Y. ' + j.term.ay + ', ' + j.term.term + '.</span> Please, proceed to Registrar\u2019s Office to update your details.';
+              } else {
+                $('pr-state').innerHTML = '<span class="pr-status">Pre-registered for A.Y. ' + j.term.ay + ', ' + j.term.term + '.</span> This cannot be undone. The Registrar can now see your records.';
+              }
+              $('pr-state').className = 'msg ok'; $('pr-state').hidden = false;
+            }).catch(function () {});
           } else {
+            $('prereg-title').textContent = 'Pre-Registration';
             $('pr-state').textContent = 'Check your information, then submit. Once you submit, you cannot change it.';
             $('pr-state').className = 'msg info'; $('pr-state').hidden = false;
           }
