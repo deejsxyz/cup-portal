@@ -571,6 +571,11 @@
       var p = String(v).split(':'), h = Number(p[0]);
       return (h % 12 || 12) + ':' + (p[1] || '00') + ' ' + (h >= 12 ? 'PM' : 'AM');
     }
+    // Day codes as single-letter abbreviations: MON TUE WED THU FRI -> M T W Th F
+    function shortDays(v) {
+      var map = { MON: 'M', TUE: 'T', WED: 'W', THU: 'Th', FRI: 'F', SAT: 'S', SUN: 'Su' };
+      return String(v || '').split(/[\s,\/]+/).filter(Boolean).map(function (d) { return map[d.toUpperCase()] || d; }).join(' ');
+    }
     function loadEnrolled() {
       fetch('/api/student/enrolled-subjects', { credentials: 'same-origin' }).then(function (r) { return r.json().then(function (j) { return { ok: r.ok, j: j }; }); })
         .then(function (res) {
@@ -578,7 +583,7 @@
           if (!res.ok || !res.j.enrolled || !res.j.subjects.length) { card.hidden = true; return; }
           $('enrolled-meta').textContent = 'Year ' + res.j.year_level + ', Section ' + res.j.section + ' · ' + res.j.term.term + ', A.Y. ' + res.j.term.ay;
           $('enrolled-rows').innerHTML = res.j.subjects.map(function (s) {
-            var when = s.days ? s.days + ' ' + fmtTime(s.start_time) + (s.end_time ? ' – ' + fmtTime(s.end_time) : '') : 'TBA';
+            var when = s.days ? shortDays(s.days) + ' ' + fmtTime(s.start_time) + (s.end_time ? ' – ' + fmtTime(s.end_time) : '') : 'TBA';
             return '<tr><td style="padding:6px;border-bottom:1px solid #d5e2d5">' + esc(s.course_code) + '</td><td style="padding:6px;border-bottom:1px solid #d5e2d5">' + esc(s.descriptive_title) + '</td><td style="padding:6px;border-bottom:1px solid #d5e2d5">' + esc(when) + '</td><td style="padding:6px;border-bottom:1px solid #d5e2d5">' + esc(s.room || '—') + '</td><td style="padding:6px;border-bottom:1px solid #d5e2d5">' + esc(s.instructor_name || 'TBA') + '</td></tr>';
           }).join('');
           card.hidden = false;
