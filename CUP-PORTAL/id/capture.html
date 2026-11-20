@@ -30,6 +30,12 @@
   .idcard .f-name { bottom: 25.2%; height: 4%; font-size: .9rem; display: flex; align-items: flex-end; justify-content: center; }
   .idcard .f-no { bottom: 15.9%; height: 4%; font-size: .82rem; display: flex; align-items: flex-end; justify-content: center; }
   .idcard .f-prog { position: absolute; left: 24%; right: 4%; top: 89.8%; height: 8.2%; color: #fff; -webkit-text-stroke: 1px #000; paint-order: stroke fill; font-weight: 700; font-size: .9rem; line-height: 1.1; display: flex; align-items: center; justify-content: center; text-align: center; }
+  .cards { display: flex; gap: 10px; justify-content: center; align-items: flex-start; }
+  .cards .idcard { width: 48%; max-width: 220px; }
+  .idcard.back { background: url('/CUP-PORTAL/id/back-design.png') center / cover no-repeat; border-color: var(--green); }
+  .bf { position: absolute; left: 6%; right: 6%; text-align: center; font-weight: 700; color: #111; font-size: .72rem; line-height: 1.2; overflow: hidden; white-space: nowrap; text-overflow: ellipsis; }
+  .bf-name { bottom: 22.2%; height: 6%; display: flex; align-items: flex-end; justify-content: center; }
+  .bf-num { bottom: 10.2%; height: 6%; display: flex; align-items: flex-end; justify-content: center; }
   @media (max-width: 720px) { main { grid-template-columns: 1fr; } }
 </style>
 </head>
@@ -53,11 +59,17 @@
   </section>
   <section class="panel">
     <h2>ID preview</h2>
-    <div id="pFront" class="idcard front-tpl" aria-label="ID front">
-      <div class="f-photo" id="pPhoto"></div>
-      <div class="f-name" id="pName"></div>
-      <div class="f-no" id="pNo"></div>
-      <div class="f-prog" id="pProgram"></div>
+    <div class="cards">
+      <div id="pFront" class="idcard front-tpl" aria-label="ID front">
+        <div class="f-photo" id="pPhoto"></div>
+        <div class="f-name" id="pName"></div>
+        <div class="f-no" id="pNo"></div>
+        <div class="f-prog" id="pProgram"></div>
+      </div>
+      <div id="pBack" class="idcard back" aria-label="ID back">
+        <div class="bf bf-name" id="pbName"></div>
+        <div class="bf bf-num" id="pbNum"></div>
+      </div>
     </div>
   </section>
 </main>
@@ -85,6 +97,10 @@
   function frontTemplate(college) {
     var f = FRONT_TPL[college];
     return f ? "url('/CUP-PORTAL/id/Front%20ID/" + f + "')" : "url('/CUP-PORTAL/id/front-design.png')";
+  }
+  function setContact(name, number) {
+    $('pbName').textContent = name || '';
+    $('pbNum').textContent = number || '';
   }
   function setPreviewPhoto(url) {
     $('pPhoto').style.backgroundImage = url ? 'url("' + url + '")' : 'none';
@@ -133,6 +149,7 @@
     $('pNo').textContent = '';
     $('pProgram').textContent = '';
     setPreviewPhoto(null);
+    setContact('', '');
     setMsg('Choose a student on the ID page.', false);
   }
 
@@ -155,11 +172,16 @@
       $('pNo').textContent = s.student_no;
       $('pProgram').textContent = String(s.program || '').replace(/\s*\([^)]*\)\s*$/, '');
       setPreviewPhoto(s.photo);
+      setContact(s.emergency_contact_name, s.emergency_contact_number);
       resumeCam();
     });
   }
 
   if (bc) bc.onmessage = function (e) {
+    if (e.data && e.data.contact) {
+      if (e.data.contact.no === no) setContact(e.data.contact.name, e.data.contact.number);
+      return;
+    }
     var n = (e.data && e.data.no) || '';
     if (!n) clearPreview(); else loadStudent(n);
   };

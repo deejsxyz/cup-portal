@@ -371,6 +371,7 @@
       current.emergency_contact_name = name;
       current.emergency_contact_number = number;
       refreshBack();
+      if (bc) bc.postMessage({ contact: { no: current.student_no, name: name, number: number } });
       $('cMsg').className = 'msg ok';
       $('cMsg').textContent = 'Contact saved.';
     });
