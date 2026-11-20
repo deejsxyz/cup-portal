@@ -4671,9 +4671,9 @@ const ENROLL_CHECKS = [
   { label: 'Step 6 · Advising slip submitted', ok: (r) => !!r.advising_slip_at },
 ];
 function enrollMissing(r) { return ENROLL_CHECKS.filter((c) => !c.ok(r)).map((c) => c.label); }
-// True when the student has an approved PASSED grade (3.00 or better) in both NSTP 101 and NSTP 102 on the grades record.
+// True when the student has an approved PASSED grade (3.00 or better) in NSTP 1 (NSTP 101, NSTP 1 or ROTC 1) and in NSTP 2 (NSTP 102).
 // Such a student skips NSTP enrollment and Step 3 is complete automatically.
-const NSTP_PASSED_SQL = `((SELECT COUNT(DISTINCT g.course_code) FROM reg_grades g WHERE g.student_no = reg_students.student_no AND g.course_code IN ('NSTP 101','NSTP 102') AND g.status = 'approved' AND g.final_grade::text ~ '^[0-9]+(\\.[0-9]+)?$' AND g.final_grade::text::numeric <= 3) = 2)`;
+const NSTP_PASSED_SQL = `(EXISTS (SELECT 1 FROM reg_grades g WHERE g.student_no = reg_students.student_no AND g.course_code IN ('NSTP 101','NSTP 1','ROTC 1') AND g.status = 'approved' AND g.final_grade::text ~ '^[0-9]+(\\.[0-9]+)?$' AND g.final_grade::text::numeric <= 3) AND EXISTS (SELECT 1 FROM reg_grades g WHERE g.student_no = reg_students.student_no AND g.course_code = 'NSTP 102' AND g.status = 'approved' AND g.final_grade::text ~ '^[0-9]+(\\.[0-9]+)?$' AND g.final_grade::text::numeric <= 3))`;
 const ENROLL_ROW_SQL = `SELECT student_no, status, year_level, COALESCE(nstp_subject, '') AS nstp_subject, nstp_enrolled_at, ${NSTP_PASSED_SQL} AS nstp_passed, step1_status, step2_evaluated_at, step2_advised_at, step2_sectioned_at, csc_paid_at, advising_slip_at, coe_printed_at, id_validated_at
   FROM reg_students WHERE student_no = $1 AND college = $2`;
 // Readiness for the Submission of Advising Slip page: which steps are still not done.
