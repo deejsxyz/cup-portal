@@ -571,10 +571,10 @@
       var p = String(v).split(':'), h = Number(p[0]);
       return (h % 12 || 12) + ':' + (p[1] || '00') + ' ' + (h >= 12 ? 'PM' : 'AM');
     }
-    // Day codes as short abbreviations with no spaces: MON TUE WED THU FRI -> MTWThF
+    // Day codes as short abbreviations with no spaces: MON TUE WED THU FRI -> MTWTHF
     function shortDays(v) {
       var map = { MON: 'M', TUE: 'T', WED: 'W', THU: 'Th', FRI: 'F', SAT: 'S', SUN: 'Su' };
-      return String(v || '').split(/[\s,\/]+/).filter(Boolean).map(function (d) { return map[d.toUpperCase()] || d; }).join('');
+      return String(v || '').split(/[\s,\/]+/).filter(Boolean).map(function (d) { return (map[d.toUpperCase()] || d).toUpperCase(); }).join('');
     }
     function loadEnrolled() {
       fetch('/api/student/enrolled-subjects', { credentials: 'same-origin' }).then(function (r) { return r.json().then(function (j) { return { ok: r.ok, j: j }; }); })
