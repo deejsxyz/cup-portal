@@ -535,6 +535,7 @@
                 $('pr-state').innerHTML = '<span class="pr-status">Pre-registered for A.Y. ' + j.term.ay + ', ' + j.term.term + '.</span> This cannot be undone. The Registrar can now see your records.';
               }
               $('pr-state').className = 'msg ok'; $('pr-state').hidden = false;
+              $('pr-state').style.marginBottom = official ? '2px' : '';
             }).catch(function () {});
           } else {
             $('prereg-title').textContent = 'Pre-Registration';
