@@ -4610,7 +4610,12 @@ app.post('/api/cup-id/login', async (req, res) => {
   if (!username || !password) return res.status(400).json({ error: 'Please enter your username and password.' });
   const cu = process.env.CUP_ID_USERNAME || '';
   const cp = process.env.CUP_ID_PASSWORD || '';
-  if (cu && cp && regSafeEqual(username, cu) && regSafeEqual(password, cp)) {
+  let accepted = !!(cu && cp && regSafeEqual(username, cu) && regSafeEqual(password, cp));
+  if (!accepted && cu && regSafeEqual(username, cu)) {
+    const stored = await cupIdStoredHash();
+    accepted = !!(stored && verifyPassword(password, stored));
+  }
+  if (accepted) {
     cupIdAttempts.delete(ip);
     const body = Buffer.from(JSON.stringify({ role: 'cupid', exp: now + CUPID_SESSION_MS })).toString('base64url');
     const secure = req.headers['x-forwarded-proto'] === 'https' ? '; Secure' : '';
@@ -4620,6 +4625,68 @@ app.post('/api/cup-id/login', async (req, res) => {
   rec.count += 1;
   cupIdAttempts.set(ip, rec);
   res.status(401).json({ error: 'Incorrect username or password.' });
+});
+// CUP ID password reset. The password from CUP_ID_PASSWORD still works; a password set by reset is stored in cup_id_credentials and takes over.
+let cupIdTableReady = null;
+function cupIdTable() {
+  if (!cupIdTableReady) cupIdTableReady = pool.query('CREATE TABLE IF NOT EXISTS cup_id_credentials (id INT PRIMARY KEY, password_hash TEXT NOT NULL, updated_at TIMESTAMPTZ NOT NULL DEFAULT now())');
+  return cupIdTableReady;
+}
+async function cupIdStoredHash() {
+  await cupIdTable();
+  const r = await pool.query('SELECT password_hash FROM cup_id_credentials WHERE id = 1');
+  return r.rows.length ? r.rows[0].password_hash : '';
+}
+// The reset token is tied to the current password, so it stops working once the password changes.
+function cupIdResetToken(currentHash, exp) {
+  const body = Buffer.from(JSON.stringify({ r: 'cupid-reset', h: crypto.createHash('sha256').update(currentHash || (process.env.CUP_ID_PASSWORD || '')).digest('hex'), e: exp })).toString('base64url');
+  return body + '.' + signSession(body);
+}
+function cupIdReadResetToken(token) {
+  const [body, sig] = String(token || '').split('.');
+  if (!body || !sig) return null;
+  const good = signSession(body);
+  if (sig.length !== good.length || !crypto.timingSafeEqual(Buffer.from(sig), Buffer.from(good))) return null;
+  try {
+    const d = JSON.parse(Buffer.from(body, 'base64url').toString());
+    if (d.r !== 'cupid-reset' || !(d.e > Date.now())) return null;
+    return d;
+  } catch { return null; }
+}
+app.post('/api/cup-id/forgot', async (req, res) => {
+  const email = String((req.body && req.body.email) || '').trim().toLowerCase().slice(0, 200);
+  const cupEmail = String(process.env.CUP_ID_EMAIL || '').trim().toLowerCase();
+  const generic = { ok: true, message: 'If that email belongs to the CUP ID account, a reset link has been sent to it.' };
+  if (!email || !cupEmail || email !== cupEmail) return res.json(generic);
+  try {
+    const stored = await cupIdStoredHash();
+    const exp = Date.now() + 30 * 60 * 1000;
+    const token = cupIdResetToken(stored, exp);
+    const link = portalBase(req) + '/CUP-PORTAL/cup-id/reset.html?token=' + encodeURIComponent(token);
+    await sendEmail(cupEmail, 'CUP ID portal password reset',
+      'Use this link to reset your CUP ID portal password. It expires in 30 minutes.\n\n' + link + '\n\nIf you did not ask for this, ignore this email.',
+      { html: '<p>Use this link to reset your CUP ID portal password. It expires in 30 minutes.</p><p><a href="' + link + '">Reset my password</a></p><p>If you did not ask for this, ignore this email.</p>' });
+  } catch (err) {
+    console.error(err);
+  }
+  res.json(generic);
+});
+app.post('/api/cup-id/reset', async (req, res) => {
+  const token = String((req.body && req.body.token) || '');
+  const password = String((req.body && req.body.password) || '').slice(0, 200);
+  if (password.length < 8) return res.status(400).json({ error: 'Use at least 8 characters.' });
+  try {
+    const stored = await cupIdStoredHash();
+    const d = cupIdReadResetToken(token);
+    const current = crypto.createHash('sha256').update(stored || (process.env.CUP_ID_PASSWORD || '')).digest('hex');
+    if (!d || d.h !== current) return res.status(400).json({ error: 'This reset link is invalid or has expired. Request a new one.' });
+    await cupIdTable();
+    await pool.query('INSERT INTO cup_id_credentials (id, password_hash) VALUES (1, $1) ON CONFLICT (id) DO UPDATE SET password_hash = EXCLUDED.password_hash, updated_at = now()', [hashPassword(password)]);
+    res.json({ ok: true });
+  } catch (err) {
+    console.error(err);
+    res.status(500).json({ error: 'Could not reset the password. Please try again.' });
+  }
 });
 app.post('/api/cup-id/logout', (req, res) => {
   res.setHeader('Set-Cookie', 'cup_id_session=; Path=/; HttpOnly; SameSite=Lax; Max-Age=0');

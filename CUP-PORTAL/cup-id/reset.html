@@ -1,0 +1,81 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>CUP ID Reset Password</title>
+<link rel="icon" href="/images/favicon-cup.png">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Libre+Franklin:wght@400;600;700;800&display=swap">
+<style>
+  :root { --green: #106010; --dg: #0b4a0b; --gold: #f2c200; --ink: #222; --line: #d6dbd6; }
+  * { box-sizing: border-box; }
+  html, body { margin: 0; background: #f4f6f4; color: var(--ink); }
+  body { font-family: 'Libre Franklin', Arial, Helvetica, sans-serif; min-height: 100vh; }
+  header { background: var(--green); color: #fff; display: flex; align-items: center; justify-content: space-between; gap: 12px; padding: 12px 20px; flex-wrap: wrap; }
+  header .brand { display: flex; align-items: center; gap: 12px; }
+  header img { width: 52px; height: 52px; background: transparent; padding: 0; }
+  header h1 { font-size: 1.05rem; margin: 0; font-weight: 800; }
+  header .live-clock { font-size: 13px; font-weight: 700; white-space: nowrap; }
+  .card { background: #fff; border: 1px solid var(--line); border-radius: 8px; padding: 18px; }
+  h2 { font-size: 1.1rem; margin: 0 0 6px; color: var(--dg); }
+  .field { margin-bottom: 12px; }
+  .field label { display: block; font-size: .85rem; font-weight: 700; margin-bottom: 4px; }
+  .field input { width: 100%; padding: 10px; border: 1px solid var(--line); border-radius: 4px; font: inherit; }
+  .go { background: var(--green); color: #fff; border: 0; border-radius: 4px; padding: 11px 18px; font: inherit; font-weight: 700; cursor: pointer; width: 100%; }
+  .go:disabled { opacity: .6; cursor: default; }
+  .msg { min-height: 1.2em; font-size: .92rem; margin: 10px 0 0; color: #b42318; }
+  .narrow { max-width: 380px; margin: 40px auto; }
+</style>
+</head>
+<body>
+<header>
+  <div class="brand"><a href="/CUP-PORTAL/" aria-label="Back to the CUP Central Portal" style="display:inline-block"><img src="/images/cup-logo-seal.png" alt="CUP seal"></a><h1>CUP ID Portal</h1></div>
+  <span id="liveClock" class="live-clock"></span>
+</header>
+<main>
+  <section class="card narrow">
+    <h2>Reset Password</h2>
+    <form id="form" novalidate>
+      <div class="field"><label for="p1">New password</label><input id="p1" type="password" autocomplete="new-password" required></div>
+      <div class="field"><label for="p2">Confirm new password</label><input id="p2" type="password" autocomplete="new-password" required></div>
+      <button class="go" id="go" type="submit">Save new password</button>
+      <p class="msg" id="msg" role="status"></p>
+      <p style="margin-top:14px;font-size:.9rem"><a href="/CUP-PORTAL/cup-id/" style="color:var(--green);font-weight:700">Back to log in</a></p>
+    </form>
+  </section>
+</main>
+<script>
+(function () {
+  var form = document.getElementById('form'), msg = document.getElementById('msg'), go = document.getElementById('go');
+  var token = new URLSearchParams(window.location.search).get('token') || '';
+  form.addEventListener('submit', function (e) {
+    e.preventDefault();
+    var p1 = document.getElementById('p1').value, p2 = document.getElementById('p2').value;
+    msg.textContent = '';
+    if (!token) { msg.textContent = 'This reset link is invalid. Request a new one.'; return; }
+    if (p1.length < 8) { msg.textContent = 'Use at least 8 characters.'; return; }
+    if (p1 !== p2) { msg.textContent = 'The passwords do not match.'; return; }
+    go.disabled = true; go.textContent = 'Saving…';
+    fetch('/api/cup-id/reset', { method: 'POST', credentials: 'same-origin', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ token: token, password: p1 }) })
+      .then(function (r) { return r.json().then(function (j) { return { ok: r.ok, j: j }; }); })
+      .then(function (res) {
+        if (res.ok && res.j.ok) { window.location.href = '/CUP-PORTAL/cup-id/'; return; }
+        msg.textContent = res.j.error || 'Could not reset the password.';
+        go.disabled = false; go.textContent = 'Save new password';
+      })
+      .catch(function () { msg.textContent = 'Connection problem. Please try again.'; go.disabled = false; go.textContent = 'Save new password'; });
+  });
+  var el = document.getElementById('liveClock');
+  var f = new Intl.DateTimeFormat('en-US', { timeZone: 'Asia/Manila', weekday: 'long', month: 'long', day: 'numeric', year: 'numeric', hour: 'numeric', minute: '2-digit', second: '2-digit', hour12: true });
+  function tick() {
+    var p = {};
+    f.formatToParts(new Date()).forEach(function (x) { p[x.type] = x.value; });
+    el.textContent = '📅 ' + p.weekday + ', ' + p.month + ' ' + p.day + ', ' + p.year + ' at ' + p.hour + ':' + p.minute + ':' + p.second + ' ' + p.dayPeriod;
+  }
+  tick(); setInterval(tick, 1000);
+})();
+</script>
+</body>
+</html>
