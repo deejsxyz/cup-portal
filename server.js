@@ -4588,7 +4588,7 @@ app.get('/api/csc/students', requireCsc, async (req, res) => {
        FROM reg_students WHERE college = $1 AND status IN ('enrolled','pre-registered')
          AND step1_status = 'verified'
          AND step2_evaluated_at IS NOT NULL AND step2_advised_at IS NOT NULL AND step2_sectioned_at IS NOT NULL
-         AND (NOT (year_level <= 2 OR COALESCE(nstp_subject, '') <> '') OR nstp_enrolled_at IS NOT NULL)
+         AND (${NSTP_PASSED_SQL} OR nstp_enrolled_at IS NOT NULL)
          AND EXISTS (SELECT 1 FROM reg_preregistrations p WHERE p.student_no = reg_students.student_no AND p.term = $2 AND p.academic_year = $3)
        ORDER BY last_name, first_name`, [college, pt.term, pt.ay]);
     res.json({ students: rows });
@@ -4663,15 +4663,18 @@ const ENROLL_CHECKS = [
   { label: 'Step 2 · Evaluation', ok: (r) => !!r.step2_evaluated_at },
   { label: 'Step 2 · Advising', ok: (r) => !!r.step2_advised_at },
   { label: 'Step 2 · Section Assignment', ok: (r) => !!r.step2_sectioned_at },
-  // NSTP: required for Year 1 and 2, or for anyone who chose an NSTP subject in Step 2. Otherwise Step 3 is automatically done.
-  { label: 'Step 3 · NSTP', ok: (r) => !((Number(r.year_level) <= 2) || !!r.nstp_subject) || !!r.nstp_enrolled_at },
+  // NSTP: required unless the student already PASSED both NSTP 101 and NSTP 102. Otherwise Step 3 is automatically done.
+  { label: 'Step 3 · NSTP', ok: (r) => !!r.nstp_passed || !!r.nstp_enrolled_at },
   // Step 4 (Official CUP ID): done automatically once the student has a student number.
   { label: 'Step 4 · Official CUP ID', ok: (r) => !!String(r.student_no || '').trim() },
   { label: 'Step 5 · CSC payment', ok: (r) => !!r.csc_paid_at },
   { label: 'Step 6 · Advising slip submitted', ok: (r) => !!r.advising_slip_at },
 ];
 function enrollMissing(r) { return ENROLL_CHECKS.filter((c) => !c.ok(r)).map((c) => c.label); }
-const ENROLL_ROW_SQL = `SELECT student_no, status, year_level, COALESCE(nstp_subject, '') AS nstp_subject, nstp_enrolled_at, step1_status, step2_evaluated_at, step2_advised_at, step2_sectioned_at, csc_paid_at, advising_slip_at, coe_printed_at, id_validated_at
+// True when the student has an approved PASSED grade (3.00 or better) in both NSTP 101 and NSTP 102 on the grades record.
+// Such a student skips NSTP enrollment and Step 3 is complete automatically.
+const NSTP_PASSED_SQL = `((SELECT COUNT(DISTINCT g.course_code) FROM reg_grades g WHERE g.student_no = reg_students.student_no AND g.course_code IN ('NSTP 101','NSTP 102') AND g.status = 'approved' AND g.final_grade::text ~ '^[0-9]+(\\.[0-9]+)?$' AND g.final_grade::text::numeric <= 3) = 2)`;
+const ENROLL_ROW_SQL = `SELECT student_no, status, year_level, COALESCE(nstp_subject, '') AS nstp_subject, nstp_enrolled_at, ${NSTP_PASSED_SQL} AS nstp_passed, step1_status, step2_evaluated_at, step2_advised_at, step2_sectioned_at, csc_paid_at, advising_slip_at, coe_printed_at, id_validated_at
   FROM reg_students WHERE student_no = $1 AND college = $2`;
 // Readiness for the Submission of Advising Slip page: which steps are still not done.
 app.get('/api/registrar/enroll-readiness/:no', requireSuperAdmin, async (req, res) => {
@@ -6744,16 +6747,16 @@ app.get('/api/student/enrollment-steps', requirePortal('student'), async (req, r
   try {
     const no = req.portal.student_no || '';
     const r = no ? (await pool.query(
-      `SELECT student_no, status, year_level, COALESCE(nstp_subject, '') AS nstp_subject, nstp_enrolled_at, step1_status,
+      `SELECT student_no, status, year_level, COALESCE(nstp_subject, '') AS nstp_subject, nstp_enrolled_at, ${NSTP_PASSED_SQL} AS nstp_passed, step1_status,
               step2_evaluated_at, step2_advised_at, step2_sectioned_at, csc_paid_at, advising_slip_at
          FROM reg_students WHERE student_no = $1`, [no])).rows[0] : null;
     const row = r || {};
     const step2 = !!(row.step2_evaluated_at && row.step2_advised_at && row.step2_sectioned_at);
-    const nstpRequired = Number(row.year_level) <= 2 || !!row.nstp_subject;
+    const nstpRequired = !row.nstp_passed;
     const steps = [
       { n: 1, label: 'Evaluation', note: 'Grades verified by the Registrar', done: row.step1_status === 'verified' },
       { n: 2, label: "Dean's Office", note: 'Evaluation, advising and section', done: step2 },
-      { n: 3, label: 'NSTP enrollment', note: nstpRequired ? 'NSTP subject' : 'Not required for your year level', done: !nstpRequired || !!row.nstp_enrolled_at },
+      { n: 3, label: 'NSTP enrollment', note: nstpRequired ? 'NSTP subject' : 'Not required: NSTP 1 and 2 already passed', done: !nstpRequired || !!row.nstp_enrolled_at },
       { n: 4, label: 'Official CUP ID', note: 'Student number issued', done: !!String(row.student_no || '').trim() },
       { n: 5, label: 'CSC Fee payment', note: 'CSC fee (R407)', done: !!row.csc_paid_at },
       { n: 6, label: 'Registrar Office', note: 'Advising slip and Certificate of Enrollment', done: !!row.advising_slip_at && row.status === 'enrolled' },
