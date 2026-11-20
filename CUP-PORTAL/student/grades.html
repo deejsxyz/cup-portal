@@ -586,6 +586,7 @@
       var map = { MON: 'M', TUE: 'T', WED: 'W', THU: 'Th', FRI: 'F', SAT: 'S', SUN: 'Su' };
       return String(v || '').split(/[\s,\/]+/).filter(Boolean).map(function (d) { return (map[d.toUpperCase()] || d).toUpperCase(); }).join('');
     }
+    function progAbbrOf(p) { var m = /\(([^)]+)\)\s*$/.exec(p || ''); return m ? m[1] : (p || ''); }
     function loadEnrolled() {
       fetch('/api/student/enrolled-subjects', { credentials: 'same-origin' }).then(function (r) { return r.json().then(function (j) { return { ok: r.ok, j: j }; }); })
         .then(function (res) {
@@ -599,7 +600,7 @@
             return;
           }
           card.hidden = false;
-          $('enrolled-meta').textContent = PROG_ABBR(profile && profile.program) + (profile && profile.year_level != null ? profile.year_level : res.j.year_level) + '-' + res.j.section + ' · ' + res.j.term.term + ', A.Y. ' + res.j.term.ay;
+          $('enrolled-meta').textContent = progAbbrOf(profile && profile.program) + (profile && profile.year_level != null ? profile.year_level : res.j.year_level) + '-' + res.j.section + ' · ' + res.j.term.term + ', A.Y. ' + res.j.term.ay;
           $('enrolled-rows').innerHTML = res.j.subjects.map(function (s) {
             var when = s.days ? shortDays(s.days) + ' ' + fmtTime(s.start_time) + (s.end_time ? ' – ' + fmtTime(s.end_time) : '') : 'TBA';
             return '<tr><td style="padding:6px;border-bottom:1px solid #d5e2d5">' + esc(s.course_code) + '</td><td style="padding:6px;border-bottom:1px solid #d5e2d5">' + esc(s.descriptive_title) + '</td><td style="padding:6px;border-bottom:1px solid #d5e2d5">' + esc(when) + '</td><td style="padding:6px;border-bottom:1px solid #d5e2d5">' + esc(s.room || '—') + '</td><td style="padding:6px;border-bottom:1px solid #d5e2d5">' + esc(s.instructor_name || 'TBA') + '</td></tr>';
