@@ -6335,15 +6335,6 @@ pool.query(`CREATE TABLE IF NOT EXISTS cat_sections (
   .then(() => pool.query('ALTER TABLE cat_submissions ADD COLUMN IF NOT EXISTS emailed_at TIMESTAMPTZ'))
   .then(() => pool.query('ALTER TABLE accounts ADD COLUMN IF NOT EXISTS dob_changed BOOLEAN NOT NULL DEFAULT false'))
   .then(() => pool.query("CREATE TABLE IF NOT EXISTS student_profiles (account_id INT PRIMARY KEY REFERENCES accounts(id), student_number TEXT UNIQUE NOT NULL, program TEXT NOT NULL, year_level INT NOT NULL)"))
-  .then(() => pool.query("CREATE TABLE IF NOT EXISTS student_accounts (LIKE accounts INCLUDING DEFAULTS INCLUDING CONSTRAINTS INCLUDING INDEXES)"))
-  .then(() => pool.query("INSERT INTO student_accounts SELECT * FROM accounts WHERE role = 'student' ON CONFLICT (id) DO NOTHING"))
-  .then(() => pool.query(`DO $$ DECLARE r record; BEGIN
-    FOR r IN SELECT c.conname, c.conrelid::regclass AS tbl FROM pg_constraint c
-      WHERE c.contype = 'f' AND c.confrelid = 'accounts'::regclass AND c.conrelid::regclass::text IN ('student_profiles', 'pre_enrollments', 'pre_enroll_submissions') LOOP
-      EXECUTE format('ALTER TABLE %s DROP CONSTRAINT %I', r.tbl, r.conname);
-      EXECUTE format('ALTER TABLE %s ADD CONSTRAINT %I FOREIGN KEY (account_id) REFERENCES student_accounts(id)', r.tbl, r.conname);
-    END LOOP; END $$`))
-  .then(() => pool.query("DELETE FROM accounts WHERE role = 'student' AND id IN (SELECT id FROM student_accounts)"))
   .then(() => pool.query("CREATE TABLE IF NOT EXISTS curriculum_subjects (id SERIAL PRIMARY KEY, program TEXT NOT NULL, year_level INT NOT NULL, term_no INT NOT NULL, code TEXT NOT NULL, title TEXT NOT NULL, units NUMERIC NOT NULL, UNIQUE (program, year_level, term_no, code))"))
   .then(() => pool.query("CREATE TABLE IF NOT EXISTS pre_enrollments (account_id INT NOT NULL REFERENCES accounts(id), term TEXT NOT NULL, subject_id INT NOT NULL REFERENCES curriculum_subjects(id), PRIMARY KEY (account_id, term, subject_id))"))
   .then(() => pool.query("CREATE TABLE IF NOT EXISTS pre_enroll_submissions (account_id INT NOT NULL REFERENCES accounts(id), term TEXT NOT NULL, submitted_at TIMESTAMPTZ NOT NULL DEFAULT now(), PRIMARY KEY (account_id, term))"))
@@ -6421,6 +6412,15 @@ pool.query(`CREATE TABLE IF NOT EXISTS cat_sections (
       extension TEXT NOT NULL DEFAULT '', email TEXT NOT NULL, position TEXT NOT NULL,
       archived_at TIMESTAMPTZ, created_at TIMESTAMPTZ NOT NULL DEFAULT now())`))
   .then(() => pool.query('ALTER TABLE accounts ADD COLUMN IF NOT EXISTS must_change_password BOOLEAN NOT NULL DEFAULT false'))
+  .then(() => pool.query("CREATE TABLE IF NOT EXISTS student_accounts (LIKE accounts INCLUDING DEFAULTS INCLUDING CONSTRAINTS INCLUDING INDEXES)"))
+  .then(() => pool.query("INSERT INTO student_accounts SELECT * FROM accounts WHERE role = 'student' ON CONFLICT (id) DO NOTHING"))
+  .then(() => pool.query(`DO $$ DECLARE r record; BEGIN
+    FOR r IN SELECT c.conname, c.conrelid::regclass AS tbl FROM pg_constraint c
+      WHERE c.contype = 'f' AND c.confrelid = 'accounts'::regclass AND c.conrelid::regclass::text IN ('student_profiles', 'pre_enrollments', 'pre_enroll_submissions') LOOP
+      EXECUTE format('ALTER TABLE %s DROP CONSTRAINT %I', r.tbl, r.conname);
+      EXECUTE format('ALTER TABLE %s ADD CONSTRAINT %I FOREIGN KEY (account_id) REFERENCES student_accounts(id)', r.tbl, r.conname);
+    END LOOP; END $$`))
+  .then(() => pool.query("DELETE FROM accounts WHERE role = 'student' AND id IN (SELECT id FROM student_accounts)"))
   .then(() => pool.query('ALTER TABLE csc_accounts ADD COLUMN IF NOT EXISTS must_change_password BOOLEAN NOT NULL DEFAULT false'))
   // Staff accounts (University Registrar, Records-in-Charge, College Registrar, NSTP) live in their own table, separate from CUP CAT accounts.
   .then(() => pool.query(`CREATE TABLE IF NOT EXISTS staff_accounts (
