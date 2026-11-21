@@ -59,21 +59,6 @@ app.post('/api/applications', async (req, res) => {
   }
 });
 
-app.get('/api/cat-stats', async (req, res) => {
-  try {
-    const result = await pool.query('SELECT key, value FROM cat_stats');
-    const stats = { total_registrations: 0, total_successful_applications: 0 };
-    result.rows.forEach((row) => { stats[row.key] = Number(row.value); });
-    // Registrations count applicant accounts only; admin accounts are not counted.
-    const reg = await pool.query("SELECT COUNT(*)::int AS n FROM accounts WHERE role = 'applicant'");
-    stats.total_registrations = reg.rows[0].n;
-    res.json(stats);
-  } catch (err) {
-    console.error('Failed to read CUP-CAT stats:', err.message);
-    res.status(500).json({ error: 'Could not load the statistics.' });
-  }
-});
-
 
 // ---- CUP CAT account creation ----
 // Sends email through Brevo's web API (Render's free plan blocks SMTP ports).
@@ -237,144 +222,9 @@ app.use('/api/', (req, res, next) => {
   next();
 });
 
-app.post('/api/cat/otp', async (req, res) => {
-  const regNow = await getRegistrationState();
-  if (!regNow.open || regNow.quotaReached) return res.status(403).json({ error: regNow.open ? QUOTA_MSG : REG_CLOSED_MSG });
-  const email = String(req.body.email || '').trim().toLowerCase().slice(0, 200);
-  if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) {
-    return res.status(400).json({ error: 'Please enter a valid email address.' });
-  }
-  const firstName = String(req.body.firstName || '').trim().slice(0, 100);
-  const lastName = String(req.body.lastName || '').trim().slice(0, 100);
-  try {
-    const existing = await pool.query(
-      'SELECT 1 FROM accounts WHERE email = $1 OR (lower(first_name) = lower($2) AND lower(last_name) = lower($3)) LIMIT 1',
-      [email, firstName, lastName]);
-    if (existing.rowCount > 0) {
-      return res.status(409).json({ error: 'User already registered' });
-    }
-    const code = String(crypto.randomInt(0, 1000000)).padStart(6, '0');
-    await pool.query(
-      `INSERT INTO otp_codes (email, code_hash, expires_at, attempts)
-       VALUES ($1, $2, now() + interval '10 minutes', 0)
-       ON CONFLICT (email) DO UPDATE SET code_hash = EXCLUDED.code_hash, expires_at = EXCLUDED.expires_at, attempts = 0`,
-      [otpKey('cat', email), hashCode(email, code)]
-    );
-    await sendEmail(
-      email,
-      'Your One-time-PIN (OTP)',
-      'Your CUP CAT verification code is ' + code + '. It expires in 10 minutes. If you did not request this code, you can ignore this email.',
-      { sender: 'CUP CAT Online Application System' }
-    );
-    res.json({ ok: true });
-  } catch (err) {
-    console.error('Failed to send OTP:', err.message);
-    res.status(500).json({ error: 'Could not send the code. Please try again.' });
-  }
-});
-
-app.post('/api/cat/otp/verify', async (req, res) => {
-  const email = String(req.body.email || '').trim().toLowerCase().slice(0, 200);
-  const otp = String(req.body.otp || '').trim().slice(0, 6);
-  try {
-    const row = await pool.query('SELECT code_hash, expires_at, attempts FROM otp_codes WHERE email = $1', [otpKey('cat', email)]);
-    if (row.rowCount === 0 || new Date(row.rows[0].expires_at) < new Date()) {
-      return res.status(400).json({ error: 'The code has expired. Please request a new one.' });
-    }
-    if (row.rows[0].attempts >= 5) {
-      return res.status(429).json({ error: 'Too many wrong attempts. Please request a new code.' });
-    }
-    if (row.rows[0].code_hash !== hashCode(email, otp)) {
-      await pool.query('UPDATE otp_codes SET attempts = attempts + 1 WHERE email = $1', [otpKey('cat', email)]);
-      return res.status(400).json({ error: 'The code is incorrect.' });
-    }
-    await pool.query('UPDATE otp_codes SET verified_at = now() WHERE email = $1', [otpKey('cat', email)]);
-    res.json({ ok: true });
-  } catch (err) {
-    console.error('Failed to verify OTP:', err.message);
-    res.status(500).json({ error: 'Could not verify the code. Please try again.' });
-  }
-});
-
 // Profile: change the photo any time (the form lock does not apply to it).
-app.post('/api/cat/profile/photo', async (req, res) => {
-  const id = readSession(req);
-  if (!id) return res.status(401).json({ error: 'Not logged in.' });
-  const photo = req.body && req.body.photo;
-  if (typeof photo !== 'string' || photo.length > 2800000 || !isImageDataUrl(photo)) {
-    return res.status(400).json({ error: 'Please upload a valid image under 2MB.' });
-  }
-  try {
-    await pool.query(
-      `INSERT INTO cat_sections (account_id, section, data, submitted_at) VALUES ($1, 'photo', $2, now())
-       ON CONFLICT (account_id, section) DO UPDATE SET data = cat_sections.data || EXCLUDED.data, submitted_at = now()`,
-      [id, JSON.stringify({ photo })]);
-    res.json({ ok: true });
-  } catch (err) {
-    console.error(err);
-    res.status(500).json({ error: 'Could not update your photo.' });
-  }
-});
-
 // Profile: the birthdate can be changed only once; after that it is locked.
 // Change password while signed in: old password must match; new password must be confirmed and not reused.
-app.post('/api/cat/profile/password', async (req, res) => {
-  const id = readSession(req);
-  if (!id) return res.status(401).json({ error: 'Not logged in.' });
-  const oldPassword = String((req.body && req.body.oldPassword) || '');
-  const newPassword = String((req.body && req.body.newPassword) || '');
-  const confirmPassword = String((req.body && req.body.confirmPassword) || '');
-  if (!oldPassword) return res.status(400).json({ error: 'Enter your old password.' });
-  if (newPassword.length < 8) return res.status(400).json({ error: 'New password must be at least 8 characters.' });
-  if (newPassword !== confirmPassword) return res.status(400).json({ error: 'New password and confirmation do not match.' });
-  try {
-    const acc = await pool.query('SELECT password_hash FROM accounts WHERE id = $1', [id]);
-    if (!acc.rowCount) return res.status(401).json({ error: 'Not logged in.' });
-    if (!verifyPassword(oldPassword, acc.rows[0].password_hash)) {
-      return res.status(400).json({ error: 'Your old password is incorrect.' });
-    }
-    const past = await pool.query('SELECT password_hash FROM password_history WHERE account_id = $1', [id]);
-    const previous = [acc.rows[0].password_hash, ...past.rows.map((r) => r.password_hash)];
-    if (previous.some((h) => verifyPassword(newPassword, h))) {
-      return res.status(400).json({ error: 'You cannot reuse a previous password. Please choose a new one.' });
-    }
-    const client = await pool.connect();
-    try {
-      await client.query('BEGIN');
-      await client.query('INSERT INTO password_history (account_id, password_hash) VALUES ($1, $2)', [id, acc.rows[0].password_hash]);
-      await client.query('UPDATE accounts SET password_hash = $1 WHERE id = $2', [hashPassword(newPassword), id]);
-      await client.query('COMMIT');
-    } catch (err) {
-      await client.query('ROLLBACK').catch(() => {});
-      throw err;
-    } finally {
-      client.release();
-    }
-    res.json({ ok: true });
-  } catch (err) {
-    console.error(err);
-    res.status(500).json({ error: 'Could not change your password. Please try again.' });
-  }
-});
-
-app.post('/api/cat/profile/dob', async (req, res) => {
-  const id = readSession(req);
-  if (!id) return res.status(401).json({ error: 'Not logged in.' });
-  const dob = String((req.body && req.body.dateOfBirth) || '');
-  if (!validDate(dob) || dob < '1900-01-01' || dob > new Date().toISOString().slice(0, 10)) {
-    return res.status(400).json({ error: 'Enter a valid birthdate.' });
-  }
-  try {
-    const r = await pool.query(
-      'UPDATE accounts SET date_of_birth = $1, dob_changed = true WHERE id = $2 AND dob_changed = false RETURNING id', [dob, id]);
-    if (!r.rowCount) return res.status(409).json({ error: 'Your birthdate has already been changed once and is now locked.' });
-    res.json({ ok: true, dateOfBirth: dob });
-  } catch (err) {
-    console.error(err);
-    res.status(500).json({ error: 'Could not update your birthdate.' });
-  }
-});
-
 // Staff password reset: University Registrar, Records-in-Charge, College Registrar, NSTP officers and faculty.
 // Looks up staff_accounts first, then faculty logins (reg_users). Never reads CUP CAT applicant accounts.
 function staffOtpKey(email) { return 'staff:' + email; }
@@ -584,161 +434,8 @@ app.post('/api/portal/student/reset/confirm', async (req, res) => {
 });
 
 // Password reset, step 1: find the account by email and send a code.
-app.post('/api/cat/reset/request', async (req, res) => {
-  const email = String((req.body && req.body.email) || '').trim().toLowerCase().slice(0, 200);
-  if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) {
-    return res.status(400).json({ error: 'Please enter a valid email address.' });
-  }
-  try {
-    const acc = await pool.query("SELECT 1 FROM accounts WHERE email = $1 AND role NOT IN ('registrar','university','uniregistrar','nstp')", [email]);
-    if (acc.rowCount === 0) {
-      return res.status(404).json({ error: 'No account found with this email.' });
-    }
-    const code = String(crypto.randomInt(0, 1000000)).padStart(6, '0');
-    await pool.query(
-      `INSERT INTO otp_codes (email, code_hash, expires_at, attempts)
-       VALUES ($1, $2, now() + interval '10 minutes', 0)
-       ON CONFLICT (email) DO UPDATE SET code_hash = EXCLUDED.code_hash, expires_at = EXCLUDED.expires_at, attempts = 0, verified_at = NULL`,
-      [otpKey('cat', email), hashCode(email, code)]
-    );
-    await sendEmail(
-      email,
-      'Your One-time-PIN (OTP)',
-      'Your CUP CAT password reset code is ' + code + '. It expires in 10 minutes. If you did not request a password reset, you can ignore this email.',
-      { sender: 'CUP CAT Online Application System' }
-    );
-    res.json({ ok: true });
-  } catch (err) {
-    console.error('Failed to send reset code:', err.message);
-    res.status(500).json({ error: 'Could not send the code. Please try again.' });
-  }
-});
-
 // Password reset, step 2: check the emailed code.
-app.post('/api/cat/reset/verify', async (req, res) => {
-  const email = String((req.body && req.body.email) || '').trim().toLowerCase().slice(0, 200);
-  const otp = String((req.body && req.body.otp) || '').trim().slice(0, 6);
-  try {
-    const row = await pool.query('SELECT code_hash, expires_at, attempts FROM otp_codes WHERE email = $1', [otpKey('cat', email)]);
-    if (row.rowCount === 0 || new Date(row.rows[0].expires_at) < new Date()) {
-      return res.status(400).json({ error: 'The code has expired. Please request a new one.' });
-    }
-    if (row.rows[0].attempts >= 5) {
-      return res.status(429).json({ error: 'Too many wrong attempts. Please request a new code.' });
-    }
-    if (row.rows[0].code_hash !== hashCode(email, otp)) {
-      await pool.query('UPDATE otp_codes SET attempts = attempts + 1 WHERE email = $1', [otpKey('cat', email)]);
-      return res.status(400).json({ error: 'The code is incorrect.' });
-    }
-    await pool.query('UPDATE otp_codes SET verified_at = now() WHERE email = $1', [otpKey('cat', email)]);
-    res.json({ ok: true });
-  } catch (err) {
-    console.error('Failed to verify reset code:', err.message);
-    res.status(500).json({ error: 'Could not verify the code. Please try again.' });
-  }
-});
-
 // Password reset, step 3: set the new password, only after the code was verified.
-app.post('/api/cat/reset/confirm', async (req, res) => {
-  const email = String((req.body && req.body.email) || '').trim().toLowerCase().slice(0, 200);
-  const password = String((req.body && req.body.password) || '');
-  if (password.length < 8) {
-    return res.status(400).json({ error: 'Password must be at least 8 characters.' });
-  }
-  try {
-    const row = await pool.query('SELECT verified_at, expires_at FROM otp_codes WHERE email = $1', [otpKey('cat', email)]);
-    if (row.rowCount === 0 || !row.rows[0].verified_at || new Date(row.rows[0].expires_at) < new Date()) {
-      return res.status(400).json({ error: 'Please verify the code first.' });
-    }
-    const acc = await pool.query("SELECT id, password_hash FROM accounts WHERE email = $1 AND role NOT IN ('registrar','university','uniregistrar','nstp')", [email]);
-    if (acc.rowCount === 0) return res.status(404).json({ error: 'No account found with this email.' });
-    const accountId = acc.rows[0].id;
-    // The new password must not match the current password or any earlier one.
-    const past = await pool.query('SELECT password_hash FROM password_history WHERE account_id = $1', [accountId]);
-    const previous = [acc.rows[0].password_hash, ...past.rows.map((r) => r.password_hash)];
-    if (previous.some((h) => verifyPassword(password, h))) {
-      return res.status(400).json({ error: 'You cannot reuse a previous password. Please choose a new one.' });
-    }
-    const client = await pool.connect();
-    try {
-      await client.query('BEGIN');
-      await client.query('INSERT INTO password_history (account_id, password_hash) VALUES ($1, $2)', [accountId, acc.rows[0].password_hash]);
-      await client.query('UPDATE accounts SET password_hash = $1 WHERE id = $2', [hashPassword(password), accountId]);
-      await client.query('DELETE FROM otp_codes WHERE email = $1', [otpKey('cat', email)]);
-      await client.query('COMMIT');
-    } catch (err) {
-      await client.query('ROLLBACK').catch(() => {});
-      throw err;
-    } finally {
-      client.release();
-    }
-    res.json({ ok: true });
-  } catch (err) {
-    console.error('Failed to reset password:', err.message);
-    res.status(500).json({ error: 'Could not reset the password. Please try again.' });
-  }
-});
-
-app.post('/api/cat/accounts', async (req, res) => {
-  const regNow = await getRegistrationState();
-  if (!regNow.open || regNow.quotaReached) return res.status(403).json({ error: regNow.open ? QUOTA_MSG : REG_CLOSED_MSG });
-  const b = req.body || {};
-  const clean = (v, max) => String(v || '').trim().slice(0, max);
-  const category = clean(b.category, 100);
-  const firstName = clean(b.firstName, 100);
-  const middleName = clean(b.middleName, 100);
-  const lastName = clean(b.lastName, 100);
-  const nameExtension = clean(b.nameExtension, 20);
-  const dob = clean(b.dateOfBirth, 10);
-  const email = clean(b.email, 200).toLowerCase();
-  const password = String(b.password || '');
-
-  const dobDate = new Date(dob + 'T00:00:00Z');
-  if (!category || !firstName || !lastName || !/^\d{4}-\d{2}-\d{2}$/.test(dob) || isNaN(dobDate) || dobDate.toISOString().slice(0, 10) !== dob || !email) {
-    return res.status(400).json({ error: 'Please complete all required fields with a valid date of birth.' });
-  }
-  if (password.length < 8) {
-    return res.status(400).json({ error: 'Password must be at least 8 characters.' });
-  }
-
-  const client = await pool.connect();
-  try {
-    await client.query('BEGIN');
-    const codeRow = await client.query('SELECT verified_at, expires_at FROM otp_codes WHERE email = $1 FOR UPDATE', [otpKey('cat', email)]);
-    const verifiedRecently = codeRow.rowCount > 0 && codeRow.rows[0].verified_at &&
-      new Date(codeRow.rows[0].expires_at) > new Date(Date.now() - 10 * 60 * 1000);
-    if (!verifiedRecently) {
-      await client.query('ROLLBACK');
-      return res.status(400).json({ error: 'Please verify your email with the OTP first.' });
-    }
-    const dup = await client.query(
-      'SELECT 1 FROM accounts WHERE email = $1 OR (lower(first_name) = lower($2) AND lower(last_name) = lower($3)) LIMIT 1',
-      [email, firstName, lastName]);
-    if (dup.rowCount > 0) {
-      await client.query('ROLLBACK');
-      return res.status(409).json({ error: 'User already registered' });
-    }
-    await client.query(
-      `INSERT INTO accounts (category, first_name, middle_name, last_name, name_extension, date_of_birth, email, password_hash)
-       VALUES ($1, $2, $3, $4, $5, $6, $7, $8)`,
-      [category, firstName, middleName || null, lastName, nameExtension || null, dob, email, hashPassword(password)]
-    );
-    await client.query('DELETE FROM otp_codes WHERE email = $1', [otpKey('cat', email)]);
-    await client.query("UPDATE cat_stats SET value = value + 1 WHERE key = 'total_registrations'");
-    await client.query('COMMIT');
-    res.status(201).json({ ok: true });
-  } catch (err) {
-    await client.query('ROLLBACK').catch(() => {});
-    if (err.code === '23505') {
-      return res.status(409).json({ error: 'User already registered' });
-    }
-    console.error('Failed to create account:', err.message);
-    res.status(500).json({ error: 'Could not create the account. Please try again.' });
-  } finally {
-    client.release();
-  }
-});
-
 function verifyPassword(password, stored) {
   const [salt, hash] = String(stored || '').split(':');
   if (!salt || !hash) return false;
@@ -775,34 +472,6 @@ function setSessionCookie(req, res, id) {
   const secure = req.headers['x-forwarded-proto'] === 'https' ? '; Secure' : '';
   res.setHeader('Set-Cookie', `cat_session=${body}.${signSession(body)}; Path=/; HttpOnly; SameSite=Lax; Max-Age=${SESSION_MS / 1000}${secure}`);
 }
-
-app.post('/api/cat/login', async (req, res) => {
-  const byApplicant = req.body && req.body.mode === 'applicant';
-  const identifier = String((req.body && req.body.identifier) || '').trim().slice(0, 254);
-  // Email login is strict: the address must match exactly, including capitals.
-  const email = identifier;
-  const password = String((req.body && req.body.password) || '');
-  if (!identifier || !password) {
-    return res.status(400).json({ error: byApplicant ? 'Please enter your Applicant ID and password.' : 'Please enter your email and password.' });
-  }
-  if (!byApplicant && !/^[A-Za-z0-9._%+-]+@[A-Za-z0-9-]+(\.[A-Za-z0-9-]+)*\.[A-Za-z]{2,}$/.test(email)) {
-    return res.status(400).json({ error: 'Enter a valid email address, for example name@example.com.' });
-  }
-  try {
-    // Applicant ID login only works once an Applicant ID has been generated (after submission).
-    const { rows } = byApplicant
-      ? await pool.query("SELECT id, password_hash, role FROM accounts WHERE applicant_id = $1 AND role NOT IN " + "('registrar','university','uniregistrar','nstp')", [identifier])
-      : await pool.query("SELECT id, password_hash, role FROM accounts WHERE email = $1 AND role NOT IN ('registrar','university','uniregistrar','nstp') UNION ALL SELECT id, password_hash, 'student' AS role FROM student_accounts WHERE email = $1", [email]);
-    if (!rows.length || !verifyPassword(password, rows[0].password_hash)) {
-      return res.status(401).json({ error: byApplicant ? 'Incorrect Applicant ID or password.' : 'Incorrect email or password.' });
-    }
-    setSessionCookie(req, res, rows[0].id);
-    res.json({ ok: true, role: rows[0].role });
-  } catch (err) {
-    console.error(err);
-    res.status(500).json({ error: 'Could not log in. Please try again.' });
-  }
-});
 
 // ---- Registrar Portal: University Registrar (super admin from Render env) and college registrars ----
 const REG_SESSION_MS = 5 * 60 * 1000;
@@ -5961,27 +5630,6 @@ app.post('/api/registrar/batch-upload/:type', requireRegistrar, async (req, res)
   }
 });
 
-app.get('/api/cat/me', async (req, res) => {
-  const id = readSession(req);
-  if (!id) return res.status(401).json({ error: 'Not logged in.' });
-  try {
-    const hasId = await pool.query('SELECT applicant_id FROM accounts WHERE id = $1', [id]);
-    if (hasId.rows.length && !hasId.rows[0].applicant_id) {
-      const att = await pool.query("SELECT 1 FROM cat_sections WHERE account_id = $1 AND section = 'attachments'", [id]);
-      if (att.rowCount > 0) await assignApplicantId(id).catch((err) => console.error('Applicant ID backfill failed:', err.message));
-    }
-    const { rows } = await pool.query(
-      'SELECT category, first_name, middle_name, last_name, name_extension, email, date_of_birth, created_at, applicant_id, dob_changed FROM accounts WHERE id = $1', [id]);
-    if (!rows.length) return res.status(401).json({ error: 'Not logged in.' });
-    setSessionCookie(req, res, id);
-    const r = rows[0];
-    res.json({ firstName: r.first_name, middleName: r.middle_name, lastName: r.last_name, nameExtension: r.name_extension, email: r.email, dateOfBirth: r.date_of_birth, createdAt: r.created_at, applicantId: r.applicant_id, category: categoryLabel(r.category), dobLocked: r.dob_changed, ...(await examFields(id)) });
-  } catch (err) {
-    console.error(err);
-    res.status(500).json({ error: 'Could not load your account.' });
-  }
-});
-
 // ---- Application sections: each is saved once, then locked ----
 const CAT_SECTIONS = ['degree', 'personal', 'photo', 'family', 'education', 'academic', 'attachments'];
 // The application form: locked for good once the final Submit goes through.
@@ -5992,35 +5640,6 @@ async function isSubmitted(accountId) {
 }
 // Records the first download of the application form and test permit (step 5).
 // Returns first: true only the first time, so the congratulations popup shows once.
-app.post('/api/cat/download', async (req, res) => {
-  const id = readSession(req);
-  if (!id) return res.status(401).json({ error: 'Not logged in.' });
-  try {
-    const { rows } = await pool.query(
-      `INSERT INTO cat_sections (account_id, section, data, submitted_at) VALUES ($1, 'download', '{}', now())
-       ON CONFLICT (account_id, section) DO NOTHING RETURNING section`, [id]);
-    res.json({ first: rows.length > 0 });
-  } catch (err) {
-    console.error(err);
-    res.status(500).json({ error: 'Could not record the download.' });
-  }
-});
-
-app.get('/api/cat/sections', async (req, res) => {
-  const id = readSession(req);
-  if (!id) return res.status(401).json({ error: 'Not logged in.' });
-  try {
-    const { rows } = await pool.query(
-      'SELECT section, data, submitted_at, unlocked FROM cat_sections WHERE account_id = $1', [id]);
-    const out = { submitted: await isSubmitted(id) };
-    rows.forEach((r) => { out[r.section] = { data: r.data, submittedAt: r.submitted_at, unlocked: r.unlocked }; });
-    res.json(out);
-  } catch (err) {
-    console.error(err);
-    res.status(500).json({ error: 'Could not load your application.' });
-  }
-});
-
 // A contact number may belong to only one applicant. Compared in 09XXXXXXXXX form.
 function normalizeContact(v) { return String(v || '').replace(/\s+/g, '').replace(/^\+63/, '0'); }
 const CONTACT_SQL = "(CASE WHEN data->>'contact' LIKE '+63%' THEN '0' || substr(data->>'contact', 4) ELSE data->>'contact' END)";
@@ -6031,35 +5650,6 @@ async function contactTaken(number, accountId) {
   return rows.length > 0;
 }
 // Signup check while typing: is this first + last name or this email already registered?
-app.get('/api/cat/account-check', async (req, res) => {
-  const firstName = String(req.query.firstName || '').trim().slice(0, 100);
-  const lastName = String(req.query.lastName || '').trim().slice(0, 100);
-  const email = String(req.query.email || '').trim().toLowerCase().slice(0, 200);
-  if (!((firstName && lastName) || email)) return res.json({ taken: false });
-  try {
-    const { rowCount } = await pool.query(
-      'SELECT 1 FROM accounts WHERE ($1 <> \'\' AND email = $1) OR ($2 <> \'\' AND $3 <> \'\' AND lower(first_name) = lower($2) AND lower(last_name) = lower($3)) LIMIT 1',
-      [email, firstName, lastName]);
-    res.json({ taken: rowCount > 0 });
-  } catch (err) {
-    console.error(err);
-    res.status(500).json({ error: 'Could not check the account.' });
-  }
-});
-
-app.get('/api/cat/contact-check', async (req, res) => {
-  const id = readSession(req);
-  if (!id) return res.status(401).json({ error: 'Not logged in.' });
-  const number = normalizeContact(req.query.number);
-  if (!/^09\d{9}$/.test(number)) return res.json({ taken: false });
-  try {
-    res.json({ taken: await contactTaken(number, id) });
-  } catch (err) {
-    console.error(err);
-    res.status(500).json({ error: 'Could not check the number.' });
-  }
-});
-
 // Checks the base64 payload really is a PNG, JPEG or WEBP file (by its first bytes), not just a label.
 // Student and CUP ID photos: JPEG or PNG only.
 function isJpegPngDataUrl(v) {
@@ -6114,213 +5704,10 @@ async function syncDrive(accountId) {
   if (!res.ok) throw new Error('Drive sync HTTP ' + res.status);
 }
 
-app.post('/api/cat/sections/:section', async (req, res) => {
-  const id = readSession(req);
-  if (!id) return res.status(401).json({ error: 'Not logged in.' });
-  const section = req.params.section;
-  if (!CAT_SECTIONS.includes(section)) return res.status(404).json({ error: 'Unknown section.' });
-  const input = req.body && typeof req.body === 'object' ? req.body : {};
-  const data = {};
-  for (const [k, v] of Object.entries(input)) {
-    if (typeof v === 'string') {
-      const max = section === 'photo' ? 2800000 : section === 'attachments' ? 2800000 : 300;
-      if (v.length > max) {
-        return res.status(400).json({ error: section === 'photo' ? 'The photo is too large. Please use an image under 2MB.' : section === 'attachments' ? 'A file is too large. Each PDF must be under 2MB.' : 'One of your entries is too long. Please shorten it.' });
-      }
-      data[k] = v;
-    }
-    else if (typeof v === 'boolean') data[k] = v;
-  }
-  if (section === 'degree') {
-    const picks = [data.p1, data.p2, data.p3].filter(Boolean);
-    if (new Set(picks).size !== picks.length) {
-      return res.status(400).json({ error: 'Each degree program can be chosen only once. Please pick different programs for your first, second and third choice.' });
-    }
-  }
-  if (section === 'personal' && !/^(09\d{9}|\+639\d{9})$/.test(data.contact || '')) {
-    return res.status(400).json({ error: 'Enter a valid contact number: 09XXXXXXXXX or +639XXXXXXXXX.' });
-  }
-  if (section === 'attachments') {
-    const files = ['psa', 'voter', 'f137', 'f138'];
-    const pdfOk = (v) => /^data:application\/pdf;base64,[A-Za-z0-9+/]+={0,2}$/.test(String(v || '')) &&
-      Buffer.from(String(v).split(',')[1].slice(0, 8), 'base64').toString('latin1').startsWith('%PDF');
-    if (!files.every((k) => pdfOk(data[k]))) {
-      return res.status(400).json({ error: 'Please upload all four documents as PDF files.' });
-    }
-    const names = files.map((k) => data[k + 'Name']);
-    if (new Set(names).size !== names.length) {
-      return res.status(400).json({ error: 'Please refrain from uploading the same file.' });
-    }
-    if (!String(data.principal || '').trim() || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(String(data.principalEmail || ''))) {
-      return res.status(400).json({ error: 'Please enter the principal name and a valid school email.' });
-    }
-  }
-  if (section === 'photo' && !isImageDataUrl(data.photo)) {
-    return res.status(400).json({ error: 'Please upload a valid image.' });
-  }
-  try {
-    if (section === 'personal') {
-      data.contact = normalizeContact(data.contact);
-      if (await contactTaken(data.contact, id)) {
-        return res.status(422).json({ error: 'Contact Number already used.' });
-      }
-    }
-    if (FORM_SECTIONS.includes(section) && await isSubmitted(id)) {
-      return res.status(409).json({ error: 'Your application has been submitted and can no longer be changed.' });
-    }
-    // Saved sections are locked; an unlocked section (after Review Information) can be saved once more.
-    const { rows } = await pool.query(
-      `INSERT INTO cat_sections (account_id, section, data, submitted_at) VALUES ($1, $2, $3, now())
-       ON CONFLICT (account_id, section) DO UPDATE SET data = EXCLUDED.data, submitted_at = now(), unlocked = false
-         WHERE cat_sections.unlocked
-            OR (cat_sections.section = 'attachments' AND NOT (cat_sections.data ?& array['psaName', 'voterName', 'f137Name', 'f138Name']))
-       RETURNING section`,
-      [id, section, JSON.stringify(data)]);
-    if (!rows.length) return res.status(409).json({ error: 'This section is already submitted and cannot be changed.' });
-    if (section === 'attachments') {
-      await assignApplicantId(id).catch((err) => console.error('Applicant ID failed:', err.message));
-      await assignSlotFor(id).catch((err) => console.error('Exam slot assignment failed:', err.message));
-      syncDrive(id).catch((err) => console.error('Drive sync failed:', err.message));
-    }
-    res.status(201).json({ ok: true });
-  } catch (err) {
-    console.error(err);
-    res.status(500).json({ error: 'Could not save this section.' });
-  }
-});
-
 // Review Information: unlocks every saved section so the applicant can edit each one once.
 // Update Records: unlocks only the Academic Records section for one more save.
-app.post('/api/cat/sections/academic/unlock', async (req, res) => {
-  const id = readSession(req);
-  if (!id) return res.status(401).json({ error: 'Not logged in.' });
-  try {
-    const { rows } = await pool.query(
-      "UPDATE cat_sections SET unlocked = true WHERE account_id = $1 AND section = 'academic' RETURNING section", [id]);
-    if (!rows.length) return res.status(404).json({ error: 'Academic Records have not been submitted yet.' });
-    res.json({ ok: true });
-  } catch (err) {
-    console.error(err);
-    res.status(500).json({ error: 'Could not open your records for editing.' });
-  }
-});
-
-app.post('/api/cat/review', async (req, res) => {
-  const id = readSession(req);
-  if (!id) return res.status(401).json({ error: 'Not logged in.' });
-  try {
-    if (await isSubmitted(id)) return res.status(409).json({ error: 'Your application has already been submitted.' });
-    await pool.query('UPDATE cat_sections SET unlocked = true WHERE account_id = $1', [id]);
-    res.json({ ok: true });
-  } catch (err) {
-    console.error(err);
-    res.status(500).json({ error: 'Could not open your sections for review.' });
-  }
-});
-
 // Final Submit of the application form: every form section must be saved, then the form is locked for good.
-app.post('/api/cat/submit', async (req, res) => {
-  const id = readSession(req);
-  if (!id) return res.status(401).json({ error: 'Not logged in.' });
-  const client = await pool.connect();
-  try {
-    await client.query('BEGIN');
-    await client.query("SELECT pg_advisory_xact_lock(hashtext('submit-lock'))");
-    const reg = await getRegistrationState(client);
-    if (!reg.open) {
-      await client.query('ROLLBACK');
-      return res.status(403).json({ error: REG_CLOSED_MSG });
-    }
-    if (reg.quotaReached) {
-      await client.query('ROLLBACK');
-      return res.status(409).json({ error: QUOTA_MSG });
-    }
-    const done = await client.query('SELECT 1 FROM cat_submissions WHERE account_id = $1', [id]);
-    if (done.rowCount > 0) {
-      await client.query('ROLLBACK');
-      return res.status(409).json({ error: 'Your application has already been submitted.' });
-    }
-    const { rows } = await client.query(
-      'SELECT section FROM cat_sections WHERE account_id = $1 AND section = ANY($2)', [id, FORM_SECTIONS]);
-    const have = rows.map((r) => r.section);
-    const missing = FORM_SECTIONS.filter((sec) => !have.includes(sec));
-    if (missing.length) {
-      await client.query('ROLLBACK');
-      return res.status(400).json({ error: 'Please complete and save every section before you submit.', missing });
-    }
-    // The slot is normally given at step 4 (attachments); this only fills it in if it is still missing.
-    const hasSlot = await client.query('SELECT 1 FROM cat_exam_slots WHERE account_id = $1', [id]);
-    if (hasSlot.rowCount === 0) {
-      const slot = await assignExamSlot(client);
-      if (!slot) {
-        await client.query('ROLLBACK');
-        return res.status(409).json({ error: 'No examination slots are available right now. Please contact the CUP Registrar\'s Office.' });
-      }
-      await client.query(
-        'INSERT INTO cat_exam_slots (account_id, exam_date, exam_time, exam_building, exam_room, exam_seat) VALUES ($1, $2, $3, $4, $5, $6)',
-        [id, slot.date, slot.time, slot.building, slot.room, slot.seat]);
-    }
-    await client.query('UPDATE cat_sections SET unlocked = false WHERE account_id = $1 AND section = ANY($2)', [id, FORM_SECTIONS]);
-    await client.query('INSERT INTO cat_submissions (account_id) VALUES ($1)', [id]);
-    await client.query('COMMIT');
-    res.json({ ok: true });
-  } catch (err) {
-    await client.query('ROLLBACK').catch(() => {});
-    console.error(err);
-    res.status(500).json({ error: 'Could not submit your application. Please try again.' });
-  } finally {
-    client.release();
-  }
-});
-
 // Emails the applicant a congratulations message with a Click to Login button. Sent once per applicant.
-app.post('/api/cat/submission-email', async (req, res) => {
-  const id = readSession(req);
-  if (!id) return res.status(401).json({ error: 'Not logged in.' });
-  let claimed = false;
-  try {
-    const claim = await pool.query(
-      'UPDATE cat_submissions SET emailed_at = now() WHERE account_id = $1 AND emailed_at IS NULL RETURNING account_id', [id]);
-    if (claim.rowCount === 0) return res.json({ ok: true, already: true });
-    claimed = true;
-    const { rows } = await pool.query(
-      'SELECT email, first_name, middle_name, last_name, applicant_id FROM accounts WHERE id = $1', [id]);
-    const acc = rows[0];
-    const mi = String(acc.middle_name || '').trim().charAt(0);
-    const fullName = acc.last_name + ', ' + acc.first_name + (mi ? ' ' + mi.toUpperCase() + '.' : '');
-    const loginUrl = portalBase(req) + '/CUP-CAT/login';
-    const subject = 'Congratulations! Your CUP College Admission Test application is complete';
-    const text = 'Dear ' + acc.first_name + ',\n\n' +
-      'Congratulations! You have successfully completed your application for the CUP College Admission Test.\n\n' +
-      'Applicant ID: ' + (acc.applicant_id || '') + '\n' +
-      'Applicant name: ' + fullName + '\n' +
-      'Username: ' + acc.email + '\n\n' +
-      'Log in to download your application form and test permit:\n' + loginUrl + '\n\n' +
-      'City University of Pasay\nOffice of Student Affairs, Admissions, and Scholarships';
-    const escHtml = (v) => String(v ?? '').replace(/[&<>"']/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
-    const html = '<div style="font-family:Arial,Helvetica,sans-serif;color:#111;line-height:1.5">' +
-      '<p>Dear ' + escHtml(acc.first_name) + ',</p>' +
-      '<p>Congratulations! You have successfully completed your application for the CUP College Admission Test.</p>' +
-      '<p style="margin:0 0 4px"><strong>Applicant ID:</strong> ' + escHtml(acc.applicant_id || '') + '</p>' +
-      '<p style="margin:0 0 4px"><strong>Applicant name:</strong> ' + escHtml(fullName) + '</p>' +
-      '<p style="margin:0 0 16px"><strong>Username:</strong> ' + escHtml(acc.email) + '</p>' +
-      '<p><a href="' + escHtml(loginUrl) + '" style="display:inline-block;background:#1f5d1f;color:#fff;text-decoration:none;font-weight:700;padding:12px 22px;border-radius:6px">Click to Login</a></p>' +
-      '<p>Log in to download your application form and test permit.</p>' +
-      '<p>City University of Pasay<br>Office of Student Affairs, Admissions, and Scholarships</p></div>';
-    await sendEmail(acc.email, subject, text, { sender: 'CUP College Admission Test', html });
-    res.json({ ok: true });
-  } catch (err) {
-    if (claimed) await pool.query('UPDATE cat_submissions SET emailed_at = NULL WHERE account_id = $1', [id]).catch(() => {});
-    console.error('Submission email failed:', err.message);
-    res.status(500).json({ error: 'Could not email the confirmation.' });
-  }
-});
-
-app.post('/api/cat/logout', (req, res) => {
-  res.setHeader('Set-Cookie', 'cat_session=; Path=/; HttpOnly; SameSite=Lax; Max-Age=0');
-  res.json({ ok: true });
-});
-
 pool.query(`CREATE TABLE IF NOT EXISTS cat_settings (key TEXT PRIMARY KEY, value TEXT NOT NULL)`).catch((err) => console.error('cat_settings table:', err.message));
 pool.query(`CREATE TABLE IF NOT EXISTS cat_sections (
   account_id INT NOT NULL REFERENCES accounts(id),
@@ -6550,15 +5937,6 @@ app.post('/api/admin/registration', requireAdmin, async (req, res) => {
   }
 });
 
-app.get('/api/cat/settings', async (req, res) => {
-  try {
-    const reg = await getRegistrationState();
-    res.json({ ...catLabels(await getCatYear()), registrationOpen: reg.open, quotaReached: reg.quotaReached });
-  } catch (err) {
-    console.error(err);
-    res.status(500).json({ error: 'Could not load settings.' });
-  }
-});
 // ---- Examination schedule (assigned automatically on final submit) ----
 const EXAM_TIMES_DEFAULT = ['08:30', '13:30'];
 const EXAM_DEFAULTS = { start: '2027-03-01', end: '2027-03-31', days: 'weekends' };
