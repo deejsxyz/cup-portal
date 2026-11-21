@@ -216,8 +216,7 @@
     if (!w) return;
     w.document.write('<!doctype html><html><head><meta charset="utf-8"><title>' + current + ' CSC Paid Students</title><style>body{font-family:Arial,sans-serif;margin:24px}table{width:100%;border-collapse:collapse;font-size:12px}th,td{border:1px solid #888;padding:4px 6px;text-align:left}</style></head><body><h2>' + current + ' | CSC Fee Paid Students</h2><p>' + rows.length + ' student(s)</p><table><thead><tr><th>Student ID</th><th>Last Name</th><th>First Name</th><th>Middle Name</th><th>Year</th><th>Section</th><th>Paid On</th></tr></thead><tbody>' +
       rows.map(function (s) { return '<tr><td>' + esc(s.student_no) + '</td><td>' + esc(s.last_name) + '</td><td>' + esc(s.first_name) + '</td><td>' + esc(s.middle_name || '') + '</td><td>' + esc(progAbbrOf(s.program) + s.year_level) + '</td><td>' + esc(s.section) + '</td><td>' + esc(new Date(s.csc_paid_at).toLocaleDateString('en-PH')) + '</td></tr>'; }).join('') +
-      '</tbody></table><script src="/protect-logo.js"></script>
-</body></html>');
+      '</tbody></table></body></html>');
     w.document.close(); w.focus(); w.print();
   });
 
