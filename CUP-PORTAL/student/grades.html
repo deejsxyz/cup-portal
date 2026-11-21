@@ -125,7 +125,7 @@
     <p class="msg" id="pr-state" hidden></p>
     <form id="pr-form" novalidate>
       <div class="pr-grid" id="pr-locked"></div>
-      <div class="pr-grid">
+      <div class="pr-grid" id="pr-editable">
         <label>Email address<input id="pr-email" type="email" maxlength="150" autocomplete="email"></label>
         <label>Contact number<input id="pr-contact" type="tel" maxlength="30" placeholder="09171234567"></label>
         <label>Civil status<select id="pr-civil"><option value="">Select</option><option>Single</option><option>Married</option><option>Widowed</option><option>Separated</option></select></label>
@@ -524,7 +524,8 @@
           $('pr-email').value = j.info.email; $('pr-contact').value = j.info.contact_number; $('pr-civil').value = j.info.civil_status;
           var done = j.submitted;
           ['pr-email', 'pr-contact', 'pr-civil'].forEach(function (id) { $(id).disabled = done; });
-          $('pr-actions').hidden = done;
+          $('pr-actions').dataset.done = done ? '1' : '0';
+          $('pr-actions').hidden = done || enrollClosed;
           if (done) {
             fetch('/api/student/enrollment-steps', { credentials: 'same-origin' }).then(function (r) { return r.json(); }).then(function (st) {
               var official = !!st.officiallyEnrolled;
@@ -547,12 +548,19 @@
     }
     // Follows the registrar's enrollment switch and this college's enrollment dates.
     // When closed, the tab is blank except for "ENROLLMENT IS NOT YET OPEN".
+    var enrollClosed = false;
     function applyEnrollWindow() {
       fetch('/api/portal/enrollment-window', { credentials: 'same-origin' }).then(function (r) { return r.json(); })
         .then(function (w) {
           var closed = !w.open;
+          enrollClosed = closed;
           $('enroll-closed').hidden = !closed;
-          $('prereg').hidden = closed;
+          // Student information stays visible when closed; only the pre-registration form and steps are hidden.
+          $('prereg').hidden = false;
+          $('prereg-title').textContent = closed ? 'Student Information' : 'Pre-Registration';
+          $('pr-editable').hidden = closed;
+          $('pr-actions').hidden = closed || $('pr-actions').dataset.done === '1';
+          if (closed) $('pr-state').hidden = true;
           $('proc-card').hidden = closed;
           if (closed) $('enrolled-card').hidden = true;
         }).catch(function () {});
