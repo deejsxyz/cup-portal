@@ -218,6 +218,8 @@ async function sendStaffWelcome(req, o) {
   }
 }
 
+// OTP rows share one table in the shared database, so each flow gets its own key prefix.
+function otpKey(scope, email) { return scope + ':' + String(email || ''); }
 function hashCode(email, code) {
   return crypto.createHash('sha256').update(email + ':' + code).digest('hex');
 }
@@ -256,7 +258,7 @@ app.post('/api/cat/otp', async (req, res) => {
       `INSERT INTO otp_codes (email, code_hash, expires_at, attempts)
        VALUES ($1, $2, now() + interval '10 minutes', 0)
        ON CONFLICT (email) DO UPDATE SET code_hash = EXCLUDED.code_hash, expires_at = EXCLUDED.expires_at, attempts = 0`,
-      [email, hashCode(email, code)]
+      [otpKey('cat', email), hashCode(email, code)]
     );
     await sendEmail(
       email,
@@ -275,7 +277,7 @@ app.post('/api/cat/otp/verify', async (req, res) => {
   const email = String(req.body.email || '').trim().toLowerCase().slice(0, 200);
   const otp = String(req.body.otp || '').trim().slice(0, 6);
   try {
-    const row = await pool.query('SELECT code_hash, expires_at, attempts FROM otp_codes WHERE email = $1', [email]);
+    const row = await pool.query('SELECT code_hash, expires_at, attempts FROM otp_codes WHERE email = $1', [otpKey('cat', email)]);
     if (row.rowCount === 0 || new Date(row.rows[0].expires_at) < new Date()) {
       return res.status(400).json({ error: 'The code has expired. Please request a new one.' });
     }
@@ -283,10 +285,10 @@ app.post('/api/cat/otp/verify', async (req, res) => {
       return res.status(429).json({ error: 'Too many wrong attempts. Please request a new code.' });
     }
     if (row.rows[0].code_hash !== hashCode(email, otp)) {
-      await pool.query('UPDATE otp_codes SET attempts = attempts + 1 WHERE email = $1', [email]);
+      await pool.query('UPDATE otp_codes SET attempts = attempts + 1 WHERE email = $1', [otpKey('cat', email)]);
       return res.status(400).json({ error: 'The code is incorrect.' });
     }
-    await pool.query('UPDATE otp_codes SET verified_at = now() WHERE email = $1', [email]);
+    await pool.query('UPDATE otp_codes SET verified_at = now() WHERE email = $1', [otpKey('cat', email)]);
     res.json({ ok: true });
   } catch (err) {
     console.error('Failed to verify OTP:', err.message);
@@ -597,7 +599,7 @@ app.post('/api/cat/reset/request', async (req, res) => {
       `INSERT INTO otp_codes (email, code_hash, expires_at, attempts)
        VALUES ($1, $2, now() + interval '10 minutes', 0)
        ON CONFLICT (email) DO UPDATE SET code_hash = EXCLUDED.code_hash, expires_at = EXCLUDED.expires_at, attempts = 0, verified_at = NULL`,
-      [email, hashCode(email, code)]
+      [otpKey('cat', email), hashCode(email, code)]
     );
     await sendEmail(
       email,
@@ -617,7 +619,7 @@ app.post('/api/cat/reset/verify', async (req, res) => {
   const email = String((req.body && req.body.email) || '').trim().toLowerCase().slice(0, 200);
   const otp = String((req.body && req.body.otp) || '').trim().slice(0, 6);
   try {
-    const row = await pool.query('SELECT code_hash, expires_at, attempts FROM otp_codes WHERE email = $1', [email]);
+    const row = await pool.query('SELECT code_hash, expires_at, attempts FROM otp_codes WHERE email = $1', [otpKey('cat', email)]);
     if (row.rowCount === 0 || new Date(row.rows[0].expires_at) < new Date()) {
       return res.status(400).json({ error: 'The code has expired. Please request a new one.' });
     }
@@ -625,10 +627,10 @@ app.post('/api/cat/reset/verify', async (req, res) => {
       return res.status(429).json({ error: 'Too many wrong attempts. Please request a new code.' });
     }
     if (row.rows[0].code_hash !== hashCode(email, otp)) {
-      await pool.query('UPDATE otp_codes SET attempts = attempts + 1 WHERE email = $1', [email]);
+      await pool.query('UPDATE otp_codes SET attempts = attempts + 1 WHERE email = $1', [otpKey('cat', email)]);
       return res.status(400).json({ error: 'The code is incorrect.' });
     }
-    await pool.query('UPDATE otp_codes SET verified_at = now() WHERE email = $1', [email]);
+    await pool.query('UPDATE otp_codes SET verified_at = now() WHERE email = $1', [otpKey('cat', email)]);
     res.json({ ok: true });
   } catch (err) {
     console.error('Failed to verify reset code:', err.message);
@@ -644,7 +646,7 @@ app.post('/api/cat/reset/confirm', async (req, res) => {
     return res.status(400).json({ error: 'Password must be at least 8 characters.' });
   }
   try {
-    const row = await pool.query('SELECT verified_at, expires_at FROM otp_codes WHERE email = $1', [email]);
+    const row = await pool.query('SELECT verified_at, expires_at FROM otp_codes WHERE email = $1', [otpKey('cat', email)]);
     if (row.rowCount === 0 || !row.rows[0].verified_at || new Date(row.rows[0].expires_at) < new Date()) {
       return res.status(400).json({ error: 'Please verify the code first.' });
     }
@@ -662,7 +664,7 @@ app.post('/api/cat/reset/confirm', async (req, res) => {
       await client.query('BEGIN');
       await client.query('INSERT INTO password_history (account_id, password_hash) VALUES ($1, $2)', [accountId, acc.rows[0].password_hash]);
       await client.query('UPDATE accounts SET password_hash = $1 WHERE id = $2', [hashPassword(password), accountId]);
-      await client.query('DELETE FROM otp_codes WHERE email = $1', [email]);
+      await client.query('DELETE FROM otp_codes WHERE email = $1', [otpKey('cat', email)]);
       await client.query('COMMIT');
     } catch (err) {
       await client.query('ROLLBACK').catch(() => {});
@@ -702,7 +704,7 @@ app.post('/api/cat/accounts', async (req, res) => {
   const client = await pool.connect();
   try {
     await client.query('BEGIN');
-    const codeRow = await client.query('SELECT verified_at, expires_at FROM otp_codes WHERE email = $1 FOR UPDATE', [email]);
+    const codeRow = await client.query('SELECT verified_at, expires_at FROM otp_codes WHERE email = $1 FOR UPDATE', [otpKey('cat', email)]);
     const verifiedRecently = codeRow.rowCount > 0 && codeRow.rows[0].verified_at &&
       new Date(codeRow.rows[0].expires_at) > new Date(Date.now() - 10 * 60 * 1000);
     if (!verifiedRecently) {
@@ -721,7 +723,7 @@ app.post('/api/cat/accounts', async (req, res) => {
        VALUES ($1, $2, $3, $4, $5, $6, $7, $8)`,
       [category, firstName, middleName || null, lastName, nameExtension || null, dob, email, hashPassword(password)]
     );
-    await client.query('DELETE FROM otp_codes WHERE email = $1', [email]);
+    await client.query('DELETE FROM otp_codes WHERE email = $1', [otpKey('cat', email)]);
     await client.query("UPDATE cat_stats SET value = value + 1 WHERE key = 'total_registrations'");
     await client.query('COMMIT');
     res.status(201).json({ ok: true });
@@ -1108,7 +1110,7 @@ app.post('/api/registrar/password/otp', async (req, res) => {
       `INSERT INTO otp_codes (email, code_hash, expires_at, attempts)
        VALUES ($1, $2, now() + interval '10 minutes', 0)
        ON CONFLICT (email) DO UPDATE SET code_hash = EXCLUDED.code_hash, expires_at = EXCLUDED.expires_at, attempts = 0, verified_at = NULL`,
-      [email, hashCode(email, code)]);
+      [otpKey('reg', email), hashCode(email, code)]);
     await sendEmail(email, 'Your One-time-PIN (OTP)',
       'Your password change code is ' + code + '. It expires in 10 minutes. If you did not request this, you can ignore this email.');
     res.json({ ok: true, email_hint: maskEmail(email) });
@@ -1130,15 +1132,15 @@ app.post('/api/registrar/change-password', async (req, res) => {
     const { rows } = await pool.query("SELECT password_hash FROM staff_accounts WHERE id = $1 AND archived_at IS NULL", [s.id]);
     if (!rows.length || !verifyPassword(current, rows[0].password_hash)) return res.status(401).json({ error: 'Your current password is wrong.' });
     if (verifyPassword(next, rows[0].password_hash)) return res.status(400).json({ error: 'Choose a password different from the current one.' });
-    const row = await pool.query('SELECT code_hash, expires_at, attempts FROM otp_codes WHERE email = $1', [email]);
+    const row = await pool.query('SELECT code_hash, expires_at, attempts FROM otp_codes WHERE email = $1', [otpKey('reg', email)]);
     if (!row.rows.length || new Date(row.rows[0].expires_at) < new Date()) return res.status(400).json({ error: 'The code has expired. Please request a new one.' });
     if (row.rows[0].attempts >= 5) return res.status(429).json({ error: 'Too many wrong attempts. Please request a new code.' });
     if (!otp || row.rows[0].code_hash !== hashCode(email, otp)) {
-      await pool.query('UPDATE otp_codes SET attempts = attempts + 1 WHERE email = $1', [email]);
+      await pool.query('UPDATE otp_codes SET attempts = attempts + 1 WHERE email = $1', [otpKey('reg', email)]);
       return res.status(400).json({ error: 'The code is incorrect.' });
     }
     await pool.query('UPDATE staff_accounts SET password_hash = $2 WHERE id = $1', [s.id, hashPassword(next)]);
-    await pool.query('DELETE FROM otp_codes WHERE email = $1', [email]);
+    await pool.query('DELETE FROM otp_codes WHERE email = $1', [otpKey('reg', email)]);
     logAction(req, s.id, 'password changed', 'Registrar account ' + s.id);
     res.json({ ok: true });
   } catch (err) {
@@ -3104,7 +3106,7 @@ app.post('/api/student/password/otp', requirePortal('student'), async (req, res)
       `INSERT INTO otp_codes (email, code_hash, expires_at, attempts)
        VALUES ($1, $2, now() + interval '10 minutes', 0)
        ON CONFLICT (email) DO UPDATE SET code_hash = EXCLUDED.code_hash, expires_at = EXCLUDED.expires_at, attempts = 0, verified_at = NULL`,
-      [email, hashCode(email, code)]);
+      [otpKey('stu', email), hashCode(email, code)]);
     await sendEmail(email, 'Your One-time-PIN (OTP)',
       'Your password change code is ' + code + '. It expires in 10 minutes. If you did not request this, you can ignore this email.');
     res.json({ ok: true, email_hint: maskEmail(email) });
@@ -3124,15 +3126,15 @@ app.post('/api/student/password/change', requirePortal('student'), async (req, r
     const u = await pool.query('SELECT password_hash FROM reg_users WHERE id = $1', [req.portal.id]);
     if (!u.rows.length || !verifyPassword(current, u.rows[0].password_hash)) return res.status(401).json({ error: 'Your current password is wrong.' });
     if (verifyPassword(next, u.rows[0].password_hash)) return res.status(400).json({ error: 'Choose a password different from the current one.' });
-    const row = await pool.query('SELECT code_hash, expires_at, attempts FROM otp_codes WHERE email = $1', [email]);
+    const row = await pool.query('SELECT code_hash, expires_at, attempts FROM otp_codes WHERE email = $1', [otpKey('stu', email)]);
     if (!row.rows.length || new Date(row.rows[0].expires_at) < new Date()) return res.status(400).json({ error: 'The code has expired. Please request a new one.' });
     if (row.rows[0].attempts >= 5) return res.status(429).json({ error: 'Too many wrong attempts. Please request a new code.' });
     if (row.rows[0].code_hash !== hashCode(email, otp)) {
-      await pool.query('UPDATE otp_codes SET attempts = attempts + 1 WHERE email = $1', [email]);
+      await pool.query('UPDATE otp_codes SET attempts = attempts + 1 WHERE email = $1', [otpKey('stu', email)]);
       return res.status(400).json({ error: 'The code is incorrect.' });
     }
     await pool.query('UPDATE reg_users SET password_hash = $2, must_change_password = FALSE, password_changed_at = now() WHERE id = $1', [req.portal.id, hashPassword(next)]);
-    await pool.query('DELETE FROM otp_codes WHERE email = $1', [email]);
+    await pool.query('DELETE FROM otp_codes WHERE email = $1', [otpKey('stu', email)]);
     logAction(req, 'student ' + req.portal.student_no, 'password changed', req.portal.student_no);
     res.json({ ok: true });
   } catch (err) {
@@ -6750,19 +6752,19 @@ async function sendEmailCode(email, purpose) {
     `INSERT INTO otp_codes (email, code_hash, expires_at, attempts)
      VALUES ($1, $2, now() + interval '10 minutes', 0)
      ON CONFLICT (email) DO UPDATE SET code_hash = EXCLUDED.code_hash, expires_at = EXCLUDED.expires_at, attempts = 0, verified_at = NULL`,
-    [email, hashCode(email, code)]);
+    [otpKey('adm', email), hashCode(email, code)]);
   await sendEmail(email, 'Your One-time-PIN (OTP)', 'Your code to ' + purpose + ' is ' + code + '. It expires in 10 minutes. If you did not request this, ignore this email.', { sender: 'CUP CAT Online Application System' });
 }
 
 async function checkEmailCode(email, otp) {
-  const row = await pool.query('SELECT code_hash, expires_at, attempts FROM otp_codes WHERE email = $1', [email]);
+  const row = await pool.query('SELECT code_hash, expires_at, attempts FROM otp_codes WHERE email = $1', [otpKey('adm', email)]);
   if (row.rowCount === 0 || new Date(row.rows[0].expires_at) < new Date()) return 'The code has expired. Please request a new one.';
   if (row.rows[0].attempts >= 5) return 'Too many wrong attempts. Please request a new code.';
   if (row.rows[0].code_hash !== hashCode(email, String(otp || '').trim())) {
-    await pool.query('UPDATE otp_codes SET attempts = attempts + 1 WHERE email = $1', [email]);
+    await pool.query('UPDATE otp_codes SET attempts = attempts + 1 WHERE email = $1', [otpKey('adm', email)]);
     return 'The code is incorrect.';
   }
-  await pool.query('UPDATE otp_codes SET verified_at = now() WHERE email = $1', [email]);
+  await pool.query('UPDATE otp_codes SET verified_at = now() WHERE email = $1', [otpKey('adm', email)]);
   return null;
 }
 
@@ -6774,7 +6776,7 @@ async function currentAdminEmail(id) {
 async function isVerifiedRecently(email, minutes) {
   const r = await pool.query(
     "SELECT 1 FROM otp_codes WHERE email = $1 AND verified_at IS NOT NULL AND verified_at > now() - ($2 || ' minutes')::interval",
-    [email, String(minutes)]);
+    [otpKey('adm', email), String(minutes)]);
   return r.rowCount > 0;
 }
 
@@ -6847,7 +6849,7 @@ app.post('/api/admin/account/email/confirm', requireAdmin, async (req, res) => {
     const taken = await pool.query('SELECT 1 FROM accounts WHERE email = $1 AND id <> $2', [newEmail, id]);
     if (taken.rowCount) return res.status(409).json({ error: 'That email is already used by another account.' });
     await pool.query('UPDATE accounts SET email = $1 WHERE id = $2', [newEmail, id]);
-    await pool.query('DELETE FROM otp_codes WHERE email = ANY($1)', [[old, newEmail]]);
+    await pool.query('DELETE FROM otp_codes WHERE email = ANY($1)', [[otpKey('adm', old), otpKey('adm', newEmail)]]);
     res.json({ ok: true, email: newEmail });
   } catch (err) {
     console.error(err);
@@ -6895,7 +6897,7 @@ app.post('/api/admin/account/password/confirm', requireAdmin, async (req, res) =
     if (codeErr) return res.status(400).json({ error: codeErr });
     await pool.query('INSERT INTO password_history (account_id, password_hash) VALUES ($1, $2)', [id, check.acc.password_hash]);
     await pool.query('UPDATE accounts SET password_hash = $1 WHERE id = $2', [hashPassword(next), id]);
-    await pool.query('DELETE FROM otp_codes WHERE email = $1', [check.acc.email]);
+    await pool.query('DELETE FROM otp_codes WHERE email = $1', [otpKey('adm', check.acc.email)]);
     res.json({ ok: true });
   } catch (err) {
     console.error(err);
