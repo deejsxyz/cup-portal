@@ -373,6 +373,110 @@ app.post('/api/cat/profile/dob', async (req, res) => {
   }
 });
 
+// Student password reset (student login page only). It is keyed on the email in the
+// student record and changes only the student login (reg_users). It never reads or
+// writes CUP CAT applicant accounts.
+function studentOtpKey(email) { return 'student:' + email; }
+async function findStudentLoginByEmail(email) {
+  const r = await pool.query(
+    `SELECT u.id, u.password_hash FROM reg_students s
+       JOIN reg_users u ON u.student_no = s.student_no
+      WHERE lower(s.email) = $1 AND u.role = 'student' AND u.archived_at IS NULL
+      LIMIT 1`,
+    [email]
+  );
+  return r.rowCount ? r.rows[0] : null;
+}
+
+app.post('/api/portal/student/reset/request', async (req, res) => {
+  const email = String((req.body && req.body.email) || '').trim().toLowerCase().slice(0, 200);
+  if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) {
+    return res.status(400).json({ error: 'Please enter a valid email address.' });
+  }
+  try {
+    const stu = await findStudentLoginByEmail(email);
+    if (!stu) return res.status(404).json({ error: 'No student account found with this email.' });
+    const key = studentOtpKey(email);
+    const code = String(crypto.randomInt(0, 1000000)).padStart(6, '0');
+    await pool.query(
+      `INSERT INTO otp_codes (email, code_hash, expires_at, attempts)
+       VALUES ($1, $2, now() + interval '10 minutes', 0)
+       ON CONFLICT (email) DO UPDATE SET code_hash = EXCLUDED.code_hash, expires_at = EXCLUDED.expires_at, attempts = 0, verified_at = NULL`,
+      [key, hashCode(key, code)]
+    );
+    await sendEmail(
+      email,
+      'Your One-time-PIN (OTP)',
+      'Your CUP student portal password reset code is ' + code + '. It expires in 10 minutes. If you did not request a password reset, you can ignore this email.',
+      { sender: 'CUP Student Portal' }
+    );
+    res.json({ ok: true });
+  } catch (err) {
+    console.error('Failed to send student reset code:', err.message);
+    res.status(500).json({ error: 'Could not send the code. Please try again.' });
+  }
+});
+
+app.post('/api/portal/student/reset/verify', async (req, res) => {
+  const email = String((req.body && req.body.email) || '').trim().toLowerCase().slice(0, 200);
+  const otp = String((req.body && req.body.otp) || '').trim().slice(0, 6);
+  const key = studentOtpKey(email);
+  try {
+    const row = await pool.query('SELECT code_hash, expires_at, attempts FROM otp_codes WHERE email = $1', [key]);
+    if (row.rowCount === 0 || new Date(row.rows[0].expires_at) < new Date()) {
+      return res.status(400).json({ error: 'The code has expired. Please request a new one.' });
+    }
+    if (row.rows[0].attempts >= 5) {
+      return res.status(429).json({ error: 'Too many wrong attempts. Please request a new code.' });
+    }
+    if (row.rows[0].code_hash !== hashCode(key, otp)) {
+      await pool.query('UPDATE otp_codes SET attempts = attempts + 1 WHERE email = $1', [key]);
+      return res.status(400).json({ error: 'The code is incorrect.' });
+    }
+    await pool.query('UPDATE otp_codes SET verified_at = now() WHERE email = $1', [key]);
+    res.json({ ok: true });
+  } catch (err) {
+    console.error('Failed to verify student reset code:', err.message);
+    res.status(500).json({ error: 'Could not verify the code. Please try again.' });
+  }
+});
+
+app.post('/api/portal/student/reset/confirm', async (req, res) => {
+  const email = String((req.body && req.body.email) || '').trim().toLowerCase().slice(0, 200);
+  const password = String((req.body && req.body.password) || '');
+  const key = studentOtpKey(email);
+  if (password.length < 8) {
+    return res.status(400).json({ error: 'Password must be at least 8 characters.' });
+  }
+  try {
+    const row = await pool.query('SELECT verified_at, expires_at FROM otp_codes WHERE email = $1', [key]);
+    if (row.rowCount === 0 || !row.rows[0].verified_at || new Date(row.rows[0].expires_at) < new Date()) {
+      return res.status(400).json({ error: 'Please verify the code first.' });
+    }
+    const stu = await findStudentLoginByEmail(email);
+    if (!stu) return res.status(404).json({ error: 'No student account found with this email.' });
+    if (verifyPassword(password, stu.password_hash)) {
+      return res.status(400).json({ error: 'You cannot reuse your current password. Please choose a new one.' });
+    }
+    const client = await pool.connect();
+    try {
+      await client.query('BEGIN');
+      await client.query('UPDATE reg_users SET password_hash = $2, must_change_password = FALSE, password_changed_at = now() WHERE id = $1', [stu.id, hashPassword(password)]);
+      await client.query('DELETE FROM otp_codes WHERE email = $1', [key]);
+      await client.query('COMMIT');
+    } catch (err) {
+      await client.query('ROLLBACK').catch(() => {});
+      throw err;
+    } finally {
+      client.release();
+    }
+    res.json({ ok: true });
+  } catch (err) {
+    console.error('Failed to reset student password:', err.message);
+    res.status(500).json({ error: 'Could not change the password. Please try again.' });
+  }
+});
+
 // Password reset, step 1: find the account by email and send a code.
 app.post('/api/cat/reset/request', async (req, res) => {
   const email = String((req.body && req.body.email) || '').trim().toLowerCase().slice(0, 200);

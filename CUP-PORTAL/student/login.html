@@ -157,7 +157,7 @@
       email = fEmail.value.trim().toLowerCase();
       if (!email) { show(emailMsg, 'Please enter your email address.'); return; }
       sendBtn.disabled = true;
-      post('/api/cat/reset/request', { email: email }).then(function (res) {
+      post('/api/portal/student/reset/request', { email: email }).then(function (res) {
         sendBtn.disabled = false;
         if (res.status === 404) { show(emailMsg, NOT_REGISTERED); return; }
         if (!res.ok) { show(emailMsg, res.data.error || 'Could not send the OTP. Please try again.'); return; }
@@ -176,7 +176,7 @@
       var otp = fOtp.value.trim();
       if (!/^\d{6}$/.test(otp)) { show(otpMsg, 'Enter the 6-digit OTP.'); return; }
       verifyBtn.disabled = true;
-      post('/api/cat/reset/verify', { email: email, otp: otp }).then(function (res) {
+      post('/api/portal/student/reset/verify', { email: email, otp: otp }).then(function (res) {
         verifyBtn.disabled = false;
         if (!res.ok) { show(otpMsg, res.data.error || 'The OTP is incorrect.'); return; }
         showStep('pass');
@@ -195,7 +195,7 @@
       if (pass.length < 8) { show(passMsg, 'Password must be at least 8 characters.'); return; }
       if (pass !== fConfirm.value) { show(passMsg, 'The passwords do not match.'); return; }
       changeBtn.disabled = true;
-      post('/api/cat/reset/confirm', { email: email, password: pass }).then(function (res) {
+      post('/api/portal/student/reset/confirm', { email: email, password: pass }).then(function (res) {
         changeBtn.disabled = false;
         if (!res.ok) { show(passMsg, res.data.error || 'Could not change the password.'); return; }
         close();
