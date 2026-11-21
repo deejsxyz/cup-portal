@@ -64,7 +64,7 @@
   .live-clock { font-size: 13px; font-weight: 700; white-space: nowrap; }
 </style>
 <link rel="stylesheet" href="/CUP-PORTAL/portal-controls.css">
-<script src="/CUP-PORTAL/portal-session.js" data-logout="/api/cat/logout" data-login="/CUP-PORTAL/student/login"></script>
+<script src="/CUP-PORTAL/portal-session.js" data-logout="/api/portal/logout" data-login="/CUP-PORTAL/student/login"></script>
 </head>
 <body>
 <header>
@@ -272,7 +272,7 @@ function cupYr(p, y) { var m = /\(([^)]+)\)\s*$/.exec(p || ''); return (m ? m[1]
     $('save').addEventListener('click', function () { save(false); });
     $('submit').addEventListener('click', function () { save(true); });
     $('logout').addEventListener('click', function () {
-      fetch('/api/cat/logout', { method: 'POST', credentials: 'same-origin' }).finally(function () { window.location.href = '/CUP-PORTAL/'; });
+      fetch('/api/portal/logout', { method: 'POST', credentials: 'same-origin' }).finally(function () { window.location.href = '/CUP-PORTAL/'; });
     });
     load();
   })();
