@@ -373,6 +373,110 @@ app.post('/api/cat/profile/dob', async (req, res) => {
   }
 });
 
+// Staff password reset: University Registrar, Records-in-Charge, College Registrar, NSTP officers and faculty.
+// Looks up staff_accounts first, then faculty logins (reg_users). Never reads CUP CAT applicant accounts.
+function staffOtpKey(email) { return 'staff:' + email; }
+async function findStaffResetTarget(email) {
+  const s = await pool.query('SELECT id, password_hash FROM staff_accounts WHERE email = $1 AND archived_at IS NULL', [email]);
+  if (s.rowCount) return { table: 'staff_accounts', id: s.rows[0].id, password_hash: s.rows[0].password_hash };
+  const f = await pool.query("SELECT id, password_hash FROM reg_users WHERE role = 'faculty' AND email = $1 AND archived_at IS NULL", [email]);
+  if (f.rowCount) return { table: 'reg_users', id: f.rows[0].id, password_hash: f.rows[0].password_hash };
+  return null;
+}
+
+app.post('/api/staff/reset/request', async (req, res) => {
+  const email = String((req.body && req.body.email) || '').trim().toLowerCase().slice(0, 200);
+  if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) {
+    return res.status(400).json({ error: 'Please enter a valid email address.' });
+  }
+  try {
+    const target = await findStaffResetTarget(email);
+    if (!target) return res.status(404).json({ error: 'No account found with this email.' });
+    const key = staffOtpKey(email);
+    const code = String(crypto.randomInt(0, 1000000)).padStart(6, '0');
+    await pool.query(
+      `INSERT INTO otp_codes (email, code_hash, expires_at, attempts)
+       VALUES ($1, $2, now() + interval '10 minutes', 0)
+       ON CONFLICT (email) DO UPDATE SET code_hash = EXCLUDED.code_hash, expires_at = EXCLUDED.expires_at, attempts = 0, verified_at = NULL`,
+      [key, hashCode(key, code)]
+    );
+    await sendEmail(
+      email,
+      'Your One-time-PIN (OTP)',
+      'Your CUP Portal password reset code is ' + code + '. It expires in 10 minutes. If you did not request a password reset, you can ignore this email.',
+      { sender: 'CUP Portal' }
+    );
+    res.json({ ok: true });
+  } catch (err) {
+    console.error('Failed to send staff reset code:', err.message);
+    res.status(500).json({ error: 'Could not send the code. Please try again.' });
+  }
+});
+
+app.post('/api/staff/reset/verify', async (req, res) => {
+  const email = String((req.body && req.body.email) || '').trim().toLowerCase().slice(0, 200);
+  const otp = String((req.body && req.body.otp) || '').trim().slice(0, 6);
+  const key = staffOtpKey(email);
+  try {
+    const row = await pool.query('SELECT code_hash, expires_at, attempts FROM otp_codes WHERE email = $1', [key]);
+    if (row.rowCount === 0 || new Date(row.rows[0].expires_at) < new Date()) {
+      return res.status(400).json({ error: 'The code has expired. Please request a new one.' });
+    }
+    if (row.rows[0].attempts >= 5) {
+      return res.status(429).json({ error: 'Too many wrong attempts. Please request a new code.' });
+    }
+    if (row.rows[0].code_hash !== hashCode(key, otp)) {
+      await pool.query('UPDATE otp_codes SET attempts = attempts + 1 WHERE email = $1', [key]);
+      return res.status(400).json({ error: 'The code is incorrect.' });
+    }
+    await pool.query('UPDATE otp_codes SET verified_at = now() WHERE email = $1', [key]);
+    res.json({ ok: true });
+  } catch (err) {
+    console.error('Failed to verify staff reset code:', err.message);
+    res.status(500).json({ error: 'Could not verify the code. Please try again.' });
+  }
+});
+
+app.post('/api/staff/reset/confirm', async (req, res) => {
+  const email = String((req.body && req.body.email) || '').trim().toLowerCase().slice(0, 200);
+  const password = String((req.body && req.body.password) || '');
+  const key = staffOtpKey(email);
+  if (password.length < 8) {
+    return res.status(400).json({ error: 'Password must be at least 8 characters.' });
+  }
+  try {
+    const row = await pool.query('SELECT verified_at, expires_at FROM otp_codes WHERE email = $1', [key]);
+    if (row.rowCount === 0 || !row.rows[0].verified_at || new Date(row.rows[0].expires_at) < new Date()) {
+      return res.status(400).json({ error: 'Please verify the code first.' });
+    }
+    const target = await findStaffResetTarget(email);
+    if (!target) return res.status(404).json({ error: 'No account found with this email.' });
+    if (verifyPassword(password, target.password_hash)) {
+      return res.status(400).json({ error: 'You cannot reuse your current password. Please choose a new one.' });
+    }
+    const client = await pool.connect();
+    try {
+      await client.query('BEGIN');
+      if (target.table === 'staff_accounts') {
+        await client.query('UPDATE staff_accounts SET password_hash = $2, must_change_password = FALSE WHERE id = $1', [target.id, hashPassword(password)]);
+      } else {
+        await client.query('UPDATE reg_users SET password_hash = $2, must_change_password = FALSE, password_changed_at = now() WHERE id = $1', [target.id, hashPassword(password)]);
+      }
+      await client.query('DELETE FROM otp_codes WHERE email = $1', [key]);
+      await client.query('COMMIT');
+    } catch (err) {
+      await client.query('ROLLBACK').catch(() => {});
+      throw err;
+    } finally {
+      client.release();
+    }
+    res.json({ ok: true });
+  } catch (err) {
+    console.error('Failed to reset staff password:', err.message);
+    res.status(500).json({ error: 'Could not change the password. Please try again.' });
+  }
+});
+
 // Student password reset (student login page only). It is keyed on the email in the
 // student record and changes only the student login (reg_users). It never reads or
 // writes CUP CAT applicant accounts.
@@ -484,9 +588,8 @@ app.post('/api/cat/reset/request', async (req, res) => {
     return res.status(400).json({ error: 'Please enter a valid email address.' });
   }
   try {
-    const acc = await pool.query('SELECT 1 FROM accounts WHERE email = $1', [email]);
-    const fac = acc.rowCount === 0 ? await pool.query("SELECT 1 FROM reg_users WHERE role = 'faculty' AND email = $1 AND archived_at IS NULL", [email]) : null;
-    if (acc.rowCount === 0 && fac.rowCount === 0) {
+    const acc = await pool.query("SELECT 1 FROM accounts WHERE email = $1 AND role NOT IN ('registrar','university','uniregistrar','nstp')", [email]);
+    if (acc.rowCount === 0) {
       return res.status(404).json({ error: 'No account found with this email.' });
     }
     const code = String(crypto.randomInt(0, 1000000)).padStart(6, '0');
@@ -545,28 +648,8 @@ app.post('/api/cat/reset/confirm', async (req, res) => {
     if (row.rowCount === 0 || !row.rows[0].verified_at || new Date(row.rows[0].expires_at) < new Date()) {
       return res.status(400).json({ error: 'Please verify the code first.' });
     }
-    const acc = await pool.query('SELECT id, password_hash FROM accounts WHERE email = $1', [email]);
-    if (acc.rowCount === 0) {
-      // Faculty accounts (registrar records) reset the same way, matched by their email.
-      const fac = await pool.query("SELECT id, password_hash FROM reg_users WHERE role = 'faculty' AND email = $1 AND archived_at IS NULL", [email]);
-      if (fac.rowCount === 0) return res.status(404).json({ error: 'No account found with this email.' });
-      if (verifyPassword(password, fac.rows[0].password_hash)) {
-        return res.status(400).json({ error: 'You cannot reuse your current password. Please choose a new one.' });
-      }
-      const client = await pool.connect();
-      try {
-        await client.query('BEGIN');
-        await client.query('UPDATE reg_users SET password_hash = $2, must_change_password = FALSE, password_changed_at = now() WHERE id = $1', [fac.rows[0].id, hashPassword(password)]);
-        await client.query('DELETE FROM otp_codes WHERE email = $1', [email]);
-        await client.query('COMMIT');
-      } catch (err) {
-        await client.query('ROLLBACK').catch(() => {});
-        throw err;
-      } finally {
-        client.release();
-      }
-      return res.json({ ok: true });
-    }
+    const acc = await pool.query("SELECT id, password_hash FROM accounts WHERE email = $1 AND role NOT IN ('registrar','university','uniregistrar','nstp')", [email]);
+    if (acc.rowCount === 0) return res.status(404).json({ error: 'No account found with this email.' });
     const accountId = acc.rows[0].id;
     // The new password must not match the current password or any earlier one.
     const past = await pool.query('SELECT password_hash FROM password_history WHERE account_id = $1', [accountId]);
@@ -706,8 +789,8 @@ app.post('/api/cat/login', async (req, res) => {
   try {
     // Applicant ID login only works once an Applicant ID has been generated (after submission).
     const { rows } = byApplicant
-      ? await pool.query('SELECT id, password_hash, role FROM accounts WHERE applicant_id = $1', [identifier])
-      : await pool.query('SELECT id, password_hash, role FROM accounts WHERE email = $1', [email]);
+      ? await pool.query("SELECT id, password_hash, role FROM accounts WHERE applicant_id = $1 AND role NOT IN " + "('registrar','university','uniregistrar','nstp')", [identifier])
+      : await pool.query("SELECT id, password_hash, role FROM accounts WHERE email = $1 AND role NOT IN ('registrar','university','uniregistrar','nstp')", [email]);
     if (!rows.length || !verifyPassword(password, rows[0].password_hash)) {
       return res.status(401).json({ error: byApplicant ? 'Incorrect Applicant ID or password.' : 'Incorrect email or password.' });
     }
@@ -930,7 +1013,7 @@ app.post('/api/registrar/login', async (req, res) => {
   if (portal === 'nstp') {
     // NSTP Officer accounts only. College accounts cannot sign in here.
     try {
-      const { rows } = await pool.query("SELECT id, password_hash, must_change_password, username FROM accounts WHERE role = 'nstp' AND archived_at IS NULL AND (username = $1 OR email = $1)", [username.toLowerCase()]);
+      const { rows } = await pool.query("SELECT id, password_hash, must_change_password, username FROM staff_accounts WHERE role = 'nstp' AND archived_at IS NULL AND (username = $1 OR email = $1)", [username.toLowerCase()]);
       const row = rows[0];
       if (row && verifyPassword(password, row.password_hash)) {
         if (row.must_change_password) return res.json({ ok: true, must_change: true, token: staffSetupTokenFor('nstp', row.username) });
@@ -957,7 +1040,7 @@ app.post('/api/registrar/login', async (req, res) => {
     return res.status(403).json({ error: 'University Registrar accounts sign in on the University Registrar Portal.' });
   }
   try {
-    const { rows } = await pool.query("SELECT id, role, password_hash, college, must_change_password, username FROM accounts WHERE role IN ('registrar', 'university', 'uniregistrar') AND archived_at IS NULL AND (username = $1 OR email = $1)", [username.toLowerCase()]);
+    const { rows } = await pool.query("SELECT id, role, password_hash, college, must_change_password, username FROM staff_accounts WHERE role IN ('registrar', 'university', 'uniregistrar') AND archived_at IS NULL AND (username = $1 OR email = $1)", [username.toLowerCase()]);
     if (rows.length && rows[0].role === 'uniregistrar' && verifyPassword(password, rows[0].password_hash)) {
       if (portal !== 'university') return res.status(403).json({ error: 'University Registrar accounts sign in on the University Registrar Portal.' });
       if (rows[0].must_change_password) return res.json({ ok: true, must_change: true, token: staffSetupTokenFor('uniregistrar', rows[0].username) });
@@ -997,7 +1080,7 @@ app.get('/api/registrar/me', async (req, res) => {
   let fullName = s.role === 'superadmin' ? 'Superadmin' : '';
   if (s.id) {
     try {
-      const { rows } = await pool.query('SELECT first_name, middle_name, last_name, name_extension FROM accounts WHERE id = $1', [s.id]);
+      const { rows } = await pool.query('SELECT first_name, middle_name, last_name, name_extension FROM staff_accounts WHERE id = $1', [s.id]);
       if (rows.length) {
         const r = rows[0];
         // Display as: First M. Last Ext (middle initial, extension only if any)
@@ -1012,7 +1095,7 @@ app.get('/api/registrar/me', async (req, res) => {
 // A college registrar changes their own password. A 6-digit code is emailed first, the same as for students.
 function registrarAccountEmail(id) {
   // Matches the account by ID for every registrar-side role (registrar, records, university).
-  return pool.query("SELECT email FROM accounts WHERE id = $1 AND archived_at IS NULL", [id]).then((r) => (r.rows[0] && r.rows[0].email) || '');
+  return pool.query("SELECT email FROM staff_accounts WHERE id = $1 AND archived_at IS NULL", [id]).then((r) => (r.rows[0] && r.rows[0].email) || '');
 }
 app.post('/api/registrar/password/otp', async (req, res) => {
   const s = readRegSession(req);
@@ -1044,7 +1127,7 @@ app.post('/api/registrar/change-password', async (req, res) => {
   try {
     const email = String(await registrarAccountEmail(s.id)).trim();
     if (!email || !email.includes('@')) return res.status(400).json({ error: "No email is registered for your account. Contact the University Registrar's Office." });
-    const { rows } = await pool.query("SELECT password_hash FROM accounts WHERE id = $1 AND archived_at IS NULL", [s.id]);
+    const { rows } = await pool.query("SELECT password_hash FROM staff_accounts WHERE id = $1 AND archived_at IS NULL", [s.id]);
     if (!rows.length || !verifyPassword(current, rows[0].password_hash)) return res.status(401).json({ error: 'Your current password is wrong.' });
     if (verifyPassword(next, rows[0].password_hash)) return res.status(400).json({ error: 'Choose a password different from the current one.' });
     const row = await pool.query('SELECT code_hash, expires_at, attempts FROM otp_codes WHERE email = $1', [email]);
@@ -1054,7 +1137,7 @@ app.post('/api/registrar/change-password', async (req, res) => {
       await pool.query('UPDATE otp_codes SET attempts = attempts + 1 WHERE email = $1', [email]);
       return res.status(400).json({ error: 'The code is incorrect.' });
     }
-    await pool.query('UPDATE accounts SET password_hash = $2 WHERE id = $1', [s.id, hashPassword(next)]);
+    await pool.query('UPDATE staff_accounts SET password_hash = $2 WHERE id = $1', [s.id, hashPassword(next)]);
     await pool.query('DELETE FROM otp_codes WHERE email = $1', [email]);
     logAction(req, s.id, 'password changed', 'Registrar account ' + s.id);
     res.json({ ok: true });
@@ -1071,7 +1154,7 @@ async function requireNstp(req, res, next) {
   const s = readNstpSession(req);
   if (!s) return res.status(401).json({ error: 'Not logged in.' });
   try {
-    const { rows } = await pool.query("SELECT 1 FROM accounts WHERE id = $1 AND role = 'nstp' AND archived_at IS NULL", [s.id]);
+    const { rows } = await pool.query("SELECT 1 FROM staff_accounts WHERE id = $1 AND role = 'nstp' AND archived_at IS NULL", [s.id]);
     if (!rows.length) return res.status(401).json({ error: 'Not logged in.' });
   } catch (err) {
     console.error(err);
@@ -1086,7 +1169,7 @@ app.post('/api/nstp/logout', (req, res) => {
 });
 app.get('/api/nstp/me', requireNstp, async (req, res) => {
   try {
-    const { rows } = await pool.query('SELECT first_name, middle_name, last_name, name_extension FROM accounts WHERE id = $1', [req.nstp.id]);
+    const { rows } = await pool.query('SELECT first_name, middle_name, last_name, name_extension FROM staff_accounts WHERE id = $1', [req.nstp.id]);
     const r = rows[0] || {};
     const mi = String(r.middle_name || '').trim().charAt(0);
     const fullName = [String(r.first_name || '').trim(), mi ? mi.toUpperCase() + '.' : '', String(r.last_name || '').trim(), String(r.name_extension || '').trim()].filter(Boolean).join(' ');
@@ -1174,7 +1257,7 @@ app.post('/api/registrar/logout', (req, res) => {
   res.json({ ok: true });
 });
 
-// University Registrar creates a college registrar account (stored in the accounts table).
+// University Registrar creates a college registrar account (stored in the staff_accounts table).
 app.post('/api/registrar/accounts', requireSuperAdmin, async (req, res) => {
   const b = req.body || {};
   const email = String(b.email || '').trim().toLowerCase().slice(0, 200);
@@ -1186,7 +1269,7 @@ app.post('/api/registrar/accounts', requireSuperAdmin, async (req, res) => {
   if (password.length < 8) return res.status(400).json({ error: 'Password must be at least 8 characters.' });
   try {
     await pool.query(
-      "INSERT INTO accounts (category, first_name, last_name, email, password_hash, role, college) VALUES ('REGISTRAR', $1, $2, $3, $4, 'registrar', $5)",
+      "INSERT INTO staff_accounts (category, first_name, last_name, email, password_hash, role, college) VALUES ('REGISTRAR', $1, $2, $3, $4, 'registrar', $5)",
       [name || college, college, email, hashPassword(password), college]);
     res.json({ ok: true });
   } catch (err) {
@@ -1797,7 +1880,7 @@ app.post('/api/registrar/portal-users', requireSuperAdmin, async (req, res) => {
         const first = String(b.first_name || '').trim().slice(0, 100), last = String(b.last_name || '').trim().slice(0, 100);
         if (!first || !last) return res.status(400).json({ error: 'Last name and first name are required.' });
         const officer = await pool.query(
-          "INSERT INTO accounts (category, first_name, middle_name, last_name, name_extension, email, password_hash, role, college, username, must_change_password) VALUES ('REGISTRAR',$1,'',$2,'',$3,$4,'nstp','',$5,TRUE) RETURNING id",
+          "INSERT INTO staff_accounts (category, first_name, middle_name, last_name, name_extension, email, password_hash, role, college, username, must_change_password) VALUES ('REGISTRAR',$1,'',$2,'',$3,$4,'nstp','',$5,TRUE) RETURNING id",
           [first, last, email, hashPassword(temp), username]);
         logAction(req, 'University Registrar', 'NSTP officer account created', email);
         const sent = await sendStaffWelcome(req, { kind: 'nstp', to: email, name: first + ' ' + last, username, temp });
@@ -4478,12 +4561,12 @@ async function autoStaffUsername(first, last) {
   let candidate = base, n = 2;
   for (;;) {
     const r = await pool.query(
-      'SELECT 1 FROM accounts WHERE username = $1 UNION ALL SELECT 1 FROM csc_accounts WHERE username = $1 UNION ALL SELECT 1 FROM reg_users WHERE username = $1 LIMIT 1', [candidate]);
+      'SELECT 1 FROM staff_accounts WHERE username = $1 UNION ALL SELECT 1 FROM csc_accounts WHERE username = $1 UNION ALL SELECT 1 FROM reg_users WHERE username = $1 LIMIT 1', [candidate]);
     if (!r.rowCount) return candidate;
     candidate = base + n++;
   }
 }
-const STAFF_KINDS = { registrar: 'accounts', university: 'accounts', uniregistrar: 'accounts', nstp: 'accounts', csc: 'csc_accounts' };
+const STAFF_KINDS = { registrar: 'staff_accounts', university: 'staff_accounts', uniregistrar: 'staff_accounts', nstp: 'staff_accounts', csc: 'csc_accounts' };
 const CSC_POSITIONS = ['President', 'Vice President', 'Secretary', 'Assistant Secretary', 'Treasurer', 'Auditor', 'Public Information Officer', 'Business Manager', 'Representative'];
 function staffTable(kind) { return STAFF_KINDS[kind] || null; }
 function staffRole(kind) { return kind === 'nstp' ? 'nstp' : kind === 'university' ? 'university' : kind === 'uniregistrar' ? 'uniregistrar' : 'registrar'; }
@@ -4494,7 +4577,7 @@ app.get('/api/registrar/staff/:kind', requireSuperAdmin, async (req, res) => {
   if (!staffTable(kind)) return res.status(404).json({ error: 'Unknown account type.' });
   try {
     const sql = kind === 'registrar' || kind === 'university' || kind === 'nstp'
-      ? "SELECT id, COALESCE(username, email) AS username, last_name, first_name, COALESCE(middle_name,'') AS middle_name, COALESCE(name_extension,'') AS extension, email, CASE WHEN role = 'uniregistrar' THEN 'University Registrar' ELSE COALESCE(college,'') END AS college, '' AS position, archived_at FROM accounts WHERE " + (kind === 'university' ? "role IN ('university','uniregistrar')" : "role = '" + staffRole(kind) + "'") + " ORDER BY archived_at IS NOT NULL, last_name, first_name"
+      ? "SELECT id, COALESCE(username, email) AS username, last_name, first_name, COALESCE(middle_name,'') AS middle_name, COALESCE(name_extension,'') AS extension, email, CASE WHEN role = 'uniregistrar' THEN 'University Registrar' ELSE COALESCE(college,'') END AS college, '' AS position, archived_at FROM staff_accounts WHERE " + (kind === 'university' ? "role IN ('university','uniregistrar')" : "role = '" + staffRole(kind) + "'") + " ORDER BY archived_at IS NOT NULL, last_name, first_name"
       : "SELECT id, username, last_name, first_name, middle_name, extension, email, '' AS college, position, archived_at FROM csc_accounts ORDER BY archived_at IS NOT NULL, last_name, first_name";
     const { rows } = await pool.query(sql);
     res.json({ accounts: rows, positions: CSC_POSITIONS });
@@ -4519,7 +4602,7 @@ app.post('/api/registrar/staff/:kind', requireSuperAdmin, async (req, res) => {
     const username = await autoStaffUsername(first, last);
     if (kind === 'university' && String(b.college || '') === 'REGISTRAR') {
       await pool.query(
-        "INSERT INTO accounts (category, first_name, middle_name, last_name, name_extension, email, password_hash, role, college, username, must_change_password) VALUES ('REGISTRAR',$1,$2,$3,$4,$5,$6,'uniregistrar','',$7,TRUE)",
+        "INSERT INTO staff_accounts (category, first_name, middle_name, last_name, name_extension, email, password_hash, role, college, username, must_change_password) VALUES ('REGISTRAR',$1,$2,$3,$4,$5,$6,'uniregistrar','',$7,TRUE)",
         [first, middle, last, ext, email, hashPassword(temp), username]);
       logAction(req, 'University Registrar', 'University Registrar account created', email);
       const emailed = await sendStaffWelcome(req, { kind: 'uniregistrar', to: email, name: first + ' ' + last, username, temp });
@@ -4529,7 +4612,7 @@ app.post('/api/registrar/staff/:kind', requireSuperAdmin, async (req, res) => {
       const college = String(b.college || '');
       if (!REG_COLLEGES.includes(college)) return res.status(400).json({ error: 'Choose a college.' });
       await pool.query(
-        "INSERT INTO accounts (category, first_name, middle_name, last_name, name_extension, email, password_hash, role, college, username, must_change_password) VALUES ('REGISTRAR',$1,$2,$3,$4,$5,$6,'university',$7,$8,TRUE)",
+        "INSERT INTO staff_accounts (category, first_name, middle_name, last_name, name_extension, email, password_hash, role, college, username, must_change_password) VALUES ('REGISTRAR',$1,$2,$3,$4,$5,$6,'university',$7,$8,TRUE)",
         [first, middle, last, ext, email, hashPassword(temp), college, username]);
       logAction(req, 'University Registrar', 'Records-in-Charge account created', email + ' · ' + college);
       const emailed = await sendStaffWelcome(req, { kind: 'university', to: email, name: first + ' ' + last, username, temp, college });
@@ -4539,7 +4622,7 @@ app.post('/api/registrar/staff/:kind', requireSuperAdmin, async (req, res) => {
       const college = String(b.college || '');
       if (!REG_COLLEGES.includes(college)) return res.status(400).json({ error: 'Choose a valid college.' });
       await pool.query(
-        "INSERT INTO accounts (category, first_name, middle_name, last_name, name_extension, email, password_hash, role, college, username, must_change_password) VALUES ('REGISTRAR',$1,$2,$3,$4,$5,$6,'registrar',$7,$8,TRUE)",
+        "INSERT INTO staff_accounts (category, first_name, middle_name, last_name, name_extension, email, password_hash, role, college, username, must_change_password) VALUES ('REGISTRAR',$1,$2,$3,$4,$5,$6,'registrar',$7,$8,TRUE)",
         [first, middle, last, ext, email, hashPassword(temp), college, username]);
       logAction(req, 'University Registrar', 'college registrar account created', email + ' · ' + college);
       const emailed = await sendStaffWelcome(req, { kind: 'registrar', to: email, name: first + ' ' + last, username, temp, college });
@@ -4547,7 +4630,7 @@ app.post('/api/registrar/staff/:kind', requireSuperAdmin, async (req, res) => {
     }
     if (kind === 'nstp') {
       await pool.query(
-        "INSERT INTO accounts (category, first_name, middle_name, last_name, name_extension, email, password_hash, role, college, username, must_change_password) VALUES ('REGISTRAR',$1,$2,$3,$4,$5,$6,'nstp','',$7,TRUE)",
+        "INSERT INTO staff_accounts (category, first_name, middle_name, last_name, name_extension, email, password_hash, role, college, username, must_change_password) VALUES ('REGISTRAR',$1,$2,$3,$4,$5,$6,'nstp','',$7,TRUE)",
         [first, middle, last, ext, email, hashPassword(temp), username]);
       logAction(req, 'University Registrar', 'NSTP officer account created', email);
       const emailed = await sendStaffWelcome(req, { kind: 'nstp', to: email, name: first + ' ' + last, username, temp });
@@ -6328,6 +6411,39 @@ pool.query(`CREATE TABLE IF NOT EXISTS cat_sections (
       archived_at TIMESTAMPTZ, created_at TIMESTAMPTZ NOT NULL DEFAULT now())`))
   .then(() => pool.query('ALTER TABLE accounts ADD COLUMN IF NOT EXISTS must_change_password BOOLEAN NOT NULL DEFAULT false'))
   .then(() => pool.query('ALTER TABLE csc_accounts ADD COLUMN IF NOT EXISTS must_change_password BOOLEAN NOT NULL DEFAULT false'))
+  // Staff accounts (University Registrar, Records-in-Charge, College Registrar, NSTP) live in their own table, separate from CUP CAT accounts.
+  .then(() => pool.query(`CREATE TABLE IF NOT EXISTS staff_accounts (
+  id SERIAL PRIMARY KEY,
+  category TEXT NOT NULL DEFAULT 'REGISTRAR',
+  first_name TEXT NOT NULL,
+  middle_name TEXT NOT NULL DEFAULT '',
+  last_name TEXT NOT NULL,
+  name_extension TEXT NOT NULL DEFAULT '',
+  email TEXT UNIQUE NOT NULL,
+  password_hash TEXT NOT NULL,
+  role TEXT NOT NULL,
+  college TEXT,
+  username TEXT UNIQUE,
+  must_change_password BOOLEAN NOT NULL DEFAULT false,
+  archived_at TIMESTAMPTZ,
+  created_at TIMESTAMPTZ NOT NULL DEFAULT now());
+INSERT INTO staff_accounts (id, category, first_name, middle_name, last_name, name_extension, email, password_hash, role, college, username, must_change_password, archived_at, created_at)
+SELECT id, COALESCE(category,'REGISTRAR'), COALESCE(first_name,''), COALESCE(middle_name,''), COALESCE(last_name,''), COALESCE(name_extension,''), email, password_hash, role, college, username, COALESCE(must_change_password,false), archived_at, COALESCE(created_at, now())
+FROM accounts WHERE role IN ('registrar','university','uniregistrar','nstp')
+ON CONFLICT DO NOTHING;
+SELECT setval(pg_get_serial_sequence('staff_accounts','id'), GREATEST((SELECT COALESCE(MAX(id),0) FROM accounts), (SELECT COALESCE(MAX(id),0) FROM staff_accounts)) + 1, false);
+CREATE TABLE IF NOT EXISTS accounts_staff_backup AS SELECT * FROM accounts WHERE false;
+INSERT INTO accounts_staff_backup SELECT a.* FROM accounts a WHERE a.role IN ('registrar','university','uniregistrar','nstp') AND NOT EXISTS (SELECT 1 FROM accounts_staff_backup b WHERE b.id = a.id);
+DELETE FROM accounts a WHERE a.role IN ('registrar','university','uniregistrar','nstp')
+  AND EXISTS (SELECT 1 FROM staff_accounts s WHERE s.id = a.id AND s.email = a.email)
+  AND NOT EXISTS (SELECT 1 FROM cat_sections c WHERE c.account_id = a.id)
+  AND NOT EXISTS (SELECT 1 FROM password_history p WHERE p.account_id = a.id)
+  AND NOT EXISTS (SELECT 1 FROM cat_submissions x WHERE x.account_id = a.id)
+  AND NOT EXISTS (SELECT 1 FROM student_profiles x WHERE x.account_id = a.id)
+  AND NOT EXISTS (SELECT 1 FROM pre_enrollments x WHERE x.account_id = a.id)
+  AND NOT EXISTS (SELECT 1 FROM pre_enroll_submissions x WHERE x.account_id = a.id)
+  AND NOT EXISTS (SELECT 1 FROM cat_exam_slots x WHERE x.account_id = a.id);
+`))
   .then(() => pool.query(`CREATE TABLE IF NOT EXISTS reg_assignments (
     id SERIAL PRIMARY KEY,
     user_id INT NOT NULL REFERENCES reg_users(id) ON DELETE CASCADE,
@@ -7346,9 +7462,9 @@ async function seedTestAccounts() {
   const rp = env.TEST_REGISTRAR_PASSWORD || '';
   if (ru && rp) {
     const rc = collegeOf(env.TEST_REGISTRAR_COLLEGE, 'CONM');
-    const up = await pool.query("UPDATE accounts SET password_hash = $2, college = $3 WHERE role = 'registrar' AND email = $1", [ru, hashPassword(rp), rc]);
+    const up = await pool.query("UPDATE staff_accounts SET password_hash = $2, college = $3 WHERE role = 'registrar' AND email = $1", [ru, hashPassword(rp), rc]);
     if (!up.rowCount) {
-      await pool.query("INSERT INTO accounts (category, first_name, last_name, date_of_birth, email, password_hash, role, college) VALUES ('REGISTRAR','Test','Registrar','2000-01-01',$1,$2,'registrar',$3)", [ru, hashPassword(rp), rc]);
+      await pool.query("INSERT INTO staff_accounts (category, first_name, last_name, email, password_hash, role, college) VALUES ('REGISTRAR','Test','Registrar',$1,$2,'registrar',$3)", [ru, hashPassword(rp), rc]);
     }
   }
   // One test registrar per college, so every college portal can be checked.
@@ -7357,9 +7473,9 @@ async function seedTestAccounts() {
     const cu = String(env[base + '_USERNAME'] || '').trim().toLowerCase();
     const cp = env[base + '_PASSWORD'] || '';
     if (!cu || !cp) continue;
-    const up = await pool.query("UPDATE accounts SET password_hash = $2, college = $3 WHERE role = 'registrar' AND email = $1", [cu, hashPassword(cp), college]);
+    const up = await pool.query("UPDATE staff_accounts SET password_hash = $2, college = $3 WHERE role = 'registrar' AND email = $1", [cu, hashPassword(cp), college]);
     if (!up.rowCount) {
-      await pool.query("INSERT INTO accounts (category, first_name, last_name, date_of_birth, email, password_hash, role, college) VALUES ('REGISTRAR','Test','Registrar','2000-01-01',$1,$2,'registrar',$3)", [cu, hashPassword(cp), college]);
+      await pool.query("INSERT INTO staff_accounts (category, first_name, last_name, email, password_hash, role, college) VALUES ('REGISTRAR','Test','Registrar',$1,$2,'registrar',$3)", [cu, hashPassword(cp), college]);
     }
   }
 }
