@@ -6846,7 +6846,7 @@ app.post('/api/admin/portal', requireAdmin, async (req, res) => {
 async function studentRecord(studentNo) {
   if (!studentNo) return null;
   const r = await pool.query(
-    'SELECT student_no, college, last_name, first_name, middle_name, name_extension, birthday::text AS birthday, program, year_level, email, contact_number, civil_status FROM reg_students WHERE student_no = $1',
+    'SELECT student_no, college, last_name, first_name, middle_name, name_extension, gender, birthday::text AS birthday, program, year_level, email, contact_number, civil_status FROM reg_students WHERE student_no = $1',
     [studentNo]);
   return r.rows[0] || null;
 }
@@ -6858,7 +6858,7 @@ app.get('/api/student/prereg', requirePortal('student'), async (req, res) => {
     const sub = await pool.query('SELECT submitted_at FROM reg_preregistrations WHERE student_no = $1 AND term = $2 AND academic_year = $3', [rec.student_no, t.term, t.ay]);
     res.json({
       term: t, submitted: sub.rowCount > 0, submitted_at: sub.rowCount ? sub.rows[0].submitted_at : null,
-      locked: { student_no: rec.student_no, last_name: rec.last_name, first_name: rec.first_name, middle_name: rec.middle_name || '', name_extension: rec.name_extension || '', birthday: rec.birthday || '', program: rec.program, year_level: rec.year_level, college: rec.college },
+      locked: { student_no: rec.student_no, last_name: rec.last_name, first_name: rec.first_name, middle_name: rec.middle_name || '', name_extension: rec.name_extension || '', gender: rec.gender || '', birthday: rec.birthday || '', program: rec.program, year_level: rec.year_level, college: rec.college },
       info: { email: rec.email || '', contact_number: rec.contact_number || '', civil_status: rec.civil_status || '' },
     });
   } catch (err) {

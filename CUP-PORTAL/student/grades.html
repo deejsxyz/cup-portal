@@ -516,7 +516,8 @@
         .then(function (res) {
           if (!res.ok) { $('pr-state').textContent = res.j.error || 'Could not load.'; $('pr-state').className = 'msg bad'; $('pr-state').hidden = false; return; }
           var j = res.j, L = j.locked;
-          var fields = [['Student number', L.student_no], ['Last name', L.last_name], ['First name', L.first_name], ['Middle name', L.middle_name], ['Extension', L.name_extension], ['Birthday', L.birthday], ['Program', L.program], ['Year level', L.year_level]];
+          var fields = [['Student number', L.student_no], ['Last name', L.last_name], ['First name', L.first_name], ['Middle name', L.middle_name], ['Extension', L.name_extension], ['Gender', L.gender], ['Birthday', L.birthday], ['Program', L.program], ['Year level', L.year_level]];
+          if (enrollClosed) fields.push(['Email address', j.info.email], ['Contact number', j.info.contact_number], ['Civil status', j.info.civil_status]);
           $('pr-locked').innerHTML = fields.map(function (f) { return '<div><div class="ro-k" style="font-size:.78rem;font-weight:700;color:#475569;text-transform:uppercase">' + f[0] + '</div><div class="ro">' + (f[1] == null || f[1] === '' ? '—' : String(f[1]).replace(/[&<>"']/g, function (c) { return { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]; })) + '</div></div>'; }).join('');
           $('pr-email').value = j.info.email; $('pr-contact').value = j.info.contact_number; $('pr-civil').value = j.info.civil_status;
           var done = j.submitted;
@@ -534,6 +535,18 @@
               }
               $('pr-state').className = 'msg ok'; $('pr-state').hidden = false;
               $('pr-state').style.marginBottom = official ? '2px' : '';
+            }).catch(function () {});
+          } else if (enrollClosed) {
+            // Closed: only the student information. Officially enrolled students still see the registrar note.
+            fetch('/api/student/enrollment-steps', { credentials: 'same-origin' }).then(function (r) { return r.json(); }).then(function (st) {
+              if (st.officiallyEnrolled) {
+                $('prereg-title').textContent = 'OFFICIALLY ENROLLED';
+                $('pr-state').innerHTML = '<span class="pr-status">Officially Enrolled for A.Y. ' + j.term.ay + ', ' + j.term.term + '.</span> Please, proceed to Registrar\u2019s Office to update your details.';
+                $('pr-state').className = 'msg ok'; $('pr-state').hidden = false;
+              } else {
+                $('prereg-title').textContent = 'Student Information';
+                $('pr-state').hidden = true;
+              }
             }).catch(function () {});
           } else {
             $('prereg-title').textContent = 'Pre-Registration';
@@ -556,7 +569,6 @@
           $('prereg-title').textContent = closed ? 'Student Information' : 'Pre-Registration';
           $('pr-editable').hidden = closed;
           $('pr-actions').hidden = closed || $('pr-actions').dataset.done === '1';
-          if (closed) $('pr-state').hidden = true;
           $('proc-card').hidden = closed;
         }).catch(function () {});
     }
