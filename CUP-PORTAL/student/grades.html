@@ -116,9 +116,6 @@
     <p class="msg" id="proc-note" hidden></p>
   </section>
 
-  <section id="enroll-closed" hidden style="text-align:center;padding:120px 16px">
-    <h2 style="margin:0;font-size:1.6rem;letter-spacing:.08em;color:#1f3d1f">ENROLLMENT IS NOT YET OPEN</h2>
-  </section>
 
   <section class="card" id="prereg">
     <h2 id="prereg-title">Pre-Registration</h2>
@@ -554,7 +551,6 @@
         .then(function (w) {
           var closed = !w.open;
           enrollClosed = closed;
-          $('enroll-closed').hidden = !closed;
           // Student information stays visible when closed; only the pre-registration form and steps are hidden.
           $('prereg').hidden = false;
           $('prereg-title').textContent = closed ? 'Student Information' : 'Pre-Registration';
