@@ -558,7 +558,6 @@
           $('pr-actions').hidden = closed || $('pr-actions').dataset.done === '1';
           if (closed) $('pr-state').hidden = true;
           $('proc-card').hidden = closed;
-          if (closed) $('enrolled-card').hidden = true;
         }).catch(function () {});
     }
     function prBody() { return { email: $('pr-email').value.trim(), contact_number: $('pr-contact').value.trim(), civil_status: $('pr-civil').value }; }
