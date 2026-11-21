@@ -19,7 +19,8 @@
   .brand img { width: 64px; height: 64px; object-fit: contain; background: none; border-radius: 0; padding: 0; }
   .brand h1 { font-size: 1.05rem; margin: 0; font-weight: 800; letter-spacing: .02em; text-transform: uppercase; }
   .brand small { display: block; font-size: .8rem; color: var(--gold); font-weight: 700; letter-spacing: .08em; }
-  .who { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; }
+  .who { display: flex; flex-direction: column; align-items: flex-end; gap: 4px; }
+  .who-row { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; justify-content: flex-end; }
   .who span { font-weight: 700; font-size: .92rem; }
   .btn { border: 0; border-radius: 4px; padding: 9px 16px; font-weight: 700; cursor: pointer; background: var(--gold); color: var(--dg); }
   .btn.dark { background: var(--dg); color: #fff; }
@@ -96,9 +97,11 @@
     </div>
   </div>
   <div class="who">
-<span id="liveClock" class="live-clock"></span>
-    <span id="whoName"></span>
-    <button type="button" class="btn logout" id="logout">Log Out</button>
+    <span id="liveClock" class="live-clock"></span>
+    <div class="who-row">
+      <span id="whoName"></span>
+      <button type="button" class="btn logout" id="logout">Log Out</button>
+    </div>
   </div>
 </header>
 
