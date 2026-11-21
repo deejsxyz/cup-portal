@@ -590,10 +590,14 @@ function setSessionCookie(req, res, id) {
 app.post('/api/cat/login', async (req, res) => {
   const byApplicant = req.body && req.body.mode === 'applicant';
   const identifier = String((req.body && req.body.identifier) || '').trim().slice(0, 254);
-  const email = identifier.toLowerCase();
+  // Email login is strict: the address must match exactly, including capitals.
+  const email = identifier;
   const password = String((req.body && req.body.password) || '');
   if (!identifier || !password) {
     return res.status(400).json({ error: byApplicant ? 'Please enter your Applicant ID and password.' : 'Please enter your email and password.' });
+  }
+  if (!byApplicant && !/^[A-Za-z0-9._%+-]+@[A-Za-z0-9-]+(\.[A-Za-z0-9-]+)*\.[A-Za-z]{2,}$/.test(email)) {
+    return res.status(400).json({ error: 'Enter a valid email address, for example name@example.com.' });
   }
   try {
     // Applicant ID login only works once an Applicant ID has been generated (after submission).
