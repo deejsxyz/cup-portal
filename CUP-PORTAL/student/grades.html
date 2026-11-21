@@ -566,7 +566,6 @@
           enrollClosed = closed;
           // Student information stays visible when closed; only the pre-registration form and steps are hidden.
           $('prereg').hidden = false;
-          $('prereg-title').textContent = closed ? 'Student Information' : 'Pre-Registration';
           $('pr-editable').hidden = closed;
           $('pr-actions').hidden = closed || $('pr-actions').dataset.done === '1';
           $('proc-card').hidden = closed;
