@@ -792,7 +792,7 @@ app.post('/api/cat/login', async (req, res) => {
     // Applicant ID login only works once an Applicant ID has been generated (after submission).
     const { rows } = byApplicant
       ? await pool.query("SELECT id, password_hash, role FROM accounts WHERE applicant_id = $1 AND role NOT IN " + "('registrar','university','uniregistrar','nstp')", [identifier])
-      : await pool.query("SELECT id, password_hash, role FROM accounts WHERE email = $1 AND role NOT IN ('registrar','university','uniregistrar','nstp')", [email]);
+      : await pool.query("SELECT id, password_hash, role FROM accounts WHERE email = $1 AND role NOT IN ('registrar','university','uniregistrar','nstp') UNION ALL SELECT id, password_hash, 'student' AS role FROM student_accounts WHERE email = $1", [email]);
     if (!rows.length || !verifyPassword(password, rows[0].password_hash)) {
       return res.status(401).json({ error: byApplicant ? 'Incorrect Applicant ID or password.' : 'Incorrect email or password.' });
     }
@@ -6335,6 +6335,15 @@ pool.query(`CREATE TABLE IF NOT EXISTS cat_sections (
   .then(() => pool.query('ALTER TABLE cat_submissions ADD COLUMN IF NOT EXISTS emailed_at TIMESTAMPTZ'))
   .then(() => pool.query('ALTER TABLE accounts ADD COLUMN IF NOT EXISTS dob_changed BOOLEAN NOT NULL DEFAULT false'))
   .then(() => pool.query("CREATE TABLE IF NOT EXISTS student_profiles (account_id INT PRIMARY KEY REFERENCES accounts(id), student_number TEXT UNIQUE NOT NULL, program TEXT NOT NULL, year_level INT NOT NULL)"))
+  .then(() => pool.query("CREATE TABLE IF NOT EXISTS student_accounts (LIKE accounts INCLUDING DEFAULTS INCLUDING CONSTRAINTS INCLUDING INDEXES)"))
+  .then(() => pool.query("INSERT INTO student_accounts SELECT * FROM accounts WHERE role = 'student' ON CONFLICT (id) DO NOTHING"))
+  .then(() => pool.query(`DO $$ DECLARE r record; BEGIN
+    FOR r IN SELECT c.conname, c.conrelid::regclass AS tbl FROM pg_constraint c
+      WHERE c.contype = 'f' AND c.confrelid = 'accounts'::regclass AND c.conrelid::regclass::text IN ('student_profiles', 'pre_enrollments', 'pre_enroll_submissions') LOOP
+      EXECUTE format('ALTER TABLE %s DROP CONSTRAINT %I', r.tbl, r.conname);
+      EXECUTE format('ALTER TABLE %s ADD CONSTRAINT %I FOREIGN KEY (account_id) REFERENCES student_accounts(id)', r.tbl, r.conname);
+    END LOOP; END $$`))
+  .then(() => pool.query("DELETE FROM accounts WHERE role = 'student' AND id IN (SELECT id FROM student_accounts)"))
   .then(() => pool.query("CREATE TABLE IF NOT EXISTS curriculum_subjects (id SERIAL PRIMARY KEY, program TEXT NOT NULL, year_level INT NOT NULL, term_no INT NOT NULL, code TEXT NOT NULL, title TEXT NOT NULL, units NUMERIC NOT NULL, UNIQUE (program, year_level, term_no, code))"))
   .then(() => pool.query("CREATE TABLE IF NOT EXISTS pre_enrollments (account_id INT NOT NULL REFERENCES accounts(id), term TEXT NOT NULL, subject_id INT NOT NULL REFERENCES curriculum_subjects(id), PRIMARY KEY (account_id, term, subject_id))"))
   .then(() => pool.query("CREATE TABLE IF NOT EXISTS pre_enroll_submissions (account_id INT NOT NULL REFERENCES accounts(id), term TEXT NOT NULL, submitted_at TIMESTAMPTZ NOT NULL DEFAULT now(), PRIMARY KEY (account_id, term))"))
@@ -6923,8 +6932,8 @@ async function requireStudent(req, res, next) {
   const id = readSession(req);
   if (!id) return res.status(401).json({ error: 'Not logged in.' });
   try {
-    const { rows } = await pool.query('SELECT role FROM accounts WHERE id = $1', [id]);
-    if (!rows.length || rows[0].role !== 'student') return res.status(403).json({ error: 'This portal is for enrolled students only.' });
+    const { rows } = await pool.query("SELECT 'student' AS role FROM student_accounts WHERE id = $1", [id]);
+    if (!rows.length) return res.status(403).json({ error: 'This portal is for enrolled students only.' });
     req.studentId = id;
     next();
   } catch (err) {
@@ -6966,7 +6975,7 @@ app.post('/api/admin/import/students', requireAdmin, async (req, res) => {
         await client.query('UPDATE student_profiles SET program = $2, year_level = $3 WHERE account_id = $1', [accountId, program, year]);
         result.updated++;
       } else {
-        const byEmail = await client.query('SELECT id, role FROM accounts WHERE email = $1', [email]);
+        const byEmail = await client.query("SELECT id, role FROM student_accounts WHERE email = $1 UNION ALL SELECT id, role FROM accounts WHERE email = $1", [email]);
         if (byEmail.rowCount && byEmail.rows[0].role !== 'student') {
           await client.query('ROLLBACK');
           result.errors.push({ line, error: 'That email belongs to another account.' });
@@ -6976,7 +6985,7 @@ app.post('/api/admin/import/students', requireAdmin, async (req, res) => {
           accountId = byEmail.rows[0].id;
         } else {
           const ins = await client.query(
-            `INSERT INTO accounts (category, first_name, middle_name, last_name, name_extension, date_of_birth, email, password_hash, role)
+            `INSERT INTO student_accounts (category, first_name, middle_name, last_name, name_extension, date_of_birth, email, password_hash, role)
              VALUES ('STUDENT', $1, $2, $3, $4, $5, $6, $7, 'student') RETURNING id`,
             [firstName, middleName, lastName, nameExt, dob, email, hashPassword(crypto.randomBytes(24).toString('hex'))]);
           accountId = ins.rows[0].id;
@@ -7191,7 +7200,7 @@ app.get('/api/student/me', requireStudent, async (req, res) => {
   try {
     const p = await pool.query(
       `SELECT sp.student_number, sp.program, sp.year_level, a.first_name, a.last_name, a.middle_name, a.name_extension, a.email
-         FROM student_profiles sp JOIN accounts a ON a.id = sp.account_id WHERE sp.account_id = $1`, [req.studentId]);
+         FROM student_profiles sp JOIN student_accounts a ON a.id = sp.account_id WHERE sp.account_id = $1`, [req.studentId]);
     if (!p.rowCount) return res.status(404).json({ error: 'No student record found for this account.' });
     const prof = p.rows[0];
     const t = await getPortalTerm();
@@ -7259,7 +7268,7 @@ app.get('/api/admin/pre-enrollment', requireAdmin, async (req, res) => {
               (SELECT COUNT(*)::int FROM pre_enrollments pe WHERE pe.account_id = sp.account_id AND pe.term = $1) AS subjects,
               (SELECT COALESCE(SUM(cs.units), 0)::float FROM pre_enrollments pe JOIN curriculum_subjects cs ON cs.id = pe.subject_id WHERE pe.account_id = sp.account_id AND pe.term = $1) AS units,
               EXISTS (SELECT 1 FROM pre_enroll_submissions ps WHERE ps.account_id = sp.account_id AND ps.term = $1) AS submitted
-         FROM student_profiles sp JOIN accounts a ON a.id = sp.account_id
+         FROM student_profiles sp JOIN student_accounts a ON a.id = sp.account_id
         ORDER BY sp.program, sp.year_level, a.last_name, a.first_name`, [t.key]);
     res.json({ term: t, students: rows });
   } catch (err) {
