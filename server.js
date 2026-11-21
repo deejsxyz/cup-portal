@@ -1591,7 +1591,8 @@ function requirePortal(role) {
 }
 
 app.post('/api/portal/login', async (req, res) => {
-  const username = String((req.body || {}).username || '').trim().toLowerCase();
+  // Usernames are case sensitive: the exact spelling and capitals must match the account.
+  const username = String((req.body || {}).username || '').trim();
   const password = String((req.body || {}).password || '');
   if (!username || !password) return res.status(400).json({ error: 'Enter your username and password.' });
   try {
