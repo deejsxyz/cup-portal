@@ -6004,6 +6004,8 @@ pool.query(`CREATE TABLE IF NOT EXISTS cat_sections (
   .then(() => pool.query("ALTER TABLE reg_students ADD COLUMN IF NOT EXISTS step1_status TEXT"))
   .then(() => pool.query("ALTER TABLE reg_students ADD COLUMN IF NOT EXISTS step1_verified_at TIMESTAMPTZ"))
   .then(() => pool.query("ALTER TABLE reg_students ADD COLUMN IF NOT EXISTS evaluated_at TIMESTAMPTZ"))
+  // Recalculate every student's Step 1 status from the current rule (grades approved AND evaluation marked done).
+  .then(() => pool.query('SELECT student_no FROM reg_students').then((r) => runStep1(r.rows.map((x) => x.student_no))))
   .then(() => pool.query("ALTER TABLE accounts ADD COLUMN IF NOT EXISTS archived_at TIMESTAMPTZ"))
   .then(() => pool.query('ALTER TABLE accounts ADD COLUMN IF NOT EXISTS username TEXT UNIQUE'))
   .then(() => pool.query("ALTER TABLE accounts ALTER COLUMN date_of_birth DROP NOT NULL"))
