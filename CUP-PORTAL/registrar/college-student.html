@@ -902,7 +902,10 @@ function progAbbrOf(p) { var m = /\(([^)]+)\)\s*$/.exec(p || ''); return m ? m[1
       .then(function (r) { return r.json().then(function (j) { return { ok: r.ok, j: j }; }); })
       .then(function (res) {
         if (!res.ok) { msg.textContent = res.j.error || 'Could not save.'; return; }
+        // The form is cleared for the next student; the result stays on screen.
+        f.reset();
         regReservedNo = ''; $('regStuNo').value = 'Auto-generated'; regPreviewNumber();
+        if (COLLEGE === 'ALL') regChooseProgramMsg(); else regLoadContext();
         msg.innerHTML = '<span class="text-emerald-800 font-bold">Enrolled. Student number: ' + esc(res.j.student_no) + '. The temporary password was emailed to the student.</span>';
         loadRoster();
       })
