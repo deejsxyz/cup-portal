@@ -206,19 +206,8 @@
     </div>
     <nav class="nav">
       <div class="tabs">
-        <div class="menu" data-menu="colleges" id="collegesMenu">
-          <button class="tab" type="button" aria-expanded="false">Colleges</button>
-          <div class="dd">
-            <button type="button" data-panel="conm-student">CONM</button>
-            <button type="button" data-panel="cas-student">CAS</button>
-            <button type="button" data-panel="cobm-student">COBM</button>
-            <button type="button" data-panel="coed-student">COED</button>
-            <button type="button" data-panel="coacs-student">COACS</button>
-            <button type="button" data-panel="law-student">School of Law</button>
-            <button type="button" data-panel="gs-student">Graduate School</button>
-            <button type="button" data-panel="tesda-student">TESDA</button>
-          </div>
-        </div>
+        <button class="tab" type="button" data-panel="student-all" id="student-all-tab">Student</button>
+        <button class="tab" type="button" data-panel="faculty-all" id="faculty-all-tab">Faculty</button>
         <button class="tab" type="button" data-panel="subjects-section">Subjects</button>
         <button class="tab" type="button" data-panel="enrollment-section" id="enrollment-tab">Enrollment</button>
         <button class="tab" type="button" data-panel="approve-grades" id="approve-tab" hidden>Grades Approval</button>
@@ -594,6 +583,14 @@
       <span class="soon acct-na">Only the University Registrar can manage accounts.</span>
     </div></div></section>
     <section class="panel" id="cas-locked"><div class="box"><h2>CAS | Locked Account</h2><div class="body"><span class="soon">Not connected yet</span></div></div></section>
+    <section class="panel" id="student-all"><div class="box"><h2>Student Records</h2><div class="body" style="padding:0">
+      <div style="padding:12px 16px;border-bottom:1px solid #e2e8f0;display:flex;align-items:center;gap:10px;flex-wrap:wrap"><label for="stuAllCollege" style="font-size:11px;font-weight:700;text-transform:uppercase;color:#475569">College</label><select id="stuAllCollege" style="padding:8px 10px;border:1px solid #cbd5e1;border-radius:8px;min-width:200px"></select></div>
+      <iframe id="stuAllFrame" title="Student Records" style="width:100%;min-height:900px;border:0;display:block"></iframe>
+    </div></div></section>
+    <section class="panel" id="faculty-all"><div class="box"><h2>Faculty Records</h2><div class="body" style="padding:0">
+      <div style="padding:12px 16px;border-bottom:1px solid #e2e8f0;display:flex;align-items:center;gap:10px;flex-wrap:wrap"><label for="facAllCollege" style="font-size:11px;font-weight:700;text-transform:uppercase;color:#475569">College</label><select id="facAllCollege" style="padding:8px 10px;border:1px solid #cbd5e1;border-radius:8px;min-width:200px"></select></div>
+      <iframe id="facAllFrame" title="Faculty Records" style="width:100%;min-height:900px;border:0;display:block"></iframe>
+    </div></div></section>
     <section class="panel" id="conm-student"><div class="box"><h2 class="pn-tabs" data-kind="student"></h2><div class="body" style="padding:0">
       <iframe src="/CUP-PORTAL/registrar/college-student.html?college=CONM&framed=1" title="CONM Student" style="width:100%;min-height:900px;border:0;display:block"></iframe>
     </div></div></section>
@@ -1998,6 +1995,22 @@ function cupYr(p, y) { var m = /\(([^)]+)\)\s*$/.exec(p || ''); return (m ? m[1]
       $$('.dd').forEach(function (d) { d.classList.remove('open'); });
       $$('.menu > .tab').forEach(function (t) { t.setAttribute('aria-expanded', 'false'); });
     }
+    var ALL_COLLEGES = [['CONM', 'CONM'], ['CAS', 'CAS'], ['COBM', 'COBM'], ['COED', 'COED'], ['COACS', 'COACS'], ['LAW', 'School of Law'], ['GS', 'Graduate School'], ['TESDA-TVI', 'TESDA']];
+    // Student and Faculty buttons: one list for all colleges (records accounts see only their own college).
+    function fillAllColleges(selId, frameId, page) {
+      var sel = document.getElementById(selId), frame = document.getElementById(frameId);
+      if (!sel || !frame) return;
+      var list = ALL_COLLEGES.filter(function (c) { return !me || me.role !== 'records' || c[0] === me.college; });
+      var cur = sel.value;
+      sel.innerHTML = list.map(function (c) { return '<option value="' + c[0] + '">' + c[1] + '</option>'; }).join('');
+      if (cur && list.some(function (c) { return c[0] === cur; })) sel.value = cur;
+      sel.onchange = function () {
+        var want = page + '?college=' + encodeURIComponent(sel.value) + '&framed=1';
+        frame.setAttribute('data-src', want); frame.src = want;
+      };
+      var first = page + '?college=' + encodeURIComponent(sel.value) + '&framed=1';
+      if (frame.getAttribute('data-src') !== first) { frame.setAttribute('data-src', first); frame.src = first; }
+    }
     function showPanel(id) {
       $$('.panel').forEach(function (p) { p.classList.toggle('on', p.id === id); });
       if (id === 'portal-accounts' && typeof loadPortalUsers === 'function') loadPortalUsers();
@@ -2009,6 +2022,8 @@ function cupYr(p, y) { var m = /\(([^)]+)\)\s*$/.exec(p || ''); return (m ? m[1]
       var direct = $('.tabs > .tab[data-panel="' + id + '"]');
       if (direct) direct.classList.add('active');
       closeMenus();
+      if (id === 'student-all') fillAllColleges('stuAllCollege', 'stuAllFrame', '/CUP-PORTAL/registrar/college-student.html');
+      if (id === 'faculty-all') fillAllColleges('facAllCollege', 'facAllFrame', '/CUP-PORTAL/registrar/college-faculty.html');
       try { history.replaceState(null, '', '#' + id); } catch (e) {}
       if (/-student$/.test(id) && id !== 'conm-student') loadStudents(id);
     }
