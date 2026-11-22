@@ -620,7 +620,7 @@ function setRegCookie(req, res, payload) {
 function requireRegistrar(req, res, next) {
   const s = readRegSession(req);
   if (!s) return res.status(401).json({ error: 'Not logged in.' });
-  if (s.records && req.method !== 'GET' && !req.path.endsWith('/grades/approve')) return res.status(403).json({ error: 'Records-in-Charge can only view.' });
+  if (s.records && req.method !== 'GET' && !req.path.endsWith('/grades/approve') && !req.path.endsWith('/evaluate')) return res.status(403).json({ error: 'Records-in-Charge can only view.' });
   req.reg = s;
   next();
 }
@@ -5189,7 +5189,7 @@ app.get('/api/registrar/step1', requireRegistrar, async (req, res) => {
   try {
     const pt1 = await gradingTerm();
     const students = await pool.query(
-      `SELECT student_no, last_name, first_name, middle_name, program, year_level, section, status
+      `SELECT student_no, last_name, first_name, middle_name, program, year_level, section, status, evaluated_at
        FROM reg_students WHERE college = $1 AND status IN ('enrolled','pre-registered') AND EXISTS (SELECT 1 FROM reg_preregistrations p WHERE p.student_no = reg_students.student_no AND p.term = $2 AND p.academic_year = $3)
        ORDER BY last_name, first_name`, [college, pt1.term, pt1.ay]);
     const statuses = await runStep1(students.rows.map((r) => r.student_no));
@@ -5215,6 +5215,43 @@ app.get('/api/registrar/step1', requireRegistrar, async (req, res) => {
   } catch (err) {
     console.error(err);
     res.status(500).json({ error: 'Could not load Step 1.' });
+  }
+});
+
+// Evaluation: the registrar (or Records-in-Charge) marks a student EVALUATED. Toggle with evaluated: false to undo.
+app.post('/api/registrar/evaluate', requireRegistrar, async (req, res) => {
+  const b = req.body || {};
+  const no = String(b.student_no || '').trim();
+  const college = step1College(req, b.college);
+  if (!no || !college) return res.status(400).json({ error: 'Choose a student.' });
+  const evaluated = !!b.evaluated;
+  try {
+    const r = await pool.query(
+      `UPDATE reg_students SET evaluated_at = CASE WHEN $3 THEN now() ELSE NULL END
+       WHERE student_no = $1 AND college = $2 AND status IN ('enrolled','pre-registered') RETURNING evaluated_at`,
+      [no, college, evaluated]);
+    if (!r.rowCount) return res.status(404).json({ error: 'Student not found in this college.' });
+    res.json({ ok: true, evaluated_at: r.rows[0].evaluated_at });
+  } catch (err) {
+    console.error(err);
+    res.status(500).json({ error: 'Could not update the evaluation.' });
+  }
+});
+
+// Grades of one student in the college, for the evaluation page (filtered by A.Y. and semester on the page).
+app.get('/api/registrar/evaluation-grades', requireRegistrar, async (req, res) => {
+  const college = step1College(req, req.query.college);
+  const no = String(req.query.student_no || '').trim();
+  if (!college || !REG_COLLEGES.includes(college) || !no) return res.status(400).json({ error: 'Choose a student.' });
+  try {
+    const { rows } = await pool.query(
+      `SELECT course_code, final_grade, remarks, term, academic_year, status
+       FROM reg_grades WHERE student_no = $1 AND college = $2
+       ORDER BY academic_year, term, course_code`, [no, college]);
+    res.json({ grades: rows });
+  } catch (err) {
+    console.error(err);
+    res.status(500).json({ error: 'Could not load the grades.' });
   }
 });
 
@@ -5964,6 +6001,7 @@ pool.query(`CREATE TABLE IF NOT EXISTS cat_sections (
   .then(() => pool.query("ALTER TABLE reg_students ADD COLUMN IF NOT EXISTS nstp_enrolled_at TIMESTAMPTZ"))
   .then(() => pool.query("ALTER TABLE reg_students ADD COLUMN IF NOT EXISTS step1_status TEXT"))
   .then(() => pool.query("ALTER TABLE reg_students ADD COLUMN IF NOT EXISTS step1_verified_at TIMESTAMPTZ"))
+  .then(() => pool.query("ALTER TABLE reg_students ADD COLUMN IF NOT EXISTS evaluated_at TIMESTAMPTZ"))
   .then(() => pool.query("ALTER TABLE accounts ADD COLUMN IF NOT EXISTS archived_at TIMESTAMPTZ"))
   .then(() => pool.query('ALTER TABLE accounts ADD COLUMN IF NOT EXISTS username TEXT UNIQUE'))
   .then(() => pool.query("ALTER TABLE accounts ALTER COLUMN date_of_birth DROP NOT NULL"))
