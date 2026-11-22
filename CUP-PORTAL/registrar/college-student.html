@@ -87,9 +87,6 @@
       <div class="bg-white rounded-xl shadow-sm border border-indigo-200 p-5">
         <div class="flex items-center justify-between gap-3 mb-4 flex-wrap">
           <h3 class="text-sm font-bold uppercase tracking-wider text-indigo-900">Student Information</h3>
-          <div class="flex flex-wrap gap-2">
-            <button type="button" id="stuInfoEditBtn" class="px-4 py-2 bg-amber-500 hover:bg-amber-600 text-white rounded-lg text-xs font-bold shadow-md cursor-pointer">✏️ Edit details</button>
-          </div>
         </div>
         <div id="enrollBanner" class="mb-4 px-4 py-2.5 rounded-lg border text-xs font-semibold"></div>
         <div id="stuInfoView" class="grid grid-cols-2 md:grid-cols-4 gap-x-6 gap-y-4 text-sm"></div>
@@ -577,9 +574,11 @@ window.cupYr = function (p, y) { var m = /\(([^)]+)\)\s*$/.exec(p || ''); return
     $('viewManageBtn').addEventListener('click', function () {
       // In the University Registrar's dashboard, Manage Student opens in the parent's Manage tab.
       if (new URLSearchParams(location.search).get('framed') === '1') {
+        try { sessionStorage.setItem('cupStuEdit', no); } catch (e) {}
         parent.postMessage({ goManage: no, college: COLLEGE }, '*');
         return;
       }
+      try { sessionStorage.setItem('cupStuEdit', no); } catch (e) {}
       showTab('existing');
       $('studentSearchInput').value = no;
       $('gradeSearchInput').value = no;
@@ -643,6 +642,9 @@ function progAbbrOf(p) { var m = /\(([^)]+)\)\s*$/.exec(p || ''); return m ? m[1
     loadImm(no, 'existImm', true);
     $('stuInfoForm').hidden = true;
     termEdit.editing = false;
+    var wantEdit = false;
+    try { wantEdit = sessionStorage.getItem('cupStuEdit') === no; sessionStorage.removeItem('cupStuEdit'); } catch (e) {}
+    if (wantEdit && !s.account_archived) startStuEdit();
     if (s.year_level) $('ex_year_select').value = String(s.year_level);
     if (s.section) $('ex_section').value = s.section;
     exLoadContext();
@@ -804,7 +806,7 @@ function progAbbrOf(p) { var m = /\(([^)]+)\)\s*$/.exec(p || ''); return m ? m[1
       openStudent(e.target.value.trim());
     }
   });
-  $('stuInfoEditBtn').addEventListener('click', function () {
+  function startStuEdit() {
     termEdit.editing = true; if (termEdit.year) drawTermEditor();
     if (current && current.account_archived) { alert("This student's portal account is archived. Restore the account in Accounts first."); return; }
     var f = $('stuInfoForm');
@@ -817,7 +819,7 @@ function progAbbrOf(p) { var m = /\(([^)]+)\)\s*$/.exec(p || ''); return m ? m[1
     $('stuInfoView').hidden = true;
     f.hidden = false;
     $('stuInfoMsg').textContent = '';
-  });
+  }
   $('stuInfoCancelBtn').addEventListener('click', function () { $('stuInfoForm').hidden = true; $('stuInfoView').hidden = false; termEdit.editing = false; if (current) openStudent(current.student_no); });
   var EMAIL_RE = /^[A-Za-z0-9._%+\-]+@[A-Za-z0-9\-]+(\.[A-Za-z0-9\-]+)*\.[A-Za-z]{2,}$/;
   var CONTACT_RE = /^(09\d{9}|\+639\d{9})$/;
