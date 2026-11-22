@@ -2942,7 +2942,7 @@ app.put('/api/registrar/students/:no', requireRegistrar, async (req, res) => {
   const birthday = /^\d{4}-\d{2}-\d{2}$/.test(String(b.birthday || '')) ? String(b.birthday) : null;
   const email = String(b.email || '').trim().toLowerCase().slice(0, 254) || null;
   if (!email) return res.status(400).json({ error: 'Email address is required.' });
-  const contact = String(b.contact_number || '').trim() || null;
+  const contact = String(b.contact_number || '').replace(/[^\d+]/g, '') || null; // accepts (0924) 536-5127 too
   if (contact && !/^(09\d{9}|\+639\d{9})$/.test(contact)) return res.status(400).json({ error: 'Contact number must be 09XXXXXXXXX or +639XXXXXXXXX.' });
   if (email && !/^[A-Za-z0-9._%+\-]+@[A-Za-z0-9\-]+(\.[A-Za-z0-9\-]+)*\.[A-Za-z]{2,}$/.test(email)) return res.status(400).json({ error: 'Enter a valid email address.' });
   const rawProgram = String(b.program || '').trim().slice(0, 200);
@@ -3230,7 +3230,7 @@ app.post('/api/registrar/enroll-student', requireRegistrar, async (req, res) => 
   const email = String(b.email || '').trim().toLowerCase().slice(0, 254) || null;
   if (!email) return res.status(400).json({ error: 'Email address is required.' });
   if (!birthday) return res.status(400).json({ error: 'Birthdate is required to enroll a student.' });
-  const contact = String(b.contact_number || '').trim() || null;
+  const contact = String(b.contact_number || '').replace(/[^\d+]/g, '') || null; // accepts (0924) 536-5127 too
   if (contact && !/^(09\d{9}|\+639\d{9})$/.test(contact)) return res.status(400).json({ error: 'Contact number must be 09XXXXXXXXX or +639XXXXXXXXX.' });
   if (email && !/^[A-Za-z0-9._%+\-]+@[A-Za-z0-9\-]+(\.[A-Za-z0-9\-]+)*\.[A-Za-z]{2,}$/.test(email)) return res.status(400).json({ error: 'Enter a valid email address.' });
   const yearLevel = Number(b.year_level);

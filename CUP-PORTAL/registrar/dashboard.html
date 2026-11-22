@@ -2143,10 +2143,22 @@ function cupYr(p, y) { var m = /\(([^)]+)\)\s*$/.exec(p || ''); return (m ? m[1]
         t.classList.toggle('invalid-fmt', !!v && !STRICT_EMAIL_RE.test(v));
       }
       if (t.matches('input[type="tel"], input[name="contact_number"]')) {
-        var s = String(t.value || '').replace(/[^\d+]/g, '');
-        if (s.indexOf('+') > 0) s = s.replace(/\+/g, '');
-        t.value = s.indexOf('+') === 0 ? s.slice(0, 13) : s.replace(/\D/g, '').slice(0, 11);
-        t.classList.toggle('invalid-fmt', !!t.value && !STRICT_CONTACT_RE.test(t.value));
+        var raw = String(t.value || '').trim();
+        if (raw.indexOf('+') === 0) {
+          // International number: +639XXXXXXXXX, kept as typed.
+          var pd = raw.replace(/\D/g, '').slice(0, 12);
+          t.value = pd ? '+' + pd : '';
+          t.classList.toggle('invalid-fmt', !!t.value && !STRICT_CONTACT_RE.test(t.value));
+        } else {
+          // Local number: (xxxx) xxx-xxxx
+          var d = raw.replace(/\D/g, '').slice(0, 11);
+          var out = '';
+          if (d.length) out = '(' + d.slice(0, 4);
+          if (d.length > 4) out += ') ' + d.slice(4, 7);
+          if (d.length > 7) out += '-' + d.slice(7);
+          t.value = out;
+          t.classList.toggle('invalid-fmt', !!d && !STRICT_CONTACT_RE.test(d));
+        }
       }
     });
 
