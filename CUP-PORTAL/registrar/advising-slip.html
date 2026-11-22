@@ -27,6 +27,7 @@
   .list button:hover { background: #eef2ff; }
   .banner { margin-top: 12px; padding: 10px 14px; border-radius: 8px; font-weight: 700; font-size: 13px; background: #fffbeb; border: 1px solid #fcd34d; color: #92400e; }
   .btn.s6 { background: #e2e8f0; color: #0f172a; }
+  .btn.light { background: #e2e8f0; color: #0f172a; }
   .btn.s6.on { background: #047857; color: #fff; }
   .btn.s6:disabled { background: #e2e8f0; color: #94a3b8; }
   .banner.good { background: #ecfdf5; border-color: #6ee7b7; color: #065f46; }
@@ -78,7 +79,7 @@
       </div>
       <div style="margin-top:12px;display:flex;gap:10px;align-items:center;flex-wrap:wrap">
         <button type="submit" class="btn" id="infoSaveBtn">Save details</button>
-        <button type="button" class="btn s6" id="infoCancelBtn">Cancel</button>
+        <button type="button" class="btn light" id="infoCancelBtn">Cancel</button>
         <span id="infoMsg" class="msg"></span>
       </div>
     </form>
@@ -92,12 +93,21 @@
   <div id="subjects" class="card" hidden>
     <h2><span id="subjTitle">Pre-enrolled subjects</span> <span id="term" class="hint" style="text-transform:none;letter-spacing:0"></span></h2>
     <div id="subjList"></div>
-    <div style="margin-top:12px">
-      <button type="button" class="btn" id="editSubjBtn" hidden>Edit subjects and instructors</button>
-    </div>
-    <div id="subjEditBox" hidden style="margin-top:12px">
-      <iframe id="subjEditFrame" title="Pre-enrolled subjects and instructors" style="width:100%;min-height:640px;border:0;display:block"></iframe>
-      <div style="margin-top:10px"><button type="button" class="btn" id="subjDoneBtn">Done editing</button></div>
+    <div id="subjEdit" hidden style="margin-top:12px">
+      <div id="subjEditRows"></div>
+      <div style="margin-top:14px;padding-top:12px;border-top:1px solid #e2e8f0">
+        <div class="lbl" style="margin-bottom:6px">Add another subject to this term</div>
+        <div style="display:flex;gap:8px;flex-wrap:wrap;align-items:center">
+          <select id="addCode" style="padding:9px 12px;border:1px solid #cbd5e1;border-radius:8px;font:inherit;max-width:420px;min-width:240px"></select>
+          <select id="addInstr" style="padding:9px 12px;border:1px solid #cbd5e1;border-radius:8px;font:inherit;max-width:300px"></select>
+          <button type="button" class="btn light" id="addSubjBtn">+ Add Subject</button>
+        </div>
+      </div>
+      <div style="margin-top:14px;display:flex;gap:10px;align-items:center;flex-wrap:wrap">
+        <button type="button" class="btn" id="subjSaveBtn">Save Instructors</button>
+        <button type="button" class="btn light" id="subjCancelBtn">Cancel</button>
+        <span id="subjMsg" class="msg"></span>
+      </div>
     </div>
     <p id="loadMsg" class="hint" style="margin:8px 0 0;font-weight:700"></p>
   </div>
@@ -171,8 +181,8 @@
     var s = students.filter(function (x) { return x.student_no === no; })[0];
     if (!s) { qMsg.textContent = 'Student not found in ' + COLLEGE + '.'; record.hidden = true; subjects.hidden = true; return; }
     current = s; qMsg.textContent = '';
-    infoForm.hidden = true; infoMsg.textContent = ''; subjEditBox.hidden = true; subjEditFrame.removeAttribute('src');
-    document.getElementById('editInfoBtn').hidden = false; document.getElementById('editSubjBtn').hidden = false;
+    infoForm.hidden = true; infoMsg.textContent = '';
+    document.getElementById('editInfoBtn').hidden = false;
     info.innerHTML = label('Student No.', s.student_no) + label('Name', fullName(s)) + label('Program', s.program) +
       label('Year & Section', (s.year_level || '') + (s.section || '')) + label('Status', s.status === 'enrolled' ? 'Officially Enrolled' : 'Pre-enrolled');
     info.innerHTML += '<div><div class="lbl">CSC Fee</div><div class="val" style="color:' + (s.csc_paid ? '#047857' : '#b45309') + '">' + (s.csc_paid ? 'CSC FEE PAID' : 'NOT YET PAID') + '</div></div>';
@@ -217,6 +227,7 @@
       subjList.innerHTML = list.length ? '<table><thead><tr><th>Code</th><th>Descriptive title</th><th>Units</th><th>Section</th><th>Schedule</th><th>Room</th><th>Instructor</th></tr></thead><tbody>' +
         list.map(function (x) { return '<tr><td>' + esc(x.course_code) + '</td><td>' + esc(x.descriptive_title || '') + '</td><td>' + esc(x.units == null ? '' : x.units) + '</td><td>' + esc(x.section || (cur && cur.section) || '') + '</td><td>' + esc(schedText(x)) + '</td><td>' + esc(x.room || '') + '</td><td>' + esc(x.instructor || '') + '</td></tr>'; }).join('') + '</tbody></table>'
         : '<p class="hint">No pre-enrolled subjects for the active term yet.</p>';
+      loadEditor(list);
     });
   }
 
@@ -342,7 +353,6 @@
   });
 
   var infoForm = document.getElementById('infoForm'), infoMsg = document.getElementById('infoMsg');
-  var subjEditBox = document.getElementById('subjEditBox'), subjEditFrame = document.getElementById('subjEditFrame');
   function fillInfo(s) {
     function set(k, v) { infoForm.elements[k].value = v; }
     set('last_name', s.last_name || ''); set('first_name', s.first_name || ''); set('middle_name', s.middle_name || '');
@@ -375,18 +385,79 @@
         infoMsg.textContent = ''; refreshAndOpen(no);
       }).catch(function () { infoMsg.textContent = 'Could not save.'; infoMsg.className = 'msg bad'; });
   });
-  // Subjects and instructors use the College Registrar's Advising picker (same as Step 2).
-  document.getElementById('editSubjBtn').addEventListener('click', function () {
+  // ----- Pre-enrolled subjects: editable like the Term Enrollment list (instructor, delete, add, save) -----
+  var instrs = [], catalog = [], editRows = [];
+  var subjEdit = document.getElementById('subjEdit'), subjEditRows = document.getElementById('subjEditRows'), subjMsg = document.getElementById('subjMsg');
+  function instrIdByName(name) {
+    var hit = instrs.filter(function (u) { return u.name === name; })[0];
+    return hit ? hit.id : null;
+  }
+  function instrOpts(sel) {
+    return '<option value="">-- Select Instructor --</option>' + instrs.map(function (u) {
+      return '<option value="' + u.id + '"' + (String(u.id) === String(sel) ? ' selected' : '') + '>' + esc(u.name) + '</option>';
+    }).join('');
+  }
+  function loadEditor(list) {
     if (!current) return;
-    subjEditFrame.setAttribute('src', '/CUP-PORTAL/registrar/college-student.html?college=' + encodeURIComponent(COLLEGE) +
-      '&view=enroll&student=' + encodeURIComponent(current.student_no));
-    subjEditBox.hidden = false; this.hidden = true;
+    subjList.innerHTML = '';
+    subjEdit.hidden = false; subjMsg.textContent = ''; subjMsg.className = 'msg';
+    var sec = current.section || 'A';
+    getJson('/api/registrar/enroll-context?year_level=' + encodeURIComponent(current.year_level || 1) + '&section=' + encodeURIComponent(sec) + '&college=' + encodeURIComponent(COLLEGE)).then(function (res) {
+      if (!res.ok) { subjMsg.textContent = res.j.error || 'Could not load subjects.'; subjMsg.className = 'msg bad'; return; }
+      instrs = res.j.instructors || []; catalog = res.j.subjects || [];
+      editRows = list.map(function (x) {
+        return { course_code: x.course_code, descriptive_title: x.descriptive_title || '', units: x.units, section: x.section || sec, instructor_id: instrIdByName(x.instructor) };
+      });
+      drawEditor();
+    });
+  }
+  function drawEditor() {
+    subjEditRows.innerHTML = editRows.length ? '<table><thead><tr><th>Code</th><th>Descriptive title</th><th>Units</th><th>Section</th><th>Instructor</th><th></th></tr></thead><tbody>' +
+      editRows.map(function (r, i) {
+        return '<tr><td>' + esc(r.course_code) + '</td><td>' + esc(r.descriptive_title) + '</td><td>' + esc(r.units == null ? '' : r.units) + '</td><td>' + esc(r.section) +
+          '</td><td><select data-i="' + i + '" style="padding:7px 10px;border:1px solid #cbd5e1;border-radius:8px;font:inherit;max-width:300px">' + instrOpts(r.instructor_id) + '</select></td>' +
+          '<td><button type="button" class="btn" data-del="' + i + '" style="background:#be123c">Delete</button></td></tr>';
+      }).join('') + '</tbody></table>' : '<p class="hint">No pre-enrolled subjects yet. Add subjects below.</p>';
+    var have = editRows.map(function (r) { return r.course_code; });
+    var avail = catalog.filter(function (c) { return have.indexOf(c.course_code) === -1; });
+    document.getElementById('addCode').innerHTML = '<option value="">-- Select subject to add --</option>' + avail.map(function (c) {
+      return '<option value="' + esc(c.course_code) + '">[' + esc(c.course_code) + '] ' + esc(c.descriptive_title || '') + '</option>';
+    }).join('');
+    document.getElementById('addInstr').innerHTML = instrOpts('');
+  }
+  subjEditRows.addEventListener('change', function (e) {
+    var sel = e.target.closest('select[data-i]'); if (!sel) return;
+    var r = editRows[Number(sel.getAttribute('data-i'))]; if (r) r.instructor_id = sel.value ? Number(sel.value) : null;
   });
-  document.getElementById('subjDoneBtn').addEventListener('click', function () {
-    subjEditBox.hidden = true; subjEditFrame.removeAttribute('src');
-    document.getElementById('editSubjBtn').hidden = false;
-    if (current) refreshAndOpen(current.student_no);
+  subjEditRows.addEventListener('click', function (e) {
+    var b = e.target.closest('button[data-del]'); if (!b) return;
+    editRows.splice(Number(b.getAttribute('data-del')), 1); drawEditor();
   });
+  document.getElementById('addSubjBtn').addEventListener('click', function () {
+    var code = document.getElementById('addCode').value, ins = document.getElementById('addInstr').value;
+    if (!code) { subjMsg.textContent = 'Choose a subject to add.'; subjMsg.className = 'msg bad'; return; }
+    var c = catalog.filter(function (x) { return x.course_code === code; })[0] || {};
+    editRows.push({ course_code: code, descriptive_title: c.descriptive_title || '', units: c.units, section: current.section || 'A', instructor_id: ins ? Number(ins) : null });
+    drawEditor(); subjMsg.textContent = ''; 
+  });
+  document.getElementById('subjCancelBtn').addEventListener('click', function () { if (current) refreshAndOpen(current.student_no); });
+  document.getElementById('subjSaveBtn').addEventListener('click', function () {
+    if (!current) return;
+    var no = current.student_no, btn = this;
+    var body = { mode: 'existing', college: COLLEGE, student_no: no, first_name: current.first_name || '', middle_name: current.middle_name || '',
+      last_name: current.last_name || '', gender: current.gender || '', birthday: String(current.birthday || '').slice(0, 10), email: current.email || '',
+      contact_number: current.contact_number || '', year_level: Number(current.year_level) || 1, section: current.section || 'A',
+      subjects: editRows.map(function (r) { return { course_code: r.course_code, instructor_id: r.instructor_id }; }) };
+    btn.disabled = true; subjMsg.textContent = 'Saving…'; subjMsg.className = 'msg';
+    fetch('/api/registrar/enroll-student?college=' + encodeURIComponent(COLLEGE), { method: 'POST', credentials: 'same-origin', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(body) })
+      .then(function (r) { return r.json().then(function (j) { return { ok: r.ok, j: j }; }); })
+      .then(function (res) {
+        btn.disabled = false;
+        if (!res.ok) { subjMsg.textContent = res.j.error || 'Could not save.'; subjMsg.className = 'msg bad'; return; }
+        subjMsg.textContent = ''; refreshAndOpen(no);
+      }).catch(function () { btn.disabled = false; subjMsg.textContent = 'Could not save.'; subjMsg.className = 'msg bad'; });
+  });
+
 
   loadAll();
 })();
