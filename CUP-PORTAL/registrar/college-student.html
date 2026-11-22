@@ -402,7 +402,7 @@ window.cupYr = function (p, y) { var m = /\(([^)]+)\)\s*$/.exec(p || ''); return
     $('viewAllBtn').textContent = showAll ? 'Paged View' : 'View All Students';
   }
   // Enrolled subjects and grades, with A.Y. and semester filters to view other records.
-  var viewHist = [], viewCtx = {};
+  var viewHist = [], viewCtx = {}, viewNo = '';
   function renderViewSubjects() {
     var box = document.getElementById('viewSubjects');
     if (!box) return;
@@ -414,7 +414,9 @@ window.cupYr = function (p, y) { var m = /\(([^)]+)\)\s*$/.exec(p || ''); return
       return '<option value="' + esc(k) + '"' + (k === key ? ' selected' : '') + '>' + esc(h.term + ' · A.Y. ' + h.academic_year) + '</option>';
     }).join('');
     var filters = '<div class="flex flex-wrap items-end gap-3 mb-3"><div><div class="text-[10px] uppercase font-bold text-slate-500 mb-1">A.Y. and semester</div>' +
-      '<select id="viewTermSel" class="px-3 py-2 rounded-lg border border-slate-300 text-xs bg-white">' + (opts || '<option value="">No records</option>') + '</select></div></div>';
+      '<select id="viewTermSel" class="px-3 py-2 rounded-lg border border-slate-300 text-xs bg-white">' + (opts || '<option value="">No records</option>') + '</select></div>' +
+      '<button type="button" id="viewCogBtn" class="px-4 py-2 bg-emerald-700 hover:bg-emerald-800 text-white rounded-lg text-xs font-bold shadow-md cursor-pointer"' + (cur ? '' : ' disabled') + '>📄 Generate COG</button>' +
+      '<p id="viewCogMsg" class="text-xs font-semibold text-slate-600 self-center"></p></div>';
     var table = !cur || !(cur.subjects || []).length ? '<p class="text-xs text-slate-500 italic">No enrolled subjects for this term.</p>' :
       '<div class="overflow-x-auto"><table class="w-full text-sm"><thead><tr class="bg-slate-100 text-[10px] uppercase text-slate-500">' +
       '<th class="text-left px-3 py-2">Course code</th><th class="text-left px-3 py-2">Descriptive title</th><th class="text-left px-3 py-2">Units</th><th class="text-left px-3 py-2">Grade</th></tr></thead><tbody>' +
@@ -424,11 +426,16 @@ window.cupYr = function (p, y) { var m = /\(([^)]+)\)\s*$/.exec(p || ''); return
       }).join('') + '</tbody></table></div>';
     box.innerHTML = filters + table;
     document.getElementById('viewTermSel').addEventListener('change', renderViewSubjects);
+    var cb = document.getElementById('viewCogBtn');
+    if (cb && cur) cb.addEventListener('click', function () {
+      downloadCog({ no: viewNo, ay: cur.academic_year, term: cur.term, msg: document.getElementById('viewCogMsg'), btn: cb });
+    });
   }
   function loadViewSubjects(no, col) {
     var box = document.getElementById('viewSubjects');
     if (!box) return;
     col = col || COLLEGE;
+    viewNo = no;
     box.innerHTML = '<p class="text-xs text-slate-500">Loading subjects…</p>';
     Promise.all([
       fetch('/api/registrar/enroll-context?year_level=1&college=' + encodeURIComponent(col), { credentials: 'same-origin' }).then(function (r) { return r.json(); }),
@@ -1125,20 +1132,22 @@ function progAbbrOf(p) { var m = /\(([^)]+)\)\s*$/.exec(p || ''); return m ? m[1
         gradeRender();
       });
   }
-  function downloadCog() {
-    var msg = $('gradeSearchMsg');
-    msg.textContent = '';
-    if (!grade.no || !grade.ay || !grade.term) { msg.textContent = 'Open a student record and choose the academic year and semester first.'; return; }
-    var box = $('cogProg'), bar = $('cogBar'), pct = $('cogPct'), btn = $('gradeCogBtn');
-    var q = new URLSearchParams({ college: COLLEGE, student_no: grade.no, academic_year: grade.ay, term: grade.term });
-    box.hidden = false; bar.style.width = '100%'; bar.style.opacity = '0.35'; pct.textContent = 'Generating…';
+  // Generates the Certificate of Grades for one student and term. Used by View Student (the term
+  // chosen in its A.Y. and semester filter) and by Manage Grade. Progress elements are optional.
+  function downloadCog(src) {
+    var msg = src.msg, box = src.box || null, bar = src.bar || null, pct = src.pct || null, btn = src.btn || null;
+    if (msg) msg.textContent = '';
+    if (!src.no || !src.ay || !src.term) { if (msg) msg.textContent = 'Choose the academic year and semester first.'; return; }
+    var q = new URLSearchParams({ college: COLLEGE, student_no: src.no, academic_year: src.ay, term: src.term });
+    if (box) { box.hidden = false; bar.style.width = '100%'; bar.style.opacity = '0.35'; pct.textContent = 'Generating…'; }
     if (btn) btn.disabled = true;
-    function fail(text) { box.hidden = true; bar.style.opacity = '1'; if (btn) btn.disabled = false; msg.textContent = text; }
+    function fail(text) { if (box) { box.hidden = true; bar.style.opacity = '1'; } if (btn) btn.disabled = false; if (msg) msg.textContent = text; }
     var xhr = new XMLHttpRequest();
     xhr.open('GET', '/api/registrar/certificate-of-grades.xlsx?' + q.toString());
     xhr.responseType = 'blob';
     xhr.withCredentials = true;
     xhr.onprogress = function (e) {
+      if (!box) return;
       bar.style.opacity = '1';
       if (e.lengthComputable && e.total > 0) {
         var p = Math.min(100, Math.round(e.loaded / e.total * 100));
@@ -1163,22 +1172,21 @@ function progAbbrOf(p) { var m = /\(([^)]+)\)\s*$/.exec(p || ''); return m ? m[1
       a.href = url; a.download = name;
       document.body.appendChild(a); a.click(); a.remove();
       setTimeout(function () { URL.revokeObjectURL(url); }, 1000);
-      bar.style.width = '100%'; bar.style.opacity = '1'; pct.textContent = '100%';
       if (btn) btn.disabled = false;
-      msg.textContent = 'Download complete: ' + name;
-      setTimeout(function () { box.hidden = true; bar.style.width = '0%'; pct.textContent = ''; msg.textContent = ''; }, 2000);
+      if (box) { bar.style.width = '100%'; bar.style.opacity = '1'; pct.textContent = '100%'; }
+      if (msg) msg.textContent = 'Download complete: ' + name;
+      setTimeout(function () { if (box) { box.hidden = true; bar.style.width = '0%'; pct.textContent = ''; } if (msg) msg.textContent = ''; }, 2000);
     };
     xhr.send();
   }
   function gradeRender() {
     var rows = grade.rows;
     var head = '<div class="flex items-center justify-between gap-3"><h3 class="text-sm font-bold uppercase tracking-wider text-indigo-900">Manage Grades</h3><div class="flex gap-2">' +
-      '<button type="button" id="gradeCogBtn" class="px-4 py-2 bg-emerald-700 hover:bg-emerald-800 text-white rounded-lg text-xs font-bold shadow-md cursor-pointer">📄 Generate COG</button>' +
       (grade.editing
         ? '<button type="button" id="gradeCancelBtn" class="px-4 py-2 bg-slate-200 hover:bg-slate-300 text-slate-700 rounded-lg text-xs font-bold cursor-pointer">Cancel</button><button type="button" id="gradeSaveBtn" class="px-5 py-2 bg-indigo-700 hover:bg-indigo-800 text-white rounded-lg text-xs font-bold shadow-md cursor-pointer">Save Changes</button>'
         : '<button type="button" id="gradeEditBtn" class="px-4 py-2 bg-amber-500 hover:bg-amber-600 text-white rounded-lg text-xs font-bold shadow-md cursor-pointer">✏️ Edit Grades</button>') +
       '</div></div>' +
-      '<div id="cogProg" hidden class="flex items-center gap-3 mt-2"><div class="flex-1 h-2 rounded-full overflow-hidden" style="background:#e2e8e2"><div id="cogBar" class="h-full" style="width:0;background:#065f46;transition:width .15s"></div></div><span id="cogPct" class="text-xs font-bold text-emerald-800" style="min-width:48px;text-align:right"></span></div>';
+      '';
     var list = rows.length ? rows.map(function (r, i) {
       var opts = GRADE_OPTS.map(function (o) { return '<option value="' + o + '"' + (o === r.final_grade ? ' selected' : '') + '>' + (o || '-- Select --') + '</option>'; }).join('');
       return '<div class="grid grid-cols-1 sm:grid-cols-6 gap-3 items-center bg-slate-50 p-3 rounded-lg border border-slate-200 text-sm">' +
@@ -1191,7 +1199,6 @@ function progAbbrOf(p) { var m = /\(([^)]+)\)\s*$/.exec(p || ''); return m ? m[1
         '</div>';
     }).join('') : '<p class="text-sm text-slate-600">No subjects are enrolled in this term.</p>';
     $('gradeBody').innerHTML = head + '<div class="space-y-2">' + list + '</div>';
-    var cogBtn = $('gradeCogBtn'); if (cogBtn) cogBtn.addEventListener('click', downloadCog);
     document.querySelectorAll('.grade-sel').forEach(function (sel) {
       sel.addEventListener('change', function () { $('rem_' + sel.getAttribute('data-i')).textContent = gradeRemark(sel.value); });
     });
