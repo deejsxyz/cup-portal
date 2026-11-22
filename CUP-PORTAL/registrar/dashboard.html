@@ -2014,14 +2014,16 @@ function cupYr(p, y) { var m = /\(([^)]+)\)\s*$/.exec(p || ''); return (m ? m[1]
 
 
     // The college's own buttons (Student, Faculty, Locked Account) appear under the nav bar.
+    function setCollegeTag(p) { var t = document.getElementById('pmCollege'); if (t) t.textContent = p ? p.toUpperCase() : ''; }
     function renderCollegeBar(menu, activeId) {
       var navMode = !!(me && me.role === 'records');
       var bar = $(navMode ? '#collegeNav' : '#collegeBar');
       var other = $(navMode ? '#collegeBar' : '#collegeNav');
       if (other) { other.hidden = true; other.innerHTML = ''; }
       var m = /^([a-z]+)-(evaluation|student|faculty|step6|locked)$/.exec(activeId || '');
-      if (!m) { bar.hidden = true; bar.innerHTML = ''; return; }
+      if (!m) { setCollegeTag(''); bar.hidden = true; bar.innerHTML = ''; return; }
       var prefix = m[1];
+      setCollegeTag(prefix);
       var labels = { evaluation: 'Evaluation', student: 'Student', faculty: 'Faculty', step6: 'Enrollment', locked: 'Locked Account' };
       bar.innerHTML = '';
       ['evaluation', 'student', 'faculty', 'step6', 'locked'].forEach(function (kind) {

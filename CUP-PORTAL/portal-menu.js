@@ -5,8 +5,10 @@
 (function () {
   var mq = window.matchMedia('(max-width: 900px)');
   var CSS = [
-    '.pm-bar{display:none;align-items:center;justify-content:space-between;gap:10px;padding:3px 14px;background:#0f4d12;color:#fff;width:100%;}',
-    '.pm-bar .live-clock{position:static !important;display:block !important;margin:0 !important;bottom:auto !important;right:auto !important;width:auto !important;text-align:right !important;white-space:nowrap;color:#fff !important;font-size:10px !important;line-height:1.2 !important;min-width:0;}',
+    '.pm-bar{display:none;align-items:center;justify-content:flex-start;gap:10px;padding:3px 14px;background:#0f4d12;color:#fff;width:100%;}',
+    '.pm-college{color:#fff;font-weight:800;font-size:14px;letter-spacing:.06em;white-space:nowrap;}',
+    '.pm-college:empty{display:none;}',
+    '.pm-bar .live-clock{position:static !important;display:block !important;margin:0 !important;bottom:auto !important;right:auto !important;width:auto !important;text-align:right !important;white-space:nowrap;color:#fff !important;font-size:10px !important;line-height:1.2 !important;min-width:0;margin-left:auto !important;}',
     '.pm-burger{display:flex;flex-direction:column;justify-content:center;gap:4px;width:34px;height:26px;padding:0;margin-left:0;background:transparent;border:0;cursor:pointer;flex:0 0 auto;align-items:flex-start;}',
     '.pm-burger span{display:block;width:24px;height:2.5px;border-radius:2px;background:#fff;}',
     '.pm-home-link{display:block;color:#fff;font-weight:700;text-decoration:none;padding:8px 10px;letter-spacing:.04em;}',
@@ -110,6 +112,11 @@
     var alignTries = 0;
     var alignTimer = setInterval(function () { alignBar(); if (++alignTries > 15) clearInterval(alignTimer); }, 200);
     bar.appendChild(burger);
+    // Shows the abbreviation of the college that is open (set by the page), right after the hamburger.
+    var collegeTag = document.createElement('span');
+    collegeTag.id = 'pmCollege';
+    collegeTag.className = 'pm-college';
+    bar.appendChild(collegeTag);
     if (clock) bar.appendChild(clock);
     header.appendChild(bar);
     document.body.appendChild(drawer);
