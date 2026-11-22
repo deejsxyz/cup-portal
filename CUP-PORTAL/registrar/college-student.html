@@ -808,7 +808,7 @@ function progAbbrOf(p) { var m = /\(([^)]+)\)\s*$/.exec(p || ''); return m ? m[1
       html += '<div class="space-y-2">';
       g.items.forEach(function (i) {
         var c = list[i];
-        var colLabel = (c.college && c.college !== COLLEGE) ? (' [' + esc(c.college) + ']') : '';
+        var colLabel = (c.college && c.college !== (regCurCollege || COLLEGE)) ? (' [' + esc(c.college) + ']') : '';
         var sel = opts.replace('value="' + defaults[i] + '"', 'value="' + defaults[i] + '" selected');
         html += '<div class="flex flex-col sm:flex-row items-start sm:items-center justify-between p-2 rounded hover:bg-slate-100 gap-2 border border-slate-100 reg-subj-row" data-yr="' + esc(c.year_level || '') + '">' +
           '<label class="flex items-center space-x-2 cursor-pointer flex-grow">' +
@@ -822,9 +822,45 @@ function progAbbrOf(p) { var m = /\(([^)]+)\)\s*$/.exec(p || ''); return m ? m[1
     box.innerHTML = html;
     box.dataset.list = JSON.stringify(list.map(function (c) { return c.course_code; }));
   }
+  // All-colleges New Student: programs of every college; the chosen program loads its college's subjects.
+  var regCurCollege = '';
+  function regChooseProgramMsg() { $('subjectChecklist').innerHTML = '<p class="text-slate-500">Choose the program to load its standard subjects and instructors.</p>'; }
+  function regLoadAllPrograms() {
+    var year = $('reg_year_select').value;
+    return fetch('/api/registrar/college-programs?college=ALL', { credentials: 'same-origin' })
+      .then(function (r) { return r.ok ? r.json() : { programs: [] }; }).catch(function () { return { programs: [] }; })
+      .then(function (j) {
+        var prev = $('regProgram').value;
+        $('regProgram').innerHTML = '<option value="">Select program</option>' + (j.programs || []).map(function (o) {
+          return '<option value="' + esc(o.label) + '" data-college="' + esc(o.college) + '">' + esc(o.label) + '</option>';
+        }).join('');
+        if (prev) $('regProgram').value = prev;
+        $('regProgram').onchange = regLoadProgramSubjects;
+        if ($('regProgram').value) regLoadProgramSubjects(); else regChooseProgramMsg();
+        reg.year = year;
+      });
+  }
+  function regLoadProgramSubjects() {
+    var sel = $('regProgram'), opt = sel.options[sel.selectedIndex];
+    var col = opt && opt.getAttribute('data-college');
+    if (!col) { regChooseProgramMsg(); return; }
+    var year = $('reg_year_select').value, sec = document.querySelector('#preRegisterForm [name=section]').value;
+    regCurCollege = col;
+    fetch('/api/registrar/enroll-context?year_level=' + encodeURIComponent(year) + '&section=' + encodeURIComponent(sec) + '&college=' + encodeURIComponent(col), { credentials: 'same-origin' })
+      .then(function (r) { return r.json().then(function (j) { return { ok: r.ok, j: j }; }); })
+      .then(function (res) {
+        if (!res.ok) { $('regFormMsg').textContent = res.j.error || 'Could not load the subjects.'; return; }
+        reg.term = res.j.term; reg.ay = res.j.academic_year; reg.instructors = res.j.instructors || [];
+        $('regAy').textContent = reg.ay ? 'A.Y. ' + reg.ay : 'Not set';
+        $('regTerm').textContent = reg.term || 'Not set';
+        regSubjectsRender(res.j.subjects || [], $('subjectChecklist'), Number(year));
+      });
+  }
   function regLoadContext() {
     var year = $('reg_year_select').value;
     var sec = document.querySelector('#preRegisterForm [name=section]').value;
+    if (COLLEGE === 'ALL') return regLoadAllPrograms();
+    regCurCollege = COLLEGE;
     return fetch('/api/registrar/enroll-context?year_level=' + encodeURIComponent(year) + '&section=' + encodeURIComponent(sec), { credentials: 'same-origin' })
       .then(function (r) { return r.json().then(function (j) { return { ok: r.ok, j: j }; }); })
       .then(function (res) {

@@ -3471,7 +3471,13 @@ app.get('/api/registrar/next-student-number', requireRegistrar, async (req, res)
 
 // Enroll a University-issued student for the active term with the chosen subjects and instructors.
 app.post('/api/registrar/enroll-student', requireRegistrar, async (req, res) => {
-  const college = regCollege(req, (req.body || {}).college || req.query.college);
+  let college = regCollege(req, (req.body || {}).college || req.query.college);
+  // New Student from the all-colleges view: the program chosen on the form decides the college.
+  if (String((req.body || {}).mode || '') === 'new' && req.reg.role === 'superadmin' && String((req.body || {}).college || req.query.college || '').toUpperCase() === 'ALL') {
+    const label = String((req.body || {}).program || '').trim().toLowerCase();
+    const hit = REG_COLLEGES.find((c) => (REG_PROGRAM_OPTIONS[c] || []).some((o) => o.label.toLowerCase() === label));
+    college = hit || null;
+  }
   if (!college) return res.status(403).json({ error: 'Choose a college.' });
   const b = req.body || {};
   const mode = b.mode === 'new' ? 'new' : 'existing';
@@ -4107,10 +4113,10 @@ app.get('/api/registrar/college-programs', requireRegistrar, async (req, res) =>
   const out = [];
   colleges.forEach((college) => {
     (REG_PROGRAM_COLLEGES[college] || []).forEach((name) => {
-      out.push({ label: name, program: name, major: '' });
+      out.push({ label: name, program: name, major: '', college });
       CURRICULUM_PROGRAMS.filter((x) => x.college === college).forEach((x) => {
         const m = String(x.label).match(/^(.*\([^)]+\)) - (.+)$/);
-        if (m && m[1] === name) out.push({ label: x.label, program: name, major: m[2].trim() });
+        if (m && m[1] === name) out.push({ label: x.label, program: name, major: m[2].trim(), college });
       });
     });
   });

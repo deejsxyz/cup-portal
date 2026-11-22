@@ -2043,7 +2043,7 @@ function cupYr(p, y) { var m = /\(([^)]+)\)\s*$/.exec(p || ''); return (m ? m[1]
     var stuProgs = [], stuTab = 'view';
     // View Student lists every college (University Registrar); the other tabs work on one college at a time.
     function stuViewCollege() { return (me && me.role === 'records') ? me.college : 'ALL'; }
-    function stuCurrentCollege() { return stuTab === 'view' ? stuViewCollege() : document.getElementById('stuAllCollege').value; }
+    function stuCurrentCollege() { return (stuTab === 'view' || stuTab === 'new') ? stuViewCollege() : document.getElementById('stuAllCollege').value; }
     // Manage Student: no College or Program pickers. A student is searched across all colleges and opened in their own college's frame.
     var manageList = null, manageStu = null;
     function stuLoadManageList() {
@@ -2067,10 +2067,11 @@ function cupYr(p, y) { var m = /\(([^)]+)\)\s*$/.exec(p || ''); return (m ? m[1]
     function showStuFrame() {
       var wrap = document.getElementById('stuAllCollegeWrap');
       var isManage = stuTab === 'existing' || stuTab === 'grades';
-      if (wrap) wrap.style.display = (stuTab === 'view' || isManage) ? 'none' : 'inline-flex';
+      // No College picker anywhere now: New Student takes its college from the program in its form.
+      if (wrap) wrap.style.display = 'none';
       var progLbl = document.querySelector('label[for="stuAllProgram"]'), progSel = document.getElementById('stuAllProgram');
-      if (progLbl) progLbl.style.display = isManage ? 'none' : '';
-      if (progSel) progSel.style.display = isManage ? 'none' : '';
+      if (progLbl) progLbl.style.display = stuTab === 'view' ? '' : 'none';
+      if (progSel) progSel.style.display = stuTab === 'view' ? '' : 'none';
       var bar = document.getElementById('stuManageBar');
       if (bar) bar.style.display = isManage ? '' : 'none';
       if (isManage) {
