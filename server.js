@@ -3473,7 +3473,7 @@ app.get('/api/registrar/next-student-number', requireRegistrar, async (req, res)
 app.post('/api/registrar/enroll-student', requireRegistrar, async (req, res) => {
   let college = regCollege(req, (req.body || {}).college || req.query.college);
   // New Student from the all-colleges view: the program chosen on the form decides the college.
-  if (String((req.body || {}).mode || '') === 'new' && req.reg.role === 'superadmin' && String((req.body || {}).college || req.query.college || '').toUpperCase() === 'ALL') {
+  if (String((req.body || {}).mode || '') === 'new' && req.reg.role === 'superadmin' && ['', 'ALL'].includes(String((req.body || {}).college || req.query.college || '').toUpperCase())) {
     const label = String((req.body || {}).program || '').trim().toLowerCase();
     const hit = REG_COLLEGES.find((c) => (REG_PROGRAM_OPTIONS[c] || []).some((o) => o.label.toLowerCase() === label));
     college = hit || null;

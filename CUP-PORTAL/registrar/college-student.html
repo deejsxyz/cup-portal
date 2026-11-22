@@ -915,7 +915,9 @@ function progAbbrOf(p) { var m = /\(([^)]+)\)\s*$/.exec(p || ''); return m ? m[1
     if (!f.elements.civil_status.value) { msg.textContent = 'Choose the civil status.'; return; }
     if (!f.elements.program.value) { msg.textContent = 'Choose the program.'; return; }
     var subjects = collectSubjects($('subjectChecklist'));
-    var body = { mode: 'new', subjects: subjects };
+    // Across all colleges, the chosen program's own college receives the student.
+    var popt = $('regProgram').options[$('regProgram').selectedIndex];
+    var body = { mode: 'new', subjects: subjects, college: (COLLEGE === 'ALL' && popt && popt.getAttribute('data-college')) || COLLEGE };
     ['first_name', 'middle_name', 'last_name', 'gender', 'birthday', 'email', 'contact_number', 'civil_status', 'program', 'year_level', 'section'].forEach(function (k) { body[k] = f.elements[k].value.trim(); });
     body.reserved_no = regReservedNo;
     msg.textContent = 'Saving…';
