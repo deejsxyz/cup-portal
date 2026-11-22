@@ -3374,7 +3374,7 @@ app.post('/api/registrar/enroll-student', requireRegistrar, async (req, res) => 
       if (st.rows[0].college !== college) { await client.query('ROLLBACK'); return res.status(403).json({ error: 'This student belongs to another college.' }); }
       // Only an officially enrolled student is locked. A pre-registered student's subjects are saved to the same term record.
       const already = st.rows[0].status === 'enrolled' ? await client.query('SELECT 1 FROM reg_enrollments WHERE student_no = $1 AND term = $2 AND academic_year = $3', [no, m.grading_semester, m.grading_ay]) : { rows: [] };
-      if (already.rows.length) { await client.query('ROLLBACK'); return res.status(409).json({ error: 'This student is already enrolled for the active term.' }); }
+      if (already.rows.length) { await client.query('ROLLBACK'); return res.status(409).json({ error: 'This student is already officially enrolled for the active term.' }); }
       await client.query(
         `UPDATE reg_students SET last_name = $2, first_name = $3, middle_name = $4, gender = $5, birthday = $6,
                 email = $7, contact_number = $8, year_level = $9, section = $10 WHERE student_no = $1`,

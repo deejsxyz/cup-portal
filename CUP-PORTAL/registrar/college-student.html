@@ -922,11 +922,11 @@ function progAbbrOf(p) { var m = /\(([^)]+)\)\s*$/.exec(p || ''); return m ? m[1
     var block = document.getElementById('toggleSubjectsBtn').parentElement;
     var wrap = document.createElement('div');
     wrap.className = 'bg-white rounded-xl shadow-sm border border-slate-200 p-5 space-y-4';
-    wrap.innerHTML = '<h3 class="text-sm font-bold uppercase tracking-wider text-indigo-900">Enroll Subject</h3>';
+    wrap.innerHTML = '<h3 class="text-sm font-bold uppercase tracking-wider text-indigo-900">Pre-register Subject</h3>';
     wrap.appendChild(block);
     var row = document.createElement('div');
     row.className = 'flex justify-end';
-    row.innerHTML = '<span id="advEnrollMsg" class="text-xs font-semibold mr-3 self-center"></span><button type="button" id="advEnrollBtn" class="px-5 py-2.5 bg-indigo-700 hover:bg-indigo-800 text-white rounded-lg text-xs font-bold shadow-md cursor-pointer">Enroll Subject</button>';
+    row.innerHTML = '<span id="advEnrollMsg" class="text-xs font-semibold mr-3 self-center"></span><button type="button" id="advEnrollBtn" class="px-5 py-2.5 bg-indigo-700 hover:bg-indigo-800 text-white rounded-lg text-xs font-bold shadow-md cursor-pointer">Pre-register Subject</button>';
     wrap.appendChild(row);
     document.body.appendChild(wrap);
 
@@ -967,7 +967,7 @@ function progAbbrOf(p) { var m = /\(([^)]+)\)\s*$/.exec(p || ''); return m ? m[1
         .then(function (r) { return r.json().then(function (j) { return { ok: r.ok, j: j }; }); })
         .then(function (res) {
           if (!res.ok) { msg.textContent = res.j.error || 'Could not enroll the student.'; return; }
-          msg.innerHTML = '<span class="text-emerald-800 font-bold">Enrolled for the active term.</span>';
+          msg.innerHTML = '<span class="text-emerald-800 font-bold">Pre-registered for the active term.</span>';
           refreshEnrolled();
           loadRoster();
         })
