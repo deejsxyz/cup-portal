@@ -395,6 +395,8 @@
   function cropOpen(src) {
     var im = $('cropImg');
     im.onload = function () {
+      // Show the modal first, so the crop box has a size to measure.
+      $('cropModal').style.display = 'flex';
       crop.box = $('cropBox').clientWidth;
       crop.minScale = Math.max(crop.box / im.naturalWidth, crop.box / im.naturalHeight);
       crop.scale = crop.minScale;
@@ -402,7 +404,6 @@
       crop.y = (crop.box - im.naturalHeight * crop.scale) / 2;
       $('cropZoom').value = 1;
       cropApply();
-      $('cropModal').style.display = 'flex';
     };
     im.src = src;
   }
