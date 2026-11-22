@@ -482,7 +482,8 @@ window.cupYr = function (p, y) { var m = /\(([^)]+)\)\s*$/.exec(p || ''); return
   }
   var immToday = '', immOpen = {};
   // Immunization status is only for the CONM College Registrar.
-  function immAllowed() { return COLLEGE === 'CONM' && (window.regRole === 'registrar' || window.regRole === 'superadmin'); }
+  // Only the CONM College Registrar sees immunization, and only for CONM students (not the University Registrar).
+  function immAllowed() { return window.regRole === 'registrar' && ((current && current.college) || COLLEGE) === 'CONM'; }
   function loadImm(no, boxId, record) {
     var box = document.getElementById(boxId);
     if (!box) return;
