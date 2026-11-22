@@ -14,6 +14,7 @@
     '.pm-home-link{display:block;color:#fff;font-weight:700;text-decoration:none;padding:8px 10px;letter-spacing:.04em;}',
     '.pm-drawer{position:fixed;top:0;bottom:0;left:0;width:min(300px,85vw);background:#0f4d12;color:#fff;padding:14px;overflow-y:auto;display:flex;flex-direction:column;gap:8px;transform:translateX(-105%);transition:transform .2s ease;z-index:1000;box-shadow:4px 0 16px rgba(0,0,0,.35);}',
     '.pm-drawer.open{transform:none;}',
+    '.pm-drawer:not(.open){box-shadow:none;}',
     '.pm-scrim{position:fixed;inset:0;background:rgba(0,0,0,.45);opacity:0;pointer-events:none;transition:opacity .2s;z-index:999;}',
     '.pm-scrim.open{opacity:1;pointer-events:auto;}',
     '.pm-head{display:flex;justify-content:space-between;align-items:center;}',
