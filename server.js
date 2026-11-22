@@ -2228,7 +2228,8 @@ function cogCompute(rows, flags) {
     enrolled += u;
     if (r.outOfTerm) outUnits += u;
     const g = String(r.grade == null ? '' : r.grade).trim();
-    if (!g) return; // no grade entered yet
+    // No grade yet, or NG (no grade), counts as failed.
+    if (!g || g === 'NG') { failed += u; return; }
     const numeric = /^\d+(\.\d+)?$/.test(g) && !COG_SPECIAL.has(g);
     const n = numeric ? Number(g) : 5;
     const isPass = !RETENTION_FAIL.includes(g) && g !== '4.00' && g !== '4'; // failed: 5.00, INC, X, W and 4.00
