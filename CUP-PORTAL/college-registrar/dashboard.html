@@ -120,6 +120,8 @@
   .btn:disabled { opacity: .6; }
   .msg { min-height: 1.3em; margin: 10px 0 0; color: #b42318; }
   .msg.ok { color: var(--g); }
+  /* Hide the header nav on phones until portal-menu.js moves it into the drawer, so it does not flash on reload. */
+  @media (max-width: 900px) { header nav { visibility: hidden; } }
   /* Phones: hamburger at the left edge of the green bar. */
   @media (max-width: 900px) { header > .pm-bar { padding-left: 14px !important; } }
   @media (max-width: 760px) {
