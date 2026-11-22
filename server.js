@@ -3417,6 +3417,13 @@ app.post('/api/registrar/enroll-student', requireRegistrar, async (req, res) => 
         `INSERT INTO reg_assignments (user_id, college, course_code, term, academic_year) VALUES ($1,$2,$3,$4,$5)
          ON CONFLICT (user_id, course_code, term, academic_year) DO NOTHING`,
         [c.instructor_id, college, c.course_code, m.grading_semester, m.grading_ay]);
+      // The instructor chosen here is the subject's assignment for this year and section, which the advising slip reads.
+      await client.query(
+        'DELETE FROM reg_subject_assignments WHERE college = $1 AND course_code = $2 AND term = $3 AND academic_year = $4 AND years = ARRAY[$5]::int[] AND sections = ARRAY[$6]::text[]',
+        [college, c.course_code, m.grading_semester, m.grading_ay, yearLevel, section]);
+      await client.query(
+        'INSERT INTO reg_subject_assignments (user_id, college, course_code, term, academic_year, years, sections) VALUES ($1,$2,$3,$4,$5,ARRAY[$6]::int[],ARRAY[$7]::text[])',
+        [c.instructor_id, college, c.course_code, m.grading_semester, m.grading_ay, yearLevel, section]);
     }
     await client.query('COMMIT');
     if (newAccount && email) sendPortalWelcomeEmails(req, [{ to: email, student_no: no, name: [first, middle, last].filter(Boolean).join(' '), temp }]);
