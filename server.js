@@ -1875,6 +1875,17 @@ function regCollege(req, given) {
   if (req.reg && req.reg.role === 'superadmin') { const c = String(given || ''); return REG_COLLEGES.includes(c) ? c : null; }
   return null;
 }
+// University Registrar works without a college picker: when no valid college is sent for a student,
+// the student's own college (set from the program) is used.
+async function regCollegeFor(req, given, studentNo) {
+  const c = regCollege(req, given);
+  if (c || !req.reg || req.reg.role !== 'superadmin' || !studentNo) return c;
+  const r = await pool.query('SELECT college FROM reg_students WHERE student_no = $1', [String(studentNo)]);
+  return r.rows[0] && REG_COLLEGES.includes(r.rows[0].college) ? r.rows[0].college : null;
+}
+function studentNoOf(req) {
+  return (req.params && (req.params.no || req.params.student_no)) || (req.body && req.body.student_no) || (req.query && (req.query.student_no || req.query.student)) || null;
+}
 
 async function activeEnrollPrefix() {
   const { rows } = await pool.query("SELECT key, value FROM reg_settings WHERE key IN ('grading_semester','grading_ay')");
@@ -2215,7 +2226,7 @@ function cogCompute(rows, flags) {
   return { gpa, status: cogStatus(failPct, enrolled, Object.assign({ outOfTermShare }, flags)) };
 }
 app.get('/api/registrar/certificate-of-grades.xlsx', requireRegistrar, async (req, res) => {
-  const college = regCollege(req, req.query.college);
+  const college = await regCollegeFor(req, req.query.college, studentNoOf(req));
   const no = String(req.query.student_no || '').trim();
   const ay = String(req.query.academic_year || '').trim();
   const term = String(req.query.term || '').trim();
@@ -2960,7 +2971,7 @@ app.post('/api/student/password/change', requirePortal('student'), async (req, r
 
 // College registrar encodes grades for officially enrolled students of their own college only.
 app.post('/api/registrar/grades', requireRegistrar, async (req, res) => {
-  const college = regCollege(req, (req.body || {}).college || req.query.college);
+  const college = await regCollegeFor(req, (req.body || {}).college || req.query.college, studentNoOf(req));
   if (!college) return res.status(403).json({ error: 'Choose a college.' });
   const b = req.body || {};
   const studentNo = String(b.student_no || '').trim();
@@ -2993,7 +3004,7 @@ app.post('/api/registrar/grades', requireRegistrar, async (req, res) => {
 
 // College registrar: complete the record of a student the University has enrolled (student number issued by the University).
 app.put('/api/registrar/students/:no', requireRegistrar, async (req, res) => {
-  const college = regCollege(req, (req.body || {}).college || req.query.college);
+  const college = await regCollegeFor(req, (req.body || {}).college || req.query.college, studentNoOf(req));
   if (!college) return res.status(403).json({ error: 'Choose a college.' });
   const no = String(req.params.no || '').trim();
   if (!/^\d{4}-\d-\d{7}-\d{2}$/.test(no)) return res.status(400).json({ error: 'Student number must be in the format xxxx-x-xxxxxxx-xx.' });
@@ -3040,7 +3051,7 @@ app.put('/api/registrar/students/:no', requireRegistrar, async (req, res) => {
 // ---- New Student (enrollment for the active term) ----
 // Enrollment context: the active term and A.Y. come from the University's grading period (global settings).
 app.get('/api/registrar/enroll-context', requireRegistrar, async (req, res) => {
-  const college = regCollege(req, (req.body || {}).college || req.query.college);
+  const college = await regCollegeFor(req, (req.body || {}).college || req.query.college, studentNoOf(req));
   if (!college) return res.status(403).json({ error: 'Choose a college.' });
     const year = Number(req.query.year_level);
   try {
@@ -3085,7 +3096,7 @@ app.get('/api/registrar/enroll-context', requireRegistrar, async (req, res) => {
 const COE_TEMPLATE = path.join(__dirname, 'CUP-PORTAL', 'forms', 'COE_Template.xlsx');
 const COE_STANDING_ABBR = { 'REGULAR': 'REG', 'IRREGULAR': 'IRREG', 'WARNING': 'WARN', 'PROBATION': 'PROB', 'PERMANENT DISQUALIFICATION': 'DISQ' };
 app.get('/api/registrar/coe/:no', requireRegistrar, async (req, res) => {
-  const college = regCollege(req, req.query.college);
+  const college = await regCollegeFor(req, req.query.college, studentNoOf(req));
   if (!college) return res.status(403).json({ error: 'Choose a college.' });
   try {
     const no = String(req.params.no || '').trim();
@@ -3282,7 +3293,7 @@ function immStatus(v, doses) {
   return { status: 'Completed & Valid', dose: latest.dose_number, next: expiry };
 }
 app.get('/api/registrar/immunization/:no', requireRegistrar, async (req, res) => {
-  const college = regCollege(req, (req.body || {}).college || req.query.college);
+  const college = await regCollegeFor(req, (req.body || {}).college || req.query.college, studentNoOf(req));
   if (!college) return res.status(403).json({ error: 'Choose a college.' });
   if (!immAllowed(req, college)) return res.status(403).json({ error: 'Student health and immunization status is only for the CONM College Registrar.' });
   const no = String(req.params.no || '').trim();
@@ -3309,7 +3320,7 @@ app.get('/api/registrar/immunization/:no', requireRegistrar, async (req, res) =>
 });
 // Records the next dose with the CONM portal's cycle rules: past the 30-day grace period a series restarts at dose 1.
 app.post('/api/registrar/immunization/:no', requireRegistrar, async (req, res) => {
-  const college = regCollege(req, (req.body || {}).college || req.query.college);
+  const college = await regCollegeFor(req, (req.body || {}).college || req.query.college, studentNoOf(req));
   if (!college) return res.status(403).json({ error: 'Choose a college.' });
   if (!immAllowed(req, college)) return res.status(403).json({ error: 'Student health and immunization status is only for the CONM College Registrar.' });
   const no = String(req.params.no || '').trim();
@@ -3353,7 +3364,7 @@ app.post('/api/registrar/immunization/:no', requireRegistrar, async (req, res) =
 
 // Removes the most recent dose of a vaccine (for corrections). The row is kept, marked as voided.
 app.post('/api/registrar/immunization/:no/void', requireRegistrar, async (req, res) => {
-  const college = regCollege(req, (req.body || {}).college || req.query.college);
+  const college = await regCollegeFor(req, (req.body || {}).college || req.query.college, studentNoOf(req));
   if (!college) return res.status(403).json({ error: 'Choose a college.' });
   if (!immAllowed(req, college)) return res.status(403).json({ error: 'Student health and immunization status is only for the CONM College Registrar.' });
   const no = String(req.params.no || '').trim();
@@ -3377,7 +3388,7 @@ app.post('/api/registrar/immunization/:no/void', requireRegistrar, async (req, r
 });
 
 app.get('/api/registrar/enrollments', requireRegistrar, async (req, res) => {
-  const college = regCollege(req, (req.body || {}).college || req.query.college);
+  const college = await regCollegeFor(req, (req.body || {}).college || req.query.college, studentNoOf(req));
   if (!college) return res.status(403).json({ error: 'Choose a college.' });
   const no = String(req.query.student_no || '').trim();
   const r = await pool.query(
@@ -3471,7 +3482,7 @@ app.get('/api/registrar/next-student-number', requireRegistrar, async (req, res)
 
 // Enroll a University-issued student for the active term with the chosen subjects and instructors.
 app.post('/api/registrar/enroll-student', requireRegistrar, async (req, res) => {
-  let college = regCollege(req, (req.body || {}).college || req.query.college);
+  let college = await regCollegeFor(req, (req.body || {}).college || req.query.college, studentNoOf(req));
   // New Student from the all-colleges view: the program chosen on the form decides the college.
   if (String((req.body || {}).mode || '') === 'new' && req.reg.role === 'superadmin' && ['', 'ALL'].includes(String((req.body || {}).college || req.query.college || '').toUpperCase())) {
     const label = String((req.body || {}).program || '').trim().toLowerCase();
@@ -3629,7 +3640,7 @@ function facultyName(last, first, middle) {
   return [last, [first, middle].filter(Boolean).join(' ')].filter(Boolean).join(', ');
 }
 app.get('/api/registrar/faculty', requireRegistrar, async (req, res) => {
-  const college = regCollege(req, (req.body || {}).college || req.query.college);
+  const college = await regCollegeFor(req, (req.body || {}).college || req.query.college, studentNoOf(req));
   if (!college) return res.status(403).json({ error: 'Choose a college.' });
   try {
     const u = await pool.query(
@@ -3652,7 +3663,7 @@ async function facultyEmailProblem(email, exceptId) {
 }
 
 app.post('/api/registrar/faculty', requireRegistrar, async (req, res) => {
-  const college = regCollege(req, (req.body || {}).college || req.query.college);
+  const college = await regCollegeFor(req, (req.body || {}).college || req.query.college, studentNoOf(req));
   if (!college) return res.status(403).json({ error: 'Choose a college.' });
   const b = req.body || {};
   const username = String(b.username || '').trim().toLowerCase().slice(0, 60);
@@ -3681,7 +3692,7 @@ app.post('/api/registrar/faculty', requireRegistrar, async (req, res) => {
 });
 
 app.put('/api/registrar/faculty/:id', requireRegistrar, async (req, res) => {
-  const college = regCollege(req, (req.body || {}).college || req.query.college);
+  const college = await regCollegeFor(req, (req.body || {}).college || req.query.college, studentNoOf(req));
   if (!college) return res.status(403).json({ error: 'Choose a college.' });
   const id = Number(req.params.id);
   const b = req.body || {};
@@ -3712,7 +3723,7 @@ app.put('/api/registrar/faculty/:id', requireRegistrar, async (req, res) => {
 });
 
 app.post('/api/registrar/faculty/:id/archive', requireRegistrar, async (req, res) => {
-  const college = regCollege(req, (req.body || {}).college || req.query.college);
+  const college = await regCollegeFor(req, (req.body || {}).college || req.query.college, studentNoOf(req));
   if (!college) return res.status(403).json({ error: 'Choose a college.' });
   const r = await pool.query("UPDATE reg_users SET archived_at = now() WHERE id = $1 AND role = 'faculty' AND college = $2 AND archived_at IS NULL", [Number(req.params.id), college]);
   if (!r.rowCount) return res.status(404).json({ error: 'Faculty member not found or already archived.' });
@@ -3722,7 +3733,7 @@ app.post('/api/registrar/faculty/:id/archive', requireRegistrar, async (req, res
 
 // Subject assignments for the active term: which faculty teaches which subject to which year levels and sections.
 app.get('/api/registrar/subject-assignments', requireRegistrar, async (req, res) => {
-  const college = regCollege(req, (req.body || {}).college || req.query.college);
+  const college = await regCollegeFor(req, (req.body || {}).college || req.query.college, studentNoOf(req));
   if (!college) return res.status(403).json({ error: 'Choose a college.' });
   const set = await pool.query("SELECT key, value FROM reg_settings WHERE key IN ('grading_semester','grading_ay')");
   const m = Object.fromEntries(set.rows.map((r) => [r.key, r.value]));
@@ -3772,7 +3783,7 @@ function schParseSlot(slot) {
   return { start: to24(m[1], m[2], m[3]), end: to24(m[4], m[5], m[6]) };
 }
 app.get('/api/registrar/schedules', requireRegistrar, async (req, res) => {
-  const college = regCollege(req, req.query.college);
+  const college = await regCollegeFor(req, req.query.college, studentNoOf(req));
   if (!college) return res.status(403).json({ error: 'Choose a college.' });
   const year = [1, 2, 3, 4].includes(Number(req.query.year_level)) ? Number(req.query.year_level) : 0; // 0 = all years
   const section = String(req.query.section || '').trim().toUpperCase(); // '' = all sections
@@ -3834,7 +3845,7 @@ app.post('/api/registrar/schedules', requireRegistrar, async (req, res) => {
   return res.status(403).json({ error: 'The subject schedule is read-only. Save days, time and room in Subject Assignment.' });
   // eslint-disable-next-line no-unreachable
   const b = req.body || {};
-  const college = regCollege(req, b.college || req.query.college);
+  const college = await regCollegeFor(req, b.college || req.query.college, studentNoOf(req));
   if (!college) return res.status(403).json({ error: 'Choose a college.' });
   const section = String(b.section || '').trim().toUpperCase().slice(0, 20);
   const t = await gradingTerm();
@@ -3936,9 +3947,9 @@ function schOverlaps(a, b) {
   return a.st < b.et && b.st < a.et;
 }
 // Subject schedule as a PDF file. The page sends the rows it shows; the server lays them out as a table.
-app.post('/api/registrar/schedules/pdf', requireRegistrar, (req, res) => {
+app.post('/api/registrar/schedules/pdf', requireRegistrar, async (req, res) => {
   const b = req.body || {};
-  const college = regCollege(req, b.college || req.query.college);
+  const college = await regCollegeFor(req, b.college || req.query.college, studentNoOf(req));
   if (!college) return res.status(403).json({ error: 'Choose a college.' });
   const rows = (Array.isArray(b.rows) ? b.rows : []).slice(0, 1000).map((r) => ({
     code: String(r.code || '').slice(0, 40), title: String(r.title || '').slice(0, 120), group: String(r.group || '').slice(0, 30),
@@ -3989,7 +4000,7 @@ app.post('/api/registrar/schedules/pdf', requireRegistrar, (req, res) => {
 
 app.post('/api/registrar/schedules/check', requireRegistrar, async (req, res) => {
   const b = req.body || {};
-  const college = regCollege(req, b.college || req.query.college);
+  const college = await regCollegeFor(req, b.college || req.query.college, studentNoOf(req));
   if (!college) return res.status(403).json({ error: 'Choose a college.' });
   const year = Number(b.year_level);
   const section = String(b.section || '').trim().toUpperCase().slice(0, 20);
@@ -4101,7 +4112,7 @@ const CURRICULUM_PROGRAMS = [
 ];
 // Programs for a college (labels), for the Program dropdown.
 app.get('/api/registrar/curriculum-programs', requireRegistrar, async (req, res) => {
-  const college = regCollege(req, req.query.college);
+  const college = await regCollegeFor(req, req.query.college, studentNoOf(req));
   if (!college) return res.json({ programs: [] });
   res.json({ programs: CURRICULUM_PROGRAMS.filter((x) => x.college === college).map((x) => x.label) });
 });
@@ -4206,7 +4217,7 @@ async function syncEnrollmentsFromAssignments(db, college, term, ay, slots) {
 }
 
 app.post('/api/registrar/subject-assignments', requireRegistrar, async (req, res) => {
-  const college = regCollege(req, (req.body || {}).college || req.query.college);
+  const college = await regCollegeFor(req, (req.body || {}).college || req.query.college, studentNoOf(req));
   if (!college) return res.status(403).json({ error: 'Choose a college.' });
   const b = req.body || {};
   const userId = Number(b.faculty_id);
@@ -4298,7 +4309,7 @@ app.post('/api/registrar/subject-assignments', requireRegistrar, async (req, res
 // Edit the schedule (day, time, room) of one saved assignment. Updates its row and the Subject schedule table.
 app.post('/api/registrar/subject-assignments/:id/schedule', requireRegistrar, async (req, res) => {
   const b = req.body || {};
-  const college = regCollege(req, b.college || req.query.college);
+  const college = await regCollegeFor(req, b.college || req.query.college, studentNoOf(req));
   if (!college) return res.status(403).json({ error: 'Choose a college.' });
   const set = await pool.query("SELECT key, value FROM reg_settings WHERE key IN ('grading_semester','grading_ay')");
   const m = Object.fromEntries(set.rows.map((r) => [r.key, r.value]));
@@ -4346,7 +4357,7 @@ app.post('/api/registrar/subject-assignments/:id/schedule', requireRegistrar, as
 // Edit one saved assignment: faculty, years, sections, group, day, time and room. Rebuilds its Subject schedule rows.
 app.post('/api/registrar/subject-assignments/:id/update', requireRegistrar, async (req, res) => {
   const b = req.body || {};
-  const college = regCollege(req, b.college || req.query.college);
+  const college = await regCollegeFor(req, b.college || req.query.college, studentNoOf(req));
   if (!college) return res.status(403).json({ error: 'Choose a college.' });
   const set = await pool.query("SELECT key, value FROM reg_settings WHERE key IN ('grading_semester','grading_ay')");
   const m = Object.fromEntries(set.rows.map((r) => [r.key, r.value]));
@@ -4453,7 +4464,7 @@ async function cleanOrphanSchedules(db, college, term, ay) {
 }
 
 app.post('/api/registrar/subject-assignments/:id/remove', requireRegistrar, async (req, res) => {
-  const college = regCollege(req, (req.body || {}).college || req.query.college);
+  const college = await regCollegeFor(req, (req.body || {}).college || req.query.college, studentNoOf(req));
   if (!college) return res.status(403).json({ error: 'Choose a college.' });
   const client = await pool.connect();
   try {
@@ -4476,7 +4487,7 @@ app.post('/api/registrar/subject-assignments/:id/remove', requireRegistrar, asyn
 
 // Subject slots on a faculty profile: the list of subjects taught this term. A new slot takes the subject's year level and all sections.
 app.put('/api/registrar/faculty/:id/subjects', requireRegistrar, async (req, res) => {
-  const college = regCollege(req, (req.body || {}).college || req.query.college);
+  const college = await regCollegeFor(req, (req.body || {}).college || req.query.college, studentNoOf(req));
   if (!college) return res.status(403).json({ error: 'Choose a college.' });
   const userId = Number(req.params.id);
   const codes = [...new Set((Array.isArray((req.body || {}).course_codes) ? req.body.course_codes : []).map((c) => String(c).trim()).filter(Boolean))];
@@ -5044,7 +5055,7 @@ app.post('/api/csc/students/:no/paid', requireCsc, async (req, res) => {
 });
 // Step 6 (Registrar Office): students whose CSC fee is PAID, with their Step 6 task progress
 app.get('/api/registrar/step6', requireRegistrar, async (req, res) => {
-  const college = regCollege(req, req.query.college);
+  const college = await regCollegeFor(req, req.query.college, studentNoOf(req));
   if (!college || !REG_COLLEGES.includes(college)) return res.status(400).json({ error: 'Choose a college.' });
   try {
     const { rows } = await pool.query(
@@ -5064,7 +5075,7 @@ const STEP6_LABELS = { advising: 'Advising slip submitted', coe: 'COE printed', 
 app.post('/api/registrar/step6/:no/:task', requireRegistrar, async (req, res, next) => {
   const col = STEP6_TASKS[req.params.task];
   if (!col) return next();
-  const college = regCollege(req, (req.body || {}).college);
+  const college = await regCollegeFor(req, (req.body || {}).college, studentNoOf(req));
   if (!college) return res.status(400).json({ error: 'Invalid Step 6 request.' });
   const no = String(req.params.no || '').trim();
   const done = !!((req.body || {}).done === true);
@@ -5107,7 +5118,7 @@ const ENROLL_ROW_SQL = `SELECT student_no, status, year_level, COALESCE(nstp_sub
   FROM reg_students WHERE student_no = $1 AND college = $2`;
 // Readiness for the Submission of Advising Slip page: which steps are still not done.
 app.get('/api/registrar/enroll-readiness/:no', requireSuperAdmin, async (req, res) => {
-  const college = regCollege(req, req.query.college);
+  const college = await regCollegeFor(req, req.query.college, studentNoOf(req));
   if (!college) return res.status(400).json({ error: 'Choose a college.' });
   try {
     const r = await pool.query(ENROLL_ROW_SQL, [String(req.params.no || '').trim(), college]);
@@ -5123,7 +5134,7 @@ app.get('/api/registrar/enroll-readiness/:no', requireSuperAdmin, async (req, re
 });
 // University Registrar: undo Officially Enrolled (back to pre-enrolled).
 app.post('/api/registrar/enroll-official/:no/undo', requireSuperAdmin, async (req, res) => {
-  const college = regCollege(req, (req.body || {}).college);
+  const college = await regCollegeFor(req, (req.body || {}).college, studentNoOf(req));
   if (!college) return res.status(400).json({ error: 'Choose a college.' });
   const no = String(req.params.no || '').trim();
   try {
@@ -5138,7 +5149,7 @@ app.post('/api/registrar/enroll-official/:no/undo', requireSuperAdmin, async (re
 });
 // University Registrar: mark a pre-registered student Officially Enrolled, only when every step is done.
 app.post('/api/registrar/enroll-official/:no', requireSuperAdmin, async (req, res) => {
-  const college = regCollege(req, (req.body || {}).college);
+  const college = await regCollegeFor(req, (req.body || {}).college, studentNoOf(req));
   if (!college) return res.status(400).json({ error: 'Choose a college.' });
   const no = String(req.params.no || '').trim();
   try {
@@ -5164,7 +5175,7 @@ app.post('/api/registrar/enroll-official/:no', requireSuperAdmin, async (req, re
 
 // Registrar tags the student Officially Enrolled, only after all Step 6 tasks are complete
 app.post('/api/registrar/step6/:no/official', requireRegistrar, async (req, res) => {
-  const college = regCollege(req, (req.body || {}).college);
+  const college = await regCollegeFor(req, (req.body || {}).college, studentNoOf(req));
   if (!college) return res.status(400).json({ error: 'Choose a college.' });
   const no = String(req.params.no || '').trim();
   try {
@@ -5199,7 +5210,7 @@ async function step2Blocked(no, college, task) {
 }
 // Student standing (REGULAR, IRREGULAR, WARNING, PROBATION, PERMANENT DISQUALIFICATION) for the info panels.
 app.get('/api/registrar/student-standing/:no', requireCollegeRegistrar, async (req, res) => {
-  const college = regCollege(req, req.query.college);
+  const college = await regCollegeFor(req, req.query.college, studentNoOf(req));
   if (!college) return res.status(403).json({ error: 'Choose a college.' });
   try {
     const no = String(req.params.no || '').trim();
@@ -5214,7 +5225,7 @@ app.get('/api/registrar/student-standing/:no', requireCollegeRegistrar, async (r
 });
 
 app.get('/api/registrar/step2', requireCollegeRegistrar, async (req, res) => {
-  const college = regCollege(req, req.query.college);
+  const college = await regCollegeFor(req, req.query.college, studentNoOf(req));
   if (!college || !REG_COLLEGES.includes(college)) return res.status(400).json({ error: 'Choose a college.' });
   try {
     const pt2 = await gradingTerm();
@@ -5236,7 +5247,7 @@ const STEP2_LABELS = { evaluation: 'Student evaluation', advising: 'Advising', s
 app.post('/api/registrar/step2/:no/:task', requireCollegeRegistrar, async (req, res, next) => {
   const col = STEP2_TASKS[req.params.task];
   if (!col) return next();
-  const college = regCollege(req, (req.body || {}).college);
+  const college = await regCollegeFor(req, (req.body || {}).college, studentNoOf(req));
   if (!college) return res.status(400).json({ error: 'Invalid Step 2 request.' });
   const no = String(req.params.no || '').trim();
   const done = (req.body || {}).done === true;
@@ -5258,7 +5269,7 @@ app.post('/api/registrar/step2/:no/:task', requireCollegeRegistrar, async (req, 
 
 // Step 2 advising: the NSTP subject the student is pre-registered for (NSTP 1 = CWTS, ROTC 1 = ROTC).
 app.post('/api/registrar/step2/:no/nstp', requireCollegeRegistrar, async (req, res) => {
-  const college = regCollege(req, (req.body || {}).college);
+  const college = await regCollegeFor(req, (req.body || {}).college, studentNoOf(req));
   if (!college) return res.status(400).json({ error: 'Invalid Step 2 request.' });
   const subject = String((req.body || {}).subject || '');
   if (subject && !NSTP_CODES.includes(subject)) return res.status(400).json({ error: 'Choose NSTP 1 (CWTS) or ROTC 1.' });
@@ -5281,7 +5292,7 @@ app.post('/api/registrar/step2/:no/nstp', requireCollegeRegistrar, async (req, r
 
 // Section Assignment: live counts per program code, year level and section
 app.get('/api/registrar/step2/section-counts', requireCollegeRegistrar, async (req, res) => {
-  const college = regCollege(req, req.query.college);
+  const college = await regCollegeFor(req, req.query.college, studentNoOf(req));
   const year = String(req.query.year || '').trim();
   if (!college || !REG_COLLEGES.includes(college) || !/^[1-9]$/.test(year)) return res.status(400).json({ error: 'Choose a college and year level.' });
   try {
@@ -5343,7 +5354,7 @@ async function refreshEnrollmentRecord(db, no, college) {
 
 app.post('/api/registrar/step2/:no/assign-section', requireCollegeRegistrar, async (req, res) => {
   const body = req.body || {};
-  const college = regCollege(req, body.college);
+  const college = await regCollegeFor(req, body.college, studentNoOf(req));
   const year = String(body.year_level || '').trim();
   const section = String(body.section || '').trim().toUpperCase();
   if (!college || !/^[1-9]$/.test(year) || !/^[A-Z]{1,2}$/.test(section)) return res.status(400).json({ error: 'Choose a year level and section.' });
@@ -5557,7 +5568,7 @@ app.post('/api/registrar/batch-upload/:type', requireRegistrar, async (req, res)
   const type = String(req.params.type || '').toLowerCase();
   if (!['student', 'faculty', 'grades'].includes(type)) return res.status(400).json({ error: 'Invalid batch upload type.' });
   const b = req.body || {};
-  const college = regCollege(req, b.college || req.query.college);
+  const college = await regCollegeFor(req, b.college || req.query.college, studentNoOf(req));
   if (!college || !REG_COLLEGES.includes(college)) return res.status(400).json({ error: 'Choose a valid college.' });
   const dryRun = !!b.dryRun;
   const files = Array.isArray(b.files) ? b.files : [];
