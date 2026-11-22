@@ -270,7 +270,12 @@
     document.querySelectorAll('nav.tabs button').forEach(function (b) {
       b.classList.toggle('on', b.getAttribute('data-tab') === id);
     });
+    // Remember the open tab so a refresh stays on it.
+    try { sessionStorage.setItem('studentTab', id); } catch (e) {}
   }
+  var savedTab = null;
+  try { savedTab = sessionStorage.getItem('studentTab'); } catch (e) {}
+  if (['enroll', 'grades', 'profile'].indexOf(savedTab) !== -1) showTab(savedTab);
 
   /* Grades: academic year and semester dropdowns */
   function termLabel(t) { return String(t || '').replace(/^1st\b/, 'First').replace(/^2nd\b/, 'Second'); }
