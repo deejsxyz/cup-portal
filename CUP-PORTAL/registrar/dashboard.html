@@ -1894,18 +1894,10 @@ function cupYr(p, y) { var m = /\(([^)]+)\)\s*$/.exec(p || ''); return (m ? m[1]
       if (nameBtn) { nameBtn.disabled = !me.canEdit; nameBtn.style.cursor = me.canEdit ? 'pointer' : 'default'; }
       if (!isSuper) {
         var prefix = String(me.college || '').toLowerCase().replace('tesda-tvi', 'tesda');
-        // The college's own Student Records entry moves out of the Colleges menu (which is hidden here) into the tab bar.
+        // The college's Student view opens by default: its Student / Faculty / Locked Account tabs show below the green bar.
         var ownStudent = document.querySelector('[data-panel="' + prefix + '-student"]');
-        var tabBar = document.querySelector('.nav .tabs');
-        if (ownStudent && tabBar) {
-          ownStudent.className = 'tab';
-          ownStudent.textContent = 'Student Records';
-          ownStudent.hidden = false;
-          tabBar.insertBefore(ownStudent, document.getElementById('enrollment-tab'));
-        }
-        document.querySelectorAll('[data-panel$="-student"]').forEach(function (t) {
-          if (t !== ownStudent) t.hidden = true;
-        });
+        document.querySelectorAll('[data-panel$="-student"]').forEach(function (t) { t.hidden = true; });
+        if (ownStudent) setTimeout(function () { ownStudent.click(); }, 0);
         // College registrars work in their own college only, so the Colleges menu is hidden for them.
         var collegesMenu = document.getElementById('collegesMenu'); if (collegesMenu) collegesMenu.hidden = true;
         if (me.role === 'records') { var bu = document.getElementById('batch-uploads-tab'); if (bu) bu.hidden = true; }
