@@ -3413,6 +3413,8 @@ app.post('/api/registrar/enroll-student', requireRegistrar, async (req, res) => 
        VALUES ($1,$2,$3,$4,$5,$6,$7)
        ON CONFLICT (student_no, term, academic_year) DO UPDATE SET year_level = EXCLUDED.year_level, section = EXCLUDED.section, subjects = EXCLUDED.subjects, enrolled_at = now()`,
       [no, m.grading_semester, m.grading_ay, college, yearLevel, section, JSON.stringify(clean)]);
+    // Pre-registering the subjects is the advising step of Step 2.
+    await client.query("UPDATE reg_students SET step2_advised_at = COALESCE(step2_advised_at, now()) WHERE student_no = $1 AND college = $2", [no, college]);
     for (const c of clean) {
       if (!c.instructor_id) continue;
       await client.query(
