@@ -90,6 +90,7 @@
       </div>
       <div class="actions" id="pr-actions">
         <button type="button" class="btn btn-s" id="pr-save">Save changes</button>
+        <button type="button" class="btn btn-s" id="pr-cancel">Cancel changes</button>
         <button type="button" class="btn btn-p" id="pr-submit">Submit pre-registration</button>
       </div>
       <p class="msg" id="pr-msg" role="status" hidden></p>
@@ -164,6 +165,8 @@
         .then(function (r) { return r.json().then(function (j) { return { ok: r.ok, j: j }; }); })
         .then(function (res) { if (!res.ok) return prMsg(res.j.error || 'Could not save.', false); prMsg('Saved.', true); });
     });
+    // Throws away unsaved edits by reloading the last saved values.
+    $('pr-cancel').addEventListener('click', function () { loadPrereg(); prMsg('Changes cancelled.', true); });
     $('pr-submit').addEventListener('click', function () {
       if (!window.confirm('Submit your pre-registration? You will not be able to change it after this.')) return;
       fetch('/api/student/prereg', { method: 'PUT', credentials: 'same-origin', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(prBody()) })
