@@ -3293,7 +3293,7 @@ app.post('/api/registrar/enroll-student', requireRegistrar, async (req, res) => 
       if (!no) { await client.query('ROLLBACK'); return res.status(500).json({ error: 'Could not generate a student number. Try again.' }); }
       await client.query(
         `INSERT INTO reg_students (student_no, college, last_name, first_name, middle_name, gender, birthday, email, contact_number, program, year_level, section, civil_status, status, enrolled_at, major)
-         VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,'enrolled',now(),$14)`,
+         VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,'pre-registered',now(),$14)`,
         [no, college, last, first, middle, gender, birthday, email, contact, program, yearLevel, section, civil, major]);
     } else {
       const st = await client.query(
