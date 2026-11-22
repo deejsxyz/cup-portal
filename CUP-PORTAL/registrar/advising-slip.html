@@ -60,6 +60,28 @@
         <p id="coeTxt" class="hint" style="margin:4px 0 0"></p>
       </div>
     </div>
+    <div style="margin-top:12px">
+      <button type="button" class="btn" id="editInfoBtn" hidden>Edit student details</button>
+    </div>
+    <form id="infoForm" hidden style="margin-top:12px">
+      <div class="lbl" style="margin-bottom:8px">Edit student details</div>
+      <div class="grid">
+        <label><div class="lbl">Last name</div><input name="last_name" required autocomplete="off"></label>
+        <label><div class="lbl">First name</div><input name="first_name" required autocomplete="off"></label>
+        <label><div class="lbl">Middle name</div><input name="middle_name" autocomplete="off"></label>
+        <label><div class="lbl">Gender</div><select name="gender" style="padding:9px 12px;border:1px solid #cbd5e1;border-radius:8px;font:inherit;width:100%;max-width:420px"><option value="">—</option><option>Male</option><option>Female</option></select></label>
+        <label><div class="lbl">Birthday</div><input name="birthday" type="date"></label>
+        <label><div class="lbl">Email</div><input name="email" type="email" required autocomplete="off"></label>
+        <label><div class="lbl">Contact number</div><input name="contact_number" inputmode="tel" placeholder="09XXXXXXXXX" autocomplete="off"></label>
+        <label><div class="lbl">Year level</div><select name="year_level" style="padding:9px 12px;border:1px solid #cbd5e1;border-radius:8px;font:inherit;width:100%;max-width:420px"><option value="1">1st Year</option><option value="2">2nd Year</option><option value="3">3rd Year</option><option value="4">4th Year</option></select></label>
+        <label><div class="lbl">Section</div><input name="section" maxlength="10" autocomplete="off"></label>
+      </div>
+      <div style="margin-top:12px;display:flex;gap:10px;align-items:center;flex-wrap:wrap">
+        <button type="submit" class="btn" id="infoSaveBtn">Save details</button>
+        <button type="button" class="btn s6" id="infoCancelBtn">Cancel</button>
+        <span id="infoMsg" class="msg"></span>
+      </div>
+    </form>
     <div style="margin-top:14px;display:flex;gap:12px;align-items:center;flex-wrap:wrap">
       <button type="button" class="btn" id="enrollBtn">ENROLL STUDENT</button>
       <span id="enrollMsg" class="msg"></span>
@@ -70,6 +92,13 @@
   <div id="subjects" class="card" hidden>
     <h2><span id="subjTitle">Pre-enrolled subjects</span> <span id="term" class="hint" style="text-transform:none;letter-spacing:0"></span></h2>
     <div id="subjList"></div>
+    <div style="margin-top:12px">
+      <button type="button" class="btn" id="editSubjBtn" hidden>Edit subjects and instructors</button>
+    </div>
+    <div id="subjEditBox" hidden style="margin-top:12px">
+      <iframe id="subjEditFrame" title="Pre-enrolled subjects and instructors" style="width:100%;min-height:640px;border:0;display:block"></iframe>
+      <div style="margin-top:10px"><button type="button" class="btn" id="subjDoneBtn">Done editing</button></div>
+    </div>
     <p id="loadMsg" class="hint" style="margin:8px 0 0;font-weight:700"></p>
   </div>
 </div>
@@ -142,6 +171,8 @@
     var s = students.filter(function (x) { return x.student_no === no; })[0];
     if (!s) { qMsg.textContent = 'Student not found in ' + COLLEGE + '.'; record.hidden = true; subjects.hidden = true; return; }
     current = s; qMsg.textContent = '';
+    infoForm.hidden = true; infoMsg.textContent = ''; subjEditBox.hidden = true; subjEditFrame.removeAttribute('src');
+    document.getElementById('editInfoBtn').hidden = false; document.getElementById('editSubjBtn').hidden = false;
     info.innerHTML = label('Student No.', s.student_no) + label('Name', fullName(s)) + label('Program', s.program) +
       label('Year & Section', (s.year_level || '') + (s.section || '')) + label('Status', s.status === 'enrolled' ? 'Officially Enrolled' : 'Pre-enrolled');
     info.innerHTML += '<div><div class="lbl">CSC Fee</div><div class="val" style="color:' + (s.csc_paid ? '#047857' : '#b45309') + '">' + (s.csc_paid ? 'CSC FEE PAID' : 'NOT YET PAID') + '</div></div>';
@@ -212,7 +243,7 @@
   // Reload the student list, then reopen the student with fresh status.
   function refreshAndOpen(no) {
     getJson('/api/registrar/students?college=' + encodeURIComponent(COLLEGE)).then(function (res) {
-      if (res.ok) students = res.j.students || [];
+      if (res.ok) students = (res.j.students || []).filter(function (x) { return x.csc_paid; });
       open(no);
     });
   }
@@ -308,6 +339,53 @@
         refreshAndOpen(current.student_no);
       })
       .catch(function () { enrollMsg.textContent = 'Could not enroll the student.'; enrollMsg.className = 'msg bad'; enrollBtn.disabled = false; });
+  });
+
+  var infoForm = document.getElementById('infoForm'), infoMsg = document.getElementById('infoMsg');
+  var subjEditBox = document.getElementById('subjEditBox'), subjEditFrame = document.getElementById('subjEditFrame');
+  function fillInfo(s) {
+    function set(k, v) { infoForm.elements[k].value = v; }
+    set('last_name', s.last_name || ''); set('first_name', s.first_name || ''); set('middle_name', s.middle_name || '');
+    set('gender', s.gender === 'Male' || s.gender === 'Female' ? s.gender : '');
+    set('birthday', /^\d{4}-\d{2}-\d{2}/.test(String(s.birthday || '')) ? String(s.birthday).slice(0, 10) : '');
+    set('email', s.email || ''); set('contact_number', s.contact_number || '');
+    set('year_level', String(s.year_level || '1')); set('section', s.section || 'A');
+    infoMsg.textContent = ''; infoMsg.className = 'msg';
+  }
+  document.getElementById('editInfoBtn').addEventListener('click', function () {
+    if (!current) return; fillInfo(current); infoForm.hidden = false; this.hidden = true;
+  });
+  document.getElementById('infoCancelBtn').addEventListener('click', function () {
+    infoForm.hidden = true; infoMsg.textContent = ''; document.getElementById('editInfoBtn').hidden = false;
+  });
+  infoForm.addEventListener('submit', function (e) {
+    e.preventDefault();
+    if (!current) return;
+    var no = current.student_no;
+    function v(k) { return String(infoForm.elements[k].value || '').trim(); }
+    var body = { college: COLLEGE, last_name: v('last_name'), first_name: v('first_name'), middle_name: v('middle_name'),
+      gender: v('gender'), birthday: v('birthday'), email: v('email'), contact_number: v('contact_number'),
+      year_level: Number(v('year_level')), section: v('section') };
+    infoMsg.textContent = 'Saving…'; infoMsg.className = 'msg';
+    fetch('/api/registrar/students/' + encodeURIComponent(no) + '?college=' + encodeURIComponent(COLLEGE), {
+      method: 'PUT', credentials: 'same-origin', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(body)
+    }).then(function (r) { return r.json().then(function (j) { return { ok: r.ok, j: j }; }); })
+      .then(function (res) {
+        if (!res.ok) { infoMsg.textContent = res.j.error || 'Could not save.'; infoMsg.className = 'msg bad'; return; }
+        infoMsg.textContent = ''; refreshAndOpen(no);
+      }).catch(function () { infoMsg.textContent = 'Could not save.'; infoMsg.className = 'msg bad'; });
+  });
+  // Subjects and instructors use the College Registrar's Advising picker (same as Step 2).
+  document.getElementById('editSubjBtn').addEventListener('click', function () {
+    if (!current) return;
+    subjEditFrame.setAttribute('src', '/CUP-PORTAL/registrar/college-student.html?college=' + encodeURIComponent(COLLEGE) +
+      '&view=enroll&student=' + encodeURIComponent(current.student_no));
+    subjEditBox.hidden = false; this.hidden = true;
+  });
+  document.getElementById('subjDoneBtn').addEventListener('click', function () {
+    subjEditBox.hidden = true; subjEditFrame.removeAttribute('src');
+    document.getElementById('editSubjBtn').hidden = false;
+    if (current) refreshAndOpen(current.student_no);
   });
 
   loadAll();
