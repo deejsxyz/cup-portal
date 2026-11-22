@@ -313,11 +313,19 @@ window.cupYr = function (p, y) { var m = /\(([^)]+)\)\s*$/.exec(p || ''); return
     page = 1;
     renderList();
   });
+  // The University Registrar's Manage Student search opens a student here once the roster is ready.
+  var rosterReady = false, pendingOpen = null;
+  window.addEventListener('message', function (e) {
+    if (!e.data || !e.data.openStudent) return;
+    if (rosterReady) openStudent(e.data.openStudent); else pendingOpen = e.data.openStudent;
+  });
   function loadRoster() {
     return fetch('/api/registrar/students?college=' + COLLEGE, { credentials: 'same-origin' })
       .then(function (r) { return r.json().then(function (j) { return { ok: r.ok, j: j }; }); })
       .then(function (res) {
         all = res.ok ? (res.j.students || []) : [];
+        rosterReady = true;
+        if (pendingOpen) { var n = pendingOpen; pendingOpen = null; openStudent(n); }
       });
   }
 
