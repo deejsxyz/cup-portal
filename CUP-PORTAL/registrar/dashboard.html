@@ -170,6 +170,7 @@
   .acct-drop { position: absolute; right: 0; top: calc(100% + 6px); min-width: 180px; background: #fff; border: 1px solid #c9ccd1; border-radius: 8px; box-shadow: 0 8px 24px rgba(0,0,0,.18); overflow: hidden; z-index: 50; }
   .acct-drop button { display: block; width: 100%; text-align: left; background: #fff; border: 0; padding: 11px 14px; font: inherit; font-weight: 700; color: #0f5a1c; cursor: pointer; }
   .acct-drop button:hover { background: #f1f7f1; }
+  .acct-drop button[hidden] { display: none; }
   .box h2.pn-tabs { display:flex; flex-wrap:wrap; gap:8px; align-items:center; text-transform:none; letter-spacing:0; font-size:12px; padding:10px 14px; }
   .pn-tabs .pn-btns { display:flex; flex-wrap:wrap; gap:8px; }
   .pn-tabs .ev-head-count { margin-left:auto; }
@@ -223,8 +224,7 @@
         </div>
         <span id="collegeNav" class="college-nav" hidden></span>
       </div>
-      <span id="acctMenu" class="acct-menu"><button id="acctName" type="button" class="acct-btn" aria-haspopup="true" aria-expanded="false"></button><div id="acctDrop" class="acct-drop" hidden><button type="button" id="acctChangeEmail">Change Email</button><button type="button" id="acctChangePw">Change Password</button></div></span>
-      <button class="logout" id="logout" type="button">Log out</button>
+      <span id="acctMenu" class="acct-menu"><button id="acctName" type="button" class="acct-btn" aria-haspopup="true" aria-expanded="false"></button><div id="acctDrop" class="acct-drop" hidden><button type="button" id="acctChangeEmail">Change Email</button><button type="button" id="acctChangePw">Change Password</button><button type="button" id="logout">Logout</button></div></span>
     </nav>
     <div id="collegeBar" class="college-bar" hidden></div>
   </header>
@@ -1900,7 +1900,9 @@ function cupYr(p, y) { var m = /\(([^)]+)\)\s*$/.exec(p || ''); return (m ? m[1]
       var accMenu = document.getElementById('acctMenu');
       if (accMenu) accMenu.hidden = false;
       // Sessions without a staff account record (the env superadmin login) show the name as a label only.
-      if (nameBtn) { nameBtn.disabled = !me.canEdit; nameBtn.style.cursor = me.canEdit ? 'pointer' : 'default'; }
+      // The account menu always opens (Logout is always there); the change items need an editable account.
+      if (nameBtn) { nameBtn.disabled = false; nameBtn.style.cursor = 'pointer'; }
+      ['acctChangeEmail', 'acctChangePw'].forEach(function (id) { var el = document.getElementById(id); if (el) el.hidden = !me.canEdit; });
       if (!isSuper) {
         var prefix = String(me.college || '').toLowerCase().replace('tesda-tvi', 'tesda');
         if (window.matchMedia('(max-width: 900px)').matches) {

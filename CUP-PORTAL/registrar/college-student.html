@@ -37,6 +37,7 @@
           <input id="viewStudentSearch" type="text" autocomplete="off" placeholder="Search student number or name" class="w-full sm:w-64 px-3 py-2 rounded-lg border border-slate-300 text-xs">
           <button type="button" id="viewAllBtn" class="px-4 py-2 rounded-lg bg-indigo-600 hover:bg-indigo-700 text-white text-xs font-bold shadow-sm">View All Students</button>
           <button type="button" id="viewPrintListBtn" class="px-4 py-2 rounded-lg bg-slate-700 hover:bg-slate-800 text-white text-xs font-bold shadow-sm">🖨️ Print Student List</button>
+          <select id="viewProgFilter" class="bg-white px-3 py-2 rounded-lg border border-slate-300 text-xs font-bold max-w-xs"><option value="">All Programs</option></select>
           <select id="viewYearFilter" class="bg-white px-3 py-2 rounded-lg border border-slate-300 text-xs font-bold"><option value="">All Year Levels</option><option value="1">1st Year</option><option value="2">2nd Year</option><option value="3">3rd Year</option><option value="4">4th Year</option></select>
           <select id="viewSecFilter" class="bg-white px-3 py-2 rounded-lg border border-slate-300 text-xs font-bold">
             <option value="">All Sections</option>
@@ -308,7 +309,14 @@ window.cupYr = function (p, y) { var m = /\(([^)]+)\)\s*$/.exec(p || ''); return
   function loadRoster() {
     return fetch('/api/registrar/students?college=' + COLLEGE, { credentials: 'same-origin' })
       .then(function (r) { return r.json().then(function (j) { return { ok: r.ok, j: j }; }); })
-      .then(function (res) { all = res.ok ? (res.j.students || []) : []; });
+      .then(function (res) {
+        all = res.ok ? (res.j.students || []) : [];
+        var pf = $('viewProgFilter'), cur = pf.value, progs = [];
+        all.forEach(function (s) { if (s.program && progs.indexOf(s.program) === -1) progs.push(s.program); });
+        progs.sort();
+        pf.innerHTML = '<option value="">All Programs</option>' + progs.map(function (p) { return '<option value="' + esc(p) + '">' + esc(p) + '</option>'; }).join('');
+        pf.value = progs.indexOf(cur) !== -1 ? cur : '';
+      });
   }
 
   /* ----- Live suggestions for the ID / name boxes ----- */
@@ -333,12 +341,13 @@ window.cupYr = function (p, y) { var m = /\(([^)]+)\)\s*$/.exec(p || ''); return
     });
   }
   /* ----- View Student ----- */
-  function listActive() { return showAll || $('viewEnrolledToggle').checked || $('viewStudentSearch').value.trim() !== '' || $('viewYearFilter').value !== '' || $('viewSecFilter').value !== ''; }
+  function listActive() { return showAll || $('viewEnrolledToggle').checked || $('viewStudentSearch').value.trim() !== '' || $('viewYearFilter').value !== '' || $('viewSecFilter').value !== '' || $('viewProgFilter').value !== ''; }
   function filtered() {
     if (!listActive()) return [];
     var q = $('viewStudentSearch').value.trim().toLowerCase();
-    var yr = $('viewYearFilter').value, sec = $('viewSecFilter').value;
+    var yr = $('viewYearFilter').value, sec = $('viewSecFilter').value, prog = $('viewProgFilter').value;
     return all.filter(function (s) {
+      if (prog && s.program !== prog) return false;
       if (yr && String(s.year_level) !== yr) return false;
       if (sec && s.section !== sec) return false;
       if ($('viewEnrolledToggle').checked && s.status !== 'enrolled') return false;
@@ -560,6 +569,7 @@ window.cupYr = function (p, y) { var m = /\(([^)]+)\)\s*$/.exec(p || ''); return
   });
   $('viewStudentSearch').addEventListener('input', function () { page = 1; renderList(); });
   $('viewStudentSearch').addEventListener('keydown', function (e) { if (e.key === 'Enter') { e.preventDefault(); page = 1; renderList(); } });
+  $('viewProgFilter').addEventListener('change', function () { page = 1; renderList(); });
   $('viewYearFilter').addEventListener('change', function () { page = 1; renderList(); });
   $('viewSecFilter').addEventListener('change', function () { page = 1; renderList(); });
   $('viewEnrolledToggle').addEventListener('change', function () { page = 1; renderList(); });
@@ -1254,12 +1264,13 @@ function progAbbrOf(p) { var m = /\(([^)]+)\)\s*$/.exec(p || ''); return m ? m[1
       } };
     }
     if (name === 'view') {
-      var vs = g('viewStudentSearch'), yf = g('viewYearFilter'), sf = g('viewSecFilter'), va = g('viewAllBtn');
+      var vs = g('viewStudentSearch'), pf = g('viewProgFilter'), yf = g('viewYearFilter'), sf = g('viewSecFilter'), va = g('viewAllBtn');
       var showingAll = !!va && va.textContent.trim() === 'Paged View';
-      if ((vs && vs.value) || (yf && yf.value) || (sf && sf.value) || showingAll) {
+      if ((vs && vs.value) || (pf && pf.value) || (yf && yf.value) || (sf && sf.value) || showingAll) {
         return { discards: false, run: function () {
           if (showingAll) va.click();
           if (vs && vs.value) { vs.value = ''; vs.dispatchEvent(new Event('input')); }
+          if (pf && pf.value) { pf.value = ''; pf.dispatchEvent(new Event('change')); }
           if (yf && yf.value) { yf.value = ''; yf.dispatchEvent(new Event('change')); }
           if (sf && sf.value) { sf.value = ''; sf.dispatchEvent(new Event('change')); }
           cupDirty = false;
