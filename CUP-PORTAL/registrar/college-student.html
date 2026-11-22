@@ -372,6 +372,34 @@ window.cupYr = function (p, y) { var m = /\(([^)]+)\)\s*$/.exec(p || ''); return
     $('viewNextBtn').disabled = page >= pages;
     $('viewAllBtn').textContent = showAll ? 'Paged View' : 'View All Students';
   }
+  // Enrolled subjects for the active term; if none, the most recent earlier enrollment.
+  function loadViewSubjects(no) {
+    var box = document.getElementById('viewSubjects');
+    if (!box) return;
+    box.innerHTML = '<p class="text-xs text-slate-500">Loading subjects…</p>';
+    Promise.all([
+      fetch('/api/registrar/enroll-context?year_level=1&college=' + encodeURIComponent(COLLEGE), { credentials: 'same-origin' }).then(function (r) { return r.json(); }),
+      fetch('/api/registrar/enrollments?student_no=' + encodeURIComponent(no) + '&college=' + encodeURIComponent(COLLEGE), { credentials: 'same-origin' }).then(function (r) { return r.json(); })
+    ]).then(function (out) {
+      if (document.getElementById('viewRecord').hidden) return;
+      var ctx = out[0] || {}, hist = (out[1] && out[1].enrollments) || [];
+      var cur = hist.filter(function (h) { return h.term === ctx.term && h.academic_year === ctx.academic_year && (h.subjects || []).length; })[0];
+      var title = 'Enrolled subjects' + (ctx.term ? ' · ' + ctx.term + ' · A.Y. ' + ctx.academic_year : '');
+      if (!cur) {
+        var prev = hist.filter(function (h) { return (h.subjects || []).length; })
+          .sort(function (a, b) { return String(b.academic_year).localeCompare(String(a.academic_year)); })[0];
+        if (prev) { cur = prev; title = 'Previous enrolled subjects · ' + prev.term + ' · A.Y. ' + prev.academic_year; }
+      }
+      if (!cur) { box.innerHTML = '<p class="text-xs text-slate-500 italic">No enrolled subjects yet.</p>'; return; }
+      box.innerHTML = '<div class="text-[10px] uppercase font-bold text-indigo-900 mb-2">' + esc(title) + '</div>' +
+        '<div class="overflow-x-auto"><table class="w-full text-sm"><thead><tr class="bg-slate-100 text-[10px] uppercase text-slate-500">' +
+        '<th class="text-left px-3 py-2">Course code</th><th class="text-left px-3 py-2">Descriptive title</th><th class="text-left px-3 py-2">Units</th><th class="text-left px-3 py-2">Instructor</th></tr></thead><tbody>' +
+        cur.subjects.map(function (x) {
+          return '<tr class="border-t border-slate-100"><td class="px-3 py-2 font-mono font-bold">' + esc(x.course_code) + '</td><td class="px-3 py-2">' + esc(x.descriptive_title || '') +
+            '</td><td class="px-3 py-2">' + esc(x.units == null ? '' : x.units) + '</td><td class="px-3 py-2">' + esc(x.instructor || '—') + '</td></tr>';
+        }).join('') + '</tbody></table></div>';
+    }).catch(function () { box.innerHTML = '<p class="text-xs text-rose-600">Could not load subjects.</p>'; });
+  }
   // Clicking a student number shows the student's record here (like the CONM portal).
   // Manage Student goes to the Existing Student tab with that student loaded.
   function showViewRecord(no) {
@@ -395,7 +423,9 @@ window.cupYr = function (p, y) { var m = /\(([^)]+)\)\s*$/.exec(p || ''); return
       '<div class="grid grid-cols-2 md:grid-cols-4 gap-x-6 gap-y-4 text-sm">' +
         f('Student ID', no) + f('Full name', fullName(s)) + f('Gender', s.gender) + f('Birthday', String(s.birthday || '').slice(0, 10)) +
         f('Email address', s.email) + f('Contact number', s.contact_number) + f('Year & section', (s.year_level || '') + (s.section || '')) + f('Program', s.program) +
-      '</div>';
+      '</div>' +
+      '<div id="viewSubjects" class="pt-2"></div>';
+    loadViewSubjects(no);
     $('viewListView').hidden = true;
     $('viewRecord').hidden = false;
     $('viewManageBtn').addEventListener('click', function () {
