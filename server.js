@@ -3291,8 +3291,8 @@ app.get('/api/registrar/immunization/:no', requireRegistrar, async (req, res) =>
       const doses = dr.filter((d) => d.vaccine_id === v.id);
       const s = immStatus(v, doses);
       return { vaccine_id: v.id, name: v.name, doses_required: v.doses_required, dose_number: s.dose,
-        last_date: doses[0] ? doses[0].date_str : null, last_label: doses[0] ? immLabel(doses[0].date_str) : '',
-        next_due: s.next || null, next_label: s.next ? immLabel(s.next) : '', status: s.status, must_restart: !!s.mustRestart };
+        last_date: doses[0] ? doses[0].date_str : null,
+        next_due: s.next || null, status: s.status, must_restart: !!s.mustRestart };
     });
     res.json({ today: immToday(), immunization: report });
   } catch (err) {

@@ -437,10 +437,10 @@ window.cupYr = function (p, y) { var m = /\(([^)]+)\)\s*$/.exec(p || ''); return
         if (!res.ok) { box.innerHTML = '<p class="text-xs text-rose-600">' + esc(res.j.error || 'Could not load immunization status.') + '</p>'; return; }
         var rows = res.j.immunization || [];
         var table = '<div class="overflow-x-auto"><table class="w-full text-sm"><thead><tr class="bg-slate-100 text-[10px] uppercase text-slate-500">' +
-          '<th class="text-left px-3 py-2">Vaccine</th><th class="text-left px-3 py-2">Doses</th><th class="text-left px-3 py-2">Last dose</th><th class="text-left px-3 py-2">Next due</th><th class="text-left px-3 py-2">Status</th></tr></thead><tbody>' +
+          '<th class="text-left px-3 py-2">Vaccine</th><th class="text-left px-3 py-2">Doses given</th><th class="text-left px-3 py-2">Last dose</th><th class="text-left px-3 py-2">Next due</th><th class="text-left px-3 py-2">Status</th></tr></thead><tbody>' +
           rows.map(function (v) {
             return '<tr class="border-t border-slate-100"><td class="px-3 py-2 font-bold">' + esc(v.name) + '</td><td class="px-3 py-2">' + (v.dose_number || 0) + ' of ' + v.doses_required +
-              '</td><td class="px-3 py-2">' + esc(v.last_label || '—') + '</td><td class="px-3 py-2">' + esc(v.next_label || '—') + '</td><td class="px-3 py-2">' + immBadge(v.status) + '</td></tr>';
+              '</td><td class="px-3 py-2">' + esc(v.last_date || '—') + '</td><td class="px-3 py-2">' + esc(v.next_due || '—') + '</td><td class="px-3 py-2">' + immBadge(v.status) + '</td></tr>';
           }).join('') + '</tbody></table></div>';
         var form = '';
         if (record) {
@@ -451,7 +451,18 @@ window.cupYr = function (p, y) { var m = /\(([^)]+)\)\s*$/.exec(p || ''); return
             '<button type="button" id="immSave" class="px-4 py-2 rounded-lg bg-indigo-700 hover:bg-indigo-800 text-white text-xs font-bold">Record dose</button>' +
             '<span id="immMsg" class="text-xs font-semibold"></span></div>';
         }
-        box.innerHTML = '<div class="text-[10px] uppercase font-bold text-indigo-900 mb-2">Student health &amp; immunization status</div>' + table + form;
+        var title = boxId === 'existImm' ? 'Student health & immunization status' : 'Immunization record';
+        if (boxId === 'existImm') {
+          box.innerHTML = '<button type="button" id="immToggle" class="w-full flex items-center justify-between px-4 py-2.5 rounded-lg border border-emerald-200 bg-emerald-50 text-emerald-900 text-xs font-bold uppercase tracking-wider">' +
+            '<span>🛡️ ' + title + '</span><span>▼ Show immunization</span></button>' +
+            '<div id="immBody" hidden class="mt-3">' + table + form + '</div>';
+          document.getElementById('immToggle').addEventListener('click', function () {
+            var body = document.getElementById('immBody'), hid = body.hidden; body.hidden = !hid;
+            this.lastElementChild.textContent = hid ? '▲ Hide immunization' : '▼ Show immunization';
+          });
+        } else {
+          box.innerHTML = '<div class="rounded-xl border border-slate-200 bg-white p-4"><div class="text-[10px] uppercase font-bold text-indigo-900 mb-3">' + title + '</div>' + table + form + '</div>';
+        }
         if (record) {
           document.getElementById('immSave').addEventListener('click', function () {
             var m = document.getElementById('immMsg'), d = document.getElementById('immDate').value;
