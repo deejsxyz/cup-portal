@@ -30,6 +30,7 @@
 
   <!-- VIEW STUDENT -->
   <div id="viewStudentSection" data-sec="view" class="bg-white rounded-xl shadow-sm border border-slate-200 p-5 space-y-4">
+    <div id="viewRecord" hidden class="space-y-4"></div>
     <div id="viewListView" class="space-y-4">
       <div class="flex flex-col lg:flex-row lg:items-center justify-between gap-3">
         <div class="flex flex-wrap items-center gap-2">
@@ -371,14 +372,48 @@ window.cupYr = function (p, y) { var m = /\(([^)]+)\)\s*$/.exec(p || ''); return
     $('viewNextBtn').disabled = page >= pages;
     $('viewAllBtn').textContent = showAll ? 'Paged View' : 'View All Students';
   }
+  // Clicking a student number shows the student's record here (like the CONM portal).
+  // Manage Student goes to the Existing Student tab with that student loaded.
+  function showViewRecord(no) {
+    var s = all.filter(function (x) { return x.student_no === no; })[0];
+    if (!s) return;
+    var enrolled = s.status === 'enrolled';
+    function f(l, v) {
+      return '<div><div class="text-[10px] uppercase font-bold text-slate-500">' + esc(l) + '</div><div class="text-sm font-semibold text-slate-800 break-words">' +
+        esc(v == null || v === '' ? '—' : v) + '</div></div>';
+    }
+    $('viewRecord').innerHTML =
+      '<div class="flex items-center justify-between gap-3 flex-wrap">' +
+        '<h3 class="text-sm font-bold uppercase tracking-wider text-indigo-900">Student information</h3>' +
+        '<div class="flex gap-2">' +
+          '<button type="button" id="viewManageBtn" class="px-4 py-2 rounded-lg bg-indigo-700 hover:bg-indigo-800 text-white text-xs font-bold">Manage Student</button>' +
+          '<button type="button" id="viewCloseBtn" class="px-4 py-2 rounded-lg bg-slate-200 hover:bg-slate-300 text-slate-700 text-xs font-bold">✕ Close</button>' +
+        '</div>' +
+      '</div>' +
+      '<div class="px-4 py-2.5 rounded-lg border text-xs font-semibold ' + (enrolled ? 'bg-emerald-50 border-emerald-200 text-emerald-800' : 'bg-amber-50 border-amber-200 text-amber-800') + '">' +
+        (enrolled ? 'Enrolled for the active term' : 'Not yet officially enrolled') + '</div>' +
+      '<div class="grid grid-cols-2 md:grid-cols-4 gap-x-6 gap-y-4 text-sm">' +
+        f('Student ID', no) + f('Full name', fullName(s)) + f('Gender', s.gender) + f('Birthday', String(s.birthday || '').slice(0, 10)) +
+        f('Email address', s.email) + f('Contact number', s.contact_number) + f('Year & section', (s.year_level || '') + (s.section || '')) + f('Program', s.program) +
+      '</div>';
+    $('viewListView').hidden = true;
+    $('viewRecord').hidden = false;
+    $('viewManageBtn').addEventListener('click', function () {
+      showTab('existing');
+      $('studentSearchInput').value = no;
+      $('gradeSearchInput').value = no;
+      gradeOpenStudent(no);
+      openStudent(no);
+    });
+    $('viewCloseBtn').addEventListener('click', function () {
+      $('viewRecord').hidden = true; $('viewRecord').innerHTML = ''; $('viewListView').hidden = false;
+    });
+    $('viewRecord').scrollIntoView({ block: 'start' });
+  }
   $('viewStudentTbody').addEventListener('click', function (e) {
     var b = e.target.closest('[data-open]');
     if (!b) return;
-    showTab('existing');
-    $('studentSearchInput').value = b.getAttribute('data-open');
-    $('gradeSearchInput').value = b.getAttribute('data-open');
-    gradeOpenStudent(b.getAttribute('data-open'));
-    openStudent(b.getAttribute('data-open'));
+    showViewRecord(b.getAttribute('data-open'));
   });
   $('viewStudentSearch').addEventListener('input', function () { page = 1; renderList(); });
   $('viewStudentSearch').addEventListener('keydown', function (e) { if (e.key === 'Enter') { e.preventDefault(); page = 1; renderList(); } });
