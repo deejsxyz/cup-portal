@@ -3257,6 +3257,12 @@ app.get('/api/registrar/enrollments', requireRegistrar, async (req, res) => {
       x.instructor = im.get(x.course_code) || '';
     });
   }
+  // Grade of each subject for its own term (blank until the grade is recorded).
+  const gr = await pool.query('SELECT course_code, term, academic_year, final_grade FROM reg_grades WHERE student_no = $1', [no]);
+  const gm = new Map(gr.rows.map((g) => [g.term + '|' + g.academic_year + '|' + g.course_code, g.final_grade]));
+  r.rows.forEach((e) => {
+    if (Array.isArray(e.subjects)) e.subjects.forEach((x) => { x.final_grade = gm.get(e.term + '|' + e.academic_year + '|' + x.course_code) || ''; });
+  });
   // Old: has enrollment history in an earlier term. New: none.
   const t = await gradingTerm();
   const prior = await pool.query(

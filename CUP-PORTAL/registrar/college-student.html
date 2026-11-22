@@ -393,10 +393,10 @@ window.cupYr = function (p, y) { var m = /\(([^)]+)\)\s*$/.exec(p || ''); return
       if (!cur) { box.innerHTML = '<p class="text-xs text-slate-500 italic">No enrolled subjects yet.</p>'; return; }
       box.innerHTML = '<div class="text-[10px] uppercase font-bold text-indigo-900 mb-2">' + esc(title) + '</div>' +
         '<div class="overflow-x-auto"><table class="w-full text-sm"><thead><tr class="bg-slate-100 text-[10px] uppercase text-slate-500">' +
-        '<th class="text-left px-3 py-2">Course code</th><th class="text-left px-3 py-2">Descriptive title</th><th class="text-left px-3 py-2">Units</th><th class="text-left px-3 py-2">Instructor</th></tr></thead><tbody>' +
+        '<th class="text-left px-3 py-2">Course code</th><th class="text-left px-3 py-2">Descriptive title</th><th class="text-left px-3 py-2">Units</th><th class="text-left px-3 py-2">Grade</th></tr></thead><tbody>' +
         cur.subjects.map(function (x) {
           return '<tr class="border-t border-slate-100"><td class="px-3 py-2 font-mono font-bold">' + esc(x.course_code) + '</td><td class="px-3 py-2">' + esc(x.descriptive_title || '') +
-            '</td><td class="px-3 py-2">' + esc(x.units == null ? '' : x.units) + '</td><td class="px-3 py-2">' + esc(x.instructor || '—') + '</td></tr>';
+            '</td><td class="px-3 py-2">' + esc(x.units == null ? '' : x.units) + '</td><td class="px-3 py-2 font-bold">' + esc(x.final_grade || '—') + '</td></tr>';
         }).join('') + '</tbody></table></div>';
     }).catch(function () { box.innerHTML = '<p class="text-xs text-rose-600">Could not load subjects.</p>'; });
   }
