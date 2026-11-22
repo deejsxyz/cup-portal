@@ -427,6 +427,9 @@ window.cupYr = function (p, y) { var m = /\(([^)]+)\)\s*$/.exec(p || ''); return
         if (a !== null && b !== null) g = (Math.round((a * 0.7 + b * 0.3) * 4) / 4).toFixed(2);
         else g = a === null ? String(lect.final_grade).trim() : String(sl.final_grade).trim();
       }
+      // No grade yet, or INC or NG in either part: the combined subject shows dashes.
+      var pend = function (v) { var t = String(v == null ? '' : v).trim(); return t === '' || t === 'INC' || t === 'NG'; };
+      if (pend(lect.final_grade) || pend(sl.final_grade)) { out.push({ course_code: '—', descriptive_title: '—', units: '—', final_grade: '' }); return; }
       out.push({ course_code: p.base, descriptive_title: String(lect.descriptive_title || sl.descriptive_title || '').replace(/\s+(Lecture|Skills Lab|Laboratory)\s*$/i, '').trim(),
         units: (Number(lect.units) || 0) + (Number(sl.units) || 0), final_grade: g });
     });

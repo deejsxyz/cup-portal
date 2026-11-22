@@ -2245,8 +2245,10 @@ function combineLabLecture(rows) {
     if (!pair || pair.LECT === undefined || pair.SL === undefined) { out.push(r); return; }
     const lect = rows[pair.LECT], sl = rows[pair.SL];
     skip.add(pair.LECT); skip.add(pair.SL);
+    // If either part has no grade yet, or is INC or NG, the combined subject shows dashes (—) for code, units, title and grade.
+    const pending = (v) => v == null || String(v).trim() === '' || String(v).trim() === 'INC' || String(v).trim() === 'NG';
     out.push({ code: p.base, title: combineLabStrip(lect.title || sl.title), units: (Number(lect.units) || 0) + (Number(sl.units) || 0),
-      grade: combineLabGrade(lect.grade, sl.grade), outOfTerm: !!(lect.outOfTerm || sl.outOfTerm) });
+      grade: combineLabGrade(lect.grade, sl.grade), outOfTerm: !!(lect.outOfTerm || sl.outOfTerm), dash: pending(lect.grade) || pending(sl.grade) });
   });
   return out;
 }
@@ -2320,12 +2322,12 @@ app.get('/api/registrar/certificate-of-grades.xlsx', requireRegistrar, async (re
     rows.forEach((r, i) => {
       const row = 12 + i;
       ws.getCell('B' + row).value = i + 1;
-      ws.getCell('D' + row).value = r.code;
+      ws.getCell('D' + row).value = r.dash ? '—' : r.code;
       { const dc = ws.getCell('D' + row); dc.alignment = Object.assign({}, dc.alignment, { horizontal: 'left' }); }
-      { const uc = ws.getCell('N' + row); uc.value = r.units; uc.alignment = Object.assign({}, uc.alignment, { horizontal: 'center', vertical: 'middle' }); }
+      { const uc = ws.getCell('N' + row); uc.value = r.dash ? '—' : r.units; uc.alignment = Object.assign({}, uc.alignment, { horizontal: 'center', vertical: 'middle' }); }
       // A subject with no grade yet shows a dash on the COG (not NG, which means failed).
-      ws.getCell('Q' + row).value = r.grade === '' ? '—' : (Number.isFinite(Number(r.grade)) ? Number(r.grade).toFixed(2) : r.grade);
-      ws.getCell('T' + row).value = r.grade === '' ? '' : reportRemark(r.grade);
+      ws.getCell('Q' + row).value = r.dash || r.grade === '' ? '—' : (Number.isFinite(Number(r.grade)) ? Number(r.grade).toFixed(2) : r.grade);
+      ws.getCell('T' + row).value = r.dash || r.grade === '' ? '' : reportRemark(r.grade);
     });
     for (let row = 12 + rows.length; row <= 25; row++) {
       ['B', 'D', 'N', 'Q', 'T'].forEach((c) => { ws.getCell(c + row).value = null; });
