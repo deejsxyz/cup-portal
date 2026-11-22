@@ -4976,10 +4976,16 @@ app.post('/api/registrar/step6/:no/official', requireRegistrar, async (req, res)
 
 // Step 2 (Dean's Office, College Registrar): student evaluation, advising and section assignment
 // Marking a step done requires the student's grades to be fully approved (Step 1 verified).
-async function step2Blocked(no, college) {
+async function step2Blocked(no, college, task) {
   const r = await pool.query("SELECT step1_status FROM reg_students WHERE student_no = $1 AND college = $2 AND status IN ('enrolled','pre-registered')", [no, college]);
   if (!r.rows.length) return 'Student not found.';
   if (r.rows[0].step1_status !== 'verified') return 'Grades are not yet fully approved for this student, so this step cannot be marked done yet.';
+  if (task === 'advising') {
+    // Advising can only be marked done once subjects are pre-registered for the active term.
+    const pt = await gradingTerm();
+    const s = await pool.query('SELECT 1 FROM reg_enrollments WHERE student_no = $1 AND term = $2 AND academic_year = $3 AND jsonb_array_length(subjects) > 0', [no, pt.term, pt.ay]);
+    if (!s.rows.length) return 'Pre-register the student\'s subjects first, then mark advising done.';
+  }
   return null;
 }
 // Student standing (REGULAR, IRREGULAR, WARNING, PROBATION, PERMANENT DISQUALIFICATION) for the info panels.
@@ -5005,7 +5011,8 @@ app.get('/api/registrar/step2', requireCollegeRegistrar, async (req, res) => {
     const pt2 = await gradingTerm();
     const { rows } = await pool.query(
       `SELECT student_no, last_name, first_name, middle_name, program, year_level, section, status, COALESCE(step1_status, '') AS step1_status,
-              step2_evaluated_at, step2_advised_at, step2_sectioned_at, COALESCE(nstp_subject, '') AS nstp_subject
+              step2_evaluated_at, step2_advised_at, step2_sectioned_at, COALESCE(nstp_subject, '') AS nstp_subject,
+              EXISTS (SELECT 1 FROM reg_enrollments e WHERE e.student_no = reg_students.student_no AND e.term = $2 AND e.academic_year = $3 AND jsonb_array_length(e.subjects) > 0) AS has_subjects
        FROM reg_students WHERE college = $1 AND status IN ('enrolled','pre-registered') AND step1_status = 'verified' AND EXISTS (SELECT 1 FROM reg_preregistrations p WHERE p.student_no = reg_students.student_no AND p.term = $2 AND p.academic_year = $3)
        ORDER BY last_name, first_name`, [college, pt2.term, pt2.ay]);
     res.json({ students: rows });
@@ -5024,7 +5031,7 @@ app.post('/api/registrar/step2/:no/:task', requireCollegeRegistrar, async (req, 
   if (!college) return res.status(400).json({ error: 'Invalid Step 2 request.' });
   const no = String(req.params.no || '').trim();
   const done = (req.body || {}).done === true;
-  const blockedT = done ? await step2Blocked(no, college) : null;
+  const blockedT = done ? await step2Blocked(no, college, req.params.task) : null;
   if (blockedT) return res.status(400).json({ error: blockedT });
   try {
     const r = await pool.query(
