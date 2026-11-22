@@ -24,8 +24,8 @@
     '.pm-drawer nav a{display:block;color:#fff;text-decoration:none;padding:8px 10px;}',
     '.pm-drawer button{width:100%;text-align:left;}',
     '.pm-drawer .logout, .pm-drawer #logout{text-align:center;}',
-    '.pm-drawer .menu{display:flex !important;flex-direction:column !important;gap:4px !important;}',
-    '.pm-drawer .menu .dd{display:flex !important;flex-direction:column !important;position:static !important;box-shadow:none !important;gap:4px !important;padding:0 0 0 12px !important;background:none !important;border:0 !important;min-width:0 !important;}',
+    '.pm-drawer .menu .dd{position:static !important;box-shadow:none !important;border:0 !important;min-width:0 !important;background:none !important;padding:0 0 0 12px !important;}',
+    '.pm-drawer .menu .dd.open{display:flex !important;flex-direction:column !important;gap:4px !important;}',
     '.pm-drawer .menu .dd button{background:rgba(255,255,255,.08) !important;color:#fff !important;}',
     '.pm-drawer .menu > .tab{display:block !important;}'
   ].join('\n');
