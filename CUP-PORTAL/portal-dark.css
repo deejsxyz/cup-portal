@@ -24,8 +24,8 @@
   .top .small, .name .small { color: #704f70 !important; }
 }
 
-/* Login and first-login pages keep their original light design. */
+/* Login pages: the green brand panel keeps its original color; its button keeps its color too. */
 @media (prefers-color-scheme: dark) {
-  body[data-no-dark] { filter: none !important; background: #f5f7f5; }
-  body[data-no-dark] * { filter: none !important; }
+  .split .left { filter: invert(1) hue-rotate(180deg); }
+  .split .left * { filter: none; }
 }
