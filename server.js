@@ -850,6 +850,76 @@ app.post('/api/registrar/email/confirm', async (req, res) => {
     res.status(500).json({ error: 'Could not change the email. Please try again.' });
   }
 });
+// A faculty member changes their own login email. The current password is checked, then a code is sent to the new address.
+function facultySession(req) {
+  const s = readPortalSession(req);
+  return s && s.role === 'faculty' && s.id ? s : null;
+}
+async function emailUsedByOtherAccount(email) {
+  const r = await pool.query('SELECT 1 FROM staff_accounts WHERE lower(email) = $1 UNION ALL SELECT 1 FROM accounts WHERE lower(email) = $1', [email]);
+  return r.rowCount > 0;
+}
+app.post('/api/portal/email/send-code', async (req, res) => {
+  const s = facultySession(req);
+  if (!s) return res.status(401).json({ error: 'Not logged in.' });
+  const b = req.body || {};
+  const current = String(b.current || '');
+  const newEmail = String(b.newEmail || '').trim().toLowerCase().slice(0, 200);
+  if (!current) return res.status(400).json({ error: 'Enter your current password.' });
+  try {
+    const { rows } = await pool.query("SELECT email, password_hash FROM reg_users WHERE id = $1 AND role = 'faculty' AND archived_at IS NULL", [s.id]);
+    if (!rows[0]) return res.status(404).json({ error: 'Account not found.' });
+    if (!verifyPassword(current, rows[0].password_hash)) return res.status(401).json({ error: 'The current password is incorrect.' });
+    const problem = await facultyEmailProblem(newEmail, s.id);
+    if (problem) return res.status(400).json({ error: problem });
+    if (newEmail === String(rows[0].email || '').trim().toLowerCase()) return res.status(400).json({ error: 'The new email must be different from your current email.' });
+    if (await emailUsedByOtherAccount(newEmail)) return res.status(409).json({ error: 'That email is already used by another account.' });
+    const code = String(crypto.randomInt(0, 1000000)).padStart(6, '0');
+    await pool.query(
+      `INSERT INTO otp_codes (email, code_hash, expires_at, attempts)
+       VALUES ($1, $2, now() + interval '10 minutes', 0)
+       ON CONFLICT (email) DO UPDATE SET code_hash = EXCLUDED.code_hash, expires_at = EXCLUDED.expires_at, attempts = 0, verified_at = NULL`,
+      [otpKey('facmail', newEmail), hashCode(newEmail, code)]);
+    await sendEmail(newEmail, 'Your One-time-PIN (OTP)',
+      'Your code to confirm your new CUP Portal email is ' + code + '. It expires in 10 minutes. If you did not request this, you can ignore this email.', { sender: 'CUP Portal' });
+    res.json({ ok: true, email_hint: maskEmail(newEmail) });
+  } catch (err) {
+    console.error('Faculty email code failed:', err.message);
+    res.status(500).json({ error: 'Could not send the code. Please try again.' });
+  }
+});
+app.post('/api/portal/email/confirm', async (req, res) => {
+  const s = facultySession(req);
+  if (!s) return res.status(401).json({ error: 'Not logged in.' });
+  const b = req.body || {};
+  const current = String(b.current || '');
+  const newEmail = String(b.newEmail || '').trim().toLowerCase().slice(0, 200);
+  const code = String(b.code || '').trim().slice(0, 6);
+  if (!current || !newEmail || !code) return res.status(400).json({ error: 'Fill in all fields.' });
+  try {
+    const { rows } = await pool.query("SELECT password_hash FROM reg_users WHERE id = $1 AND role = 'faculty' AND archived_at IS NULL", [s.id]);
+    if (!rows[0]) return res.status(404).json({ error: 'Account not found.' });
+    if (!verifyPassword(current, rows[0].password_hash)) return res.status(401).json({ error: 'The current password is incorrect.' });
+    const key = otpKey('facmail', newEmail);
+    const otp = await pool.query('SELECT code_hash, expires_at, attempts FROM otp_codes WHERE email = $1', [key]);
+    if (otp.rowCount === 0 || new Date(otp.rows[0].expires_at) < new Date()) return res.status(400).json({ error: 'The code has expired. Please request a new one.' });
+    if (otp.rows[0].attempts >= 5) return res.status(400).json({ error: 'Too many wrong attempts. Please request a new code.' });
+    if (otp.rows[0].code_hash !== hashCode(newEmail, code)) {
+      await pool.query('UPDATE otp_codes SET attempts = attempts + 1 WHERE email = $1', [key]);
+      return res.status(400).json({ error: 'The code is incorrect.' });
+    }
+    const problem = await facultyEmailProblem(newEmail, s.id);
+    if (problem) return res.status(400).json({ error: problem });
+    if (await emailUsedByOtherAccount(newEmail)) return res.status(409).json({ error: 'That email is already used by another account.' });
+    await pool.query("UPDATE reg_users SET email = $2 WHERE id = $1 AND role = 'faculty'", [s.id, newEmail]);
+    await pool.query('DELETE FROM otp_codes WHERE email = $1', [key]);
+    res.json({ ok: true, email: newEmail });
+  } catch (err) {
+    console.error('Faculty email change failed:', err.message);
+    res.status(500).json({ error: 'Could not change the email. Please try again.' });
+  }
+});
+
 app.post('/api/registrar/change-password', async (req, res) => {
   const s = readRegSession(req);
   if (!s || s.role !== 'registrar' || !s.id) return res.status(401).json({ error: 'Not logged in.' });
