@@ -209,13 +209,13 @@
 
   <!-- MANAGE GRADE -->
   <div id="manageGradeSection" data-sec="grades" hidden class="space-y-4">
-    <div class="bg-white rounded-xl shadow-sm border border-slate-200 p-5">
+    <div hidden>
       <div style="position:relative" class="max-w-xl" hidden>
         <input type="text" id="gradeSearchInput" placeholder="Search student number or name" autocomplete="off" class="w-full pl-3 pr-8 py-2 rounded-lg border border-slate-300 text-xs"><button type="button" id="gradeSearchClear" title="Close and clear search" aria-label="Close and clear search" class="absolute right-2 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-700 text-base leading-none px-1">&times;</button>
         <div id="gradeSuggest" hidden style="position:absolute;left:0;right:0;top:100%;margin-top:4px;z-index:30;background:#fff;border:1px solid #cbd5e1;border-radius:8px;max-height:280px;overflow:auto;box-shadow:0 8px 20px rgba(0,0,0,.12)"></div>
       </div>
-      <p id="gradeSearchMsg" class="text-xs font-semibold text-rose-600 mt-2"></p>
     </div>
+    <p id="gradeSearchMsg" class="text-xs font-semibold text-rose-600"></p>
     <div id="gradeRecordArea" hidden>
       <div class="bg-white rounded-xl shadow-sm border border-slate-200 p-4 flex flex-wrap items-center justify-between gap-3">
         <div class="flex flex-wrap items-center gap-2">
@@ -661,7 +661,7 @@ function progAbbrOf(p) { var m = /\(([^)]+)\)\s*$/.exec(p || ''); return m ? m[1
     $('stuEditBar').hidden = true;
     termEdit.editing = false;
     var wantEdit = false;
-    try { wantEdit = sessionStorage.getItem('cupStuEdit') === no; sessionStorage.removeItem('cupStuEdit'); } catch (e) {}
+    try { wantEdit = sessionStorage.getItem('cupStuEdit') === no; } catch (e) {}
     if ((wantEdit || editNow) && !s.account_archived) startStuEdit();
     if (s.year_level) $('ex_year_select').value = String(s.year_level);
     if (s.section) $('ex_section').value = s.section;
@@ -847,7 +847,7 @@ function progAbbrOf(p) { var m = /\(([^)]+)\)\s*$/.exec(p || ''); return m ? m[1
     try { sessionStorage.removeItem('cupStu:' + COLLEGE); } catch (e) {}
     $('studentSearchInput').focus();
   });
-  $('stuInfoCancelBtn').addEventListener('click', function () { $('stuInfoForm').hidden = true; $('stuEditBar').hidden = true; $('stuInfoView').hidden = false; termEdit.editing = false; if (current) openStudent(current.student_no); });
+  $('stuInfoCancelBtn').addEventListener('click', function () { try { sessionStorage.removeItem('cupStuEdit'); } catch (e) {} $('stuInfoForm').hidden = true; $('stuEditBar').hidden = true; $('stuInfoView').hidden = false; termEdit.editing = false; if (current) openStudent(current.student_no); });
   var EMAIL_RE = /^[A-Za-z0-9._%+\-]+@[A-Za-z0-9\-]+(\.[A-Za-z0-9\-]+)*\.[A-Za-z]{2,}$/;
   var CONTACT_RE = /^(09\d{9}|\+639\d{9})$/;
   function cleanContactInput(v) {
@@ -884,6 +884,7 @@ function progAbbrOf(p) { var m = /\(([^)]+)\)\s*$/.exec(p || ''); return m ? m[1
       .then(function (r) { return r.json().then(function (j) { return { ok: r.ok, j: j }; }); })
       .then(function (res) {
         if (!res.ok) { msg.textContent = res.j.error || 'Could not save.'; return; }
+        try { sessionStorage.removeItem('cupStuEdit'); } catch (e) {}
         if (!termEdit.year) { loadRoster().then(function () { openStudent(current.student_no); }); return; }
         var no = current.student_no, col = current.college || COLLEGE;
         var enr = Object.assign({ mode: 'existing', college: col, student_no: no, gender: body.gender, birthday: body.birthday, email: body.email,
@@ -1348,7 +1349,7 @@ function progAbbrOf(p) { var m = /\(([^)]+)\)\s*$/.exec(p || ''); return m ? m[1
       renderList();
       var qp = new URLSearchParams(location.search);
       if (qp.get('view') === 'enroll' && qp.get('student')) enrollView(qp.get('student'));
-      else { var savedStu = null; try { savedStu = sessionStorage.getItem('cupStu:' + COLLEGE); } catch (e) {} if (savedStu) openStudent(savedStu); }
+      else { var savedStu = null, savedEdit = false; try { savedStu = sessionStorage.getItem('cupStu:' + COLLEGE); savedEdit = sessionStorage.getItem('cupStuEdit') === savedStu; sessionStorage.removeItem('cupStuEdit'); } catch (e) {} if (savedStu) openStudent(savedStu, savedEdit); }
     });
   }).catch(function () {});
 })();
