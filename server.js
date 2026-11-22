@@ -4088,6 +4088,12 @@ app.get('/api/registrar/curriculum-programs', requireRegistrar, async (req, res)
   if (!college) return res.json({ programs: [] });
   res.json({ programs: CURRICULUM_PROGRAMS.filter((x) => x.college === college).map((x) => x.label) });
 });
+// Every program of a college by its full name (used by the Student Records program picker).
+app.get('/api/registrar/college-programs', requireRegistrar, async (req, res) => {
+  const college = regCollege(req, req.query.college);
+  if (!college) return res.json({ programs: [] });
+  res.json({ programs: [...(REG_PROGRAM_COLLEGES[college] || [])] });
+});
 // Subject codes of one program (exact label from curriculum-programs).
 app.get('/api/registrar/curriculum-codes', requireRegistrar, async (req, res) => {
   const program = String(req.query.program || '').trim();

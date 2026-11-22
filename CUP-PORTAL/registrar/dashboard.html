@@ -2025,11 +2025,11 @@ function cupYr(p, y) { var m = /\(([^)]+)\)\s*$/.exec(p || ''); return (m ? m[1]
       var frame = document.getElementById('stuAllFrame');
       if (frame) frame.onload = sendStuProgram;
       sel.onchange = sendStuProgram;
-      fetch('/api/registrar/curriculum-programs?college=' + encodeURIComponent(col.value), { credentials: 'same-origin' })
+      fetch('/api/registrar/college-programs?college=' + encodeURIComponent(col.value), { credentials: 'same-origin' })
         .then(function (r) { return r.ok ? r.json() : { programs: [] }; }).catch(function () { return { programs: [] }; })
         .then(function (cp) {
           var list = cp.programs || [], cur = sel.value;
-          sel.innerHTML = '<option value="">All programs</option>' + list.map(function (p) { return '<option value="' + esc(p) + '">' + esc(agProgram(p)) + '</option>'; }).join('');
+          sel.innerHTML = '<option value="">All programs</option>' + list.map(function (p) { return '<option value="' + esc(p) + '">' + esc(p) + '</option>'; }).join('');
           sel.value = list.indexOf(cur) !== -1 ? cur : '';
           sendStuProgram();
         });
