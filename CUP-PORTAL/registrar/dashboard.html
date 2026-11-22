@@ -2054,15 +2054,30 @@ function cupYr(p, y) { var m = /\(([^)]+)\)\s*$/.exec(p || ''); return (m ? m[1]
     }
     // Opens the picked student on the right tab of their college's frame.
     function manageOpenMsg(f) {
-      if (!manageStu || !f || !f.contentWindow) return;
-      if (stuTab === 'grades') f.contentWindow.postMessage({ openGrade: manageStu.student_no }, '*');
-      else f.contentWindow.postMessage({ openStudent: manageStu.student_no, edit: true }, '*');
+      if (!manageStu) return;
+      // Send to every frame of that college's student page, so the right one opens whichever was built first.
+      var want = 'college-student.html?college=' + encodeURIComponent(manageStu.college) + '&framed=1';
+      var targets = [];
+      document.querySelectorAll('iframe').forEach(function (x) { if (x.contentWindow && (x.src || '').indexOf(want) !== -1) targets.push(x); });
+      if (f && f.contentWindow && targets.indexOf(f) === -1) targets.push(f);
+      targets.forEach(function (x) {
+        if (stuTab === 'grades') x.contentWindow.postMessage({ openGrade: manageStu.student_no }, '*');
+        else x.contentWindow.postMessage({ openStudent: manageStu.student_no, edit: true }, '*');
+      });
     }
     function hideStuFrames() {
       var base = document.getElementById('stuAllFrame');
       if (!base) return;
       base.style.display = 'none';
       base.parentElement.querySelectorAll('iframe[data-ckey]').forEach(function (f) { f.style.display = 'none'; });
+    }
+    // Tells the college frame which student to open and that it should open in edit mode.
+    // Stored in session storage, so the frame picks it up even if it is still loading.
+    function rememberEditOpen(st) {
+      try {
+        sessionStorage.setItem('cupStu:' + st.college, st.student_no);
+        sessionStorage.setItem('cupStuEdit', st.student_no);
+      } catch (e) {}
     }
     function showStuFrame() {
       var wrap = document.getElementById('stuAllCollegeWrap');
@@ -2078,7 +2093,7 @@ function cupYr(p, y) { var m = /\(([^)]+)\)\s*$/.exec(p || ''); return (m ? m[1]
         stuLoadManageList();
         if (!manageStu) { hideStuFrames(); return; }
         var mf = showCollegeFrame('stuAllCollege', 'stuAllFrame', '/CUP-PORTAL/registrar/college-student.html', manageStu.college);
-        if (mf && mf.contentWindow) { try { mf.contentWindow.postMessage({ panelTab: stuTab }, '*'); manageOpenMsg(mf); } catch (e) {} }
+        try { if (mf && mf.contentWindow) mf.contentWindow.postMessage({ panelTab: stuTab }, '*'); manageOpenMsg(mf); } catch (e) {}
         return;
       }
       var shown = showCollegeFrame('stuAllCollege', 'stuAllFrame', '/CUP-PORTAL/registrar/college-student.html', stuCurrentCollege());
@@ -2110,6 +2125,7 @@ function cupYr(p, y) { var m = /\(([^)]+)\)\s*$/.exec(p || ''); return (m ? m[1]
               e.preventDefault();
               manageStu = hits[Number(el.getAttribute('data-i'))];
               inp.value = manageStu.student_no; box.hidden = true;
+              rememberEditOpen(manageStu);
               showStuFrame();
             });
           });
@@ -2669,6 +2685,7 @@ function cupYr(p, y) { var m = /\(([^)]+)\)\s*$/.exec(p || ''); return (m ? m[1]
       current: function () { return stuTab; },
       goManage: function (no, col) {
         manageStu = { student_no: no, college: col }; stuTab = 'existing';
+        rememberEditOpen(manageStu);
         var si = document.getElementById('stuManageSearch'); if (si) si.value = no;
         showStuFrame();
       }
