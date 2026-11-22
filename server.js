@@ -3213,6 +3213,136 @@ app.get('/api/registrar/coe/:no', requireRegistrar, async (req, res) => {
   }
 });
 
+// ---- Immunization (College Registrar): the CONM portal's schedule and due-date rules ----
+(async () => {
+  try {
+    await pool.query(`CREATE TABLE IF NOT EXISTS reg_vaccine_types (id SERIAL PRIMARY KEY, name TEXT UNIQUE NOT NULL,
+      doses_required INT NOT NULL, restart_when_expired BOOLEAN NOT NULL DEFAULT TRUE)`);
+    await pool.query(`CREATE TABLE IF NOT EXISTS reg_student_vaccinations (id SERIAL PRIMARY KEY,
+      student_no TEXT NOT NULL REFERENCES reg_students(student_no) ON DELETE CASCADE, vaccine_id INT NOT NULL REFERENCES reg_vaccine_types(id),
+      dose_number INT NOT NULL, cycle_number INT NOT NULL, date_given DATE NOT NULL, recorded_by TEXT,
+      recorded_at TIMESTAMPTZ NOT NULL DEFAULT now(), voided_at TIMESTAMPTZ)`);
+    for (const [n, d, r] of [['Tetanus Toxoid', 5, true], ['Hepatitis B', 4, true], ['Flu vaccine', 4, true]]) {
+      await pool.query('INSERT INTO reg_vaccine_types (name, doses_required, restart_when_expired) VALUES ($1,$2,$3) ON CONFLICT (name) DO NOTHING', [n, d, r]);
+    }
+  } catch (e) { console.error('Immunization schema:', e.message); }
+})();
+function immToday() { return new Date(Date.now() + 8 * 60 * 60 * 1000).toISOString().slice(0, 10); }
+function immAddDays(ymd, days) {
+  const [y, m, d] = ymd.split('-').map(Number);
+  const dt = new Date(Date.UTC(y, m - 1, d)); dt.setUTCDate(dt.getUTCDate() + days); return dt.toISOString().slice(0, 10);
+}
+function immAddMonths(ymd, months) {
+  const [y, m, d] = ymd.split('-').map(Number);
+  const first = new Date(Date.UTC(y, m - 1 + months, 1));
+  const last = new Date(Date.UTC(first.getUTCFullYear(), first.getUTCMonth() + 1, 0)).getUTCDate();
+  first.setUTCDate(Math.min(d, last)); return first.toISOString().slice(0, 10);
+}
+// Tetanus: 2nd 4 weeks after 1st; 3rd 6 months after 2nd; 4th and 5th 1 year after the previous.
+// Hepatitis B: 2nd 4 weeks after 1st; 3rd 5 months after 2nd. Flu: every 365 days.
+function immNextDue(name, doseNumber, last) {
+  if (name === 'Tetanus Toxoid') {
+    if (doseNumber === 1) return immAddDays(last, 28);
+    if (doseNumber === 2) return immAddMonths(last, 6);
+    if (doseNumber === 3 || doseNumber === 4) return immAddDays(last, 365);
+  } else if (name === 'Hepatitis B') {
+    if (doseNumber === 1) return immAddDays(last, 28);
+    if (doseNumber === 2) return immAddMonths(last, 5);
+  } else if (name === 'Flu vaccine') {
+    return immAddDays(last, 365);
+  }
+  return null;
+}
+function immLabel(ymd) {
+  if (!ymd) return '';
+  const M = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
+  const [y, m, d] = String(ymd).split('-');
+  return `${M[Number(m) - 1]} ${d}, ${y}`;
+}
+function immStatus(v, doses) {
+  if (!doses.length) return { status: 'Not started', dose: 0 };
+  const latest = doses[0];
+  const today = immToday();
+  if (latest.dose_number < v.doses_required) {
+    const target = immNextDue(v.name, latest.dose_number, latest.date_str);
+    const deadline = target ? immAddDays(target, 30) : null;
+    if (!target) return { status: 'In progress', dose: latest.dose_number, next: null };
+    if (today > deadline) return { status: 'Expired (restart at 1st dose)', dose: latest.dose_number, next: target, mustRestart: true };
+    if (today > target) return { status: 'Overdue (within grace period)', dose: latest.dose_number, next: target };
+    return { status: 'In progress', dose: latest.dose_number, next: target };
+  }
+  const expiry = immAddDays(latest.date_str, 365);
+  if (today > expiry) return { status: 'Series Expired (renewal needed)', dose: latest.dose_number, next: expiry };
+  return { status: 'Completed & Valid', dose: latest.dose_number, next: expiry };
+}
+app.get('/api/registrar/immunization/:no', requireRegistrar, async (req, res) => {
+  const college = regCollege(req, (req.body || {}).college || req.query.college);
+  if (!college) return res.status(403).json({ error: 'Choose a college.' });
+  const no = String(req.params.no || '').trim();
+  try {
+    const st = await pool.query('SELECT college FROM reg_students WHERE student_no = $1', [no]);
+    if (!st.rows.length || st.rows[0].college !== college) return res.status(404).json({ error: 'Student not found in this college.' });
+    const vt = (await pool.query('SELECT id, name, doses_required FROM reg_vaccine_types ORDER BY id')).rows;
+    const dr = (await pool.query(
+      `SELECT vaccine_id, dose_number, cycle_number, to_char(date_given, 'YYYY-MM-DD') AS date_str
+       FROM reg_student_vaccinations WHERE student_no = $1 AND voided_at IS NULL
+       ORDER BY cycle_number DESC, dose_number DESC, date_given DESC`, [no])).rows;
+    const report = vt.map((v) => {
+      const doses = dr.filter((d) => d.vaccine_id === v.id);
+      const s = immStatus(v, doses);
+      return { vaccine_id: v.id, name: v.name, doses_required: v.doses_required, dose_number: s.dose,
+        last_date: doses[0] ? doses[0].date_str : null, last_label: doses[0] ? immLabel(doses[0].date_str) : '',
+        next_due: s.next || null, next_label: s.next ? immLabel(s.next) : '', status: s.status, must_restart: !!s.mustRestart };
+    });
+    res.json({ today: immToday(), immunization: report });
+  } catch (err) {
+    console.error(err);
+    res.status(500).json({ error: 'Could not load immunization status.' });
+  }
+});
+// Records the next dose with the CONM portal's cycle rules: past the 30-day grace period a series restarts at dose 1.
+app.post('/api/registrar/immunization/:no', requireRegistrar, async (req, res) => {
+  const college = regCollege(req, (req.body || {}).college || req.query.college);
+  if (!college) return res.status(403).json({ error: 'Choose a college.' });
+  const no = String(req.params.no || '').trim();
+  const vaccineId = Number((req.body || {}).vaccine_id);
+  const dateGiven = String((req.body || {}).date_given || '');
+  if (!Number.isInteger(vaccineId) || !/^\d{4}-\d{2}-\d{2}$/.test(dateGiven)) return res.status(400).json({ error: 'Choose a vaccine and the date given.' });
+  if (dateGiven > immToday()) return res.status(400).json({ error: 'The date given cannot be in the future.' });
+  try {
+    const st = await pool.query('SELECT college FROM reg_students WHERE student_no = $1', [no]);
+    if (!st.rows.length || st.rows[0].college !== college) return res.status(404).json({ error: 'Student not found in this college.' });
+    const vr = await pool.query('SELECT * FROM reg_vaccine_types WHERE id = $1', [vaccineId]);
+    if (!vr.rows.length) return res.status(400).json({ error: 'Invalid vaccine.' });
+    const v = vr.rows[0];
+    const lr = await pool.query(
+      `SELECT dose_number, cycle_number, to_char(date_given, 'YYYY-MM-DD') AS date_str FROM reg_student_vaccinations
+       WHERE student_no = $1 AND vaccine_id = $2 AND voided_at IS NULL ORDER BY cycle_number DESC, dose_number DESC LIMIT 1`, [no, vaccineId]);
+    let doseNum = 1, cycle = 1;
+    if (lr.rows.length) {
+      const last = lr.rows[0];
+      if (dateGiven < last.date_str) return res.status(400).json({ error: `The date cannot be earlier than the previous dose (${last.date_str}).` });
+      const target = immNextDue(v.name, last.dose_number, last.date_str);
+      const deadline = target ? immAddDays(target, 30) : null;
+      if (deadline && dateGiven > deadline && v.restart_when_expired && last.dose_number < v.doses_required) {
+        cycle = last.cycle_number + 1; doseNum = 1;
+      } else if (last.dose_number < v.doses_required) {
+        doseNum = last.dose_number + 1; cycle = last.cycle_number;
+      } else {
+        cycle = last.cycle_number + 1; doseNum = 1;
+      }
+    }
+    await pool.query(
+      'INSERT INTO reg_student_vaccinations (student_no, vaccine_id, dose_number, cycle_number, date_given, recorded_by) VALUES ($1,$2,$3,$4,$5,$6)',
+      [no, vaccineId, doseNum, cycle, dateGiven, req.reg.username || req.reg.role]);
+    logAction(req, college + ' registrar', 'immunization dose recorded', no + ' ' + v.name + ' dose ' + doseNum);
+    res.json({ ok: true, dose_number: doseNum, vaccine: v.name });
+  } catch (err) {
+    console.error(err);
+    res.status(500).json({ error: 'Could not record the dose.' });
+  }
+});
+
 app.get('/api/registrar/enrollments', requireRegistrar, async (req, res) => {
   const college = regCollege(req, (req.body || {}).college || req.query.college);
   if (!college) return res.status(403).json({ error: 'Choose a college.' });

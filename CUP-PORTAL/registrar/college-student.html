@@ -93,6 +93,7 @@
         </div>
         <div id="enrollBanner" class="mb-4 px-4 py-2.5 rounded-lg border text-xs font-semibold"></div>
         <div id="stuInfoView" class="grid grid-cols-2 md:grid-cols-4 gap-x-6 gap-y-4 text-sm"></div>
+        <div id="existImm" class="mt-5 pt-4 border-t border-slate-200"></div>
         <form id="stuInfoForm" hidden class="grid grid-cols-2 md:grid-cols-4 gap-x-6 gap-y-4 text-sm">
           <div><label class="block text-[10px] uppercase font-bold text-slate-500 mb-1">First Name</label><input type="text" name="first_name" required class="w-full px-3 py-2 rounded-lg border border-slate-300 text-sm"></div>
           <div><label class="block text-[10px] uppercase font-bold text-slate-500 mb-1">Middle Name</label><input type="text" name="middle_name" class="w-full px-3 py-2 rounded-lg border border-slate-300 text-sm"></div>
@@ -420,6 +421,54 @@ window.cupYr = function (p, y) { var m = /\(([^)]+)\)\s*$/.exec(p || ''); return
       }
     }).catch(function () { box.innerHTML = '<p class="text-xs text-rose-600">Could not load subjects.</p>'; });
   }
+  // Immunization status (CONM schedule rules). The Existing Student tab can also record a dose.
+  function immBadge(st) {
+    var c = /^Completed/.test(st) ? 'bg-emerald-100 text-emerald-800' : st === 'Not started' ? 'bg-slate-100 text-slate-700'
+      : /Expired/.test(st) ? 'bg-red-100 text-red-800' : /Overdue|Series/.test(st) ? 'bg-amber-100 text-amber-800' : 'bg-indigo-100 text-indigo-800';
+    return '<span class="px-2 py-1 rounded-md text-[11px] font-bold ' + c + '">' + esc(st) + '</span>';
+  }
+  function loadImm(no, boxId, record) {
+    var box = document.getElementById(boxId);
+    if (!box) return;
+    box.innerHTML = '<p class="text-xs text-slate-500">Loading immunization status…</p>';
+    fetch('/api/registrar/immunization/' + encodeURIComponent(no) + '?college=' + encodeURIComponent(COLLEGE), { credentials: 'same-origin' })
+      .then(function (r) { return r.json().then(function (j) { return { ok: r.ok, j: j }; }); })
+      .then(function (res) {
+        if (!res.ok) { box.innerHTML = '<p class="text-xs text-rose-600">' + esc(res.j.error || 'Could not load immunization status.') + '</p>'; return; }
+        var rows = res.j.immunization || [];
+        var table = '<div class="overflow-x-auto"><table class="w-full text-sm"><thead><tr class="bg-slate-100 text-[10px] uppercase text-slate-500">' +
+          '<th class="text-left px-3 py-2">Vaccine</th><th class="text-left px-3 py-2">Doses</th><th class="text-left px-3 py-2">Last dose</th><th class="text-left px-3 py-2">Next due</th><th class="text-left px-3 py-2">Status</th></tr></thead><tbody>' +
+          rows.map(function (v) {
+            return '<tr class="border-t border-slate-100"><td class="px-3 py-2 font-bold">' + esc(v.name) + '</td><td class="px-3 py-2">' + (v.dose_number || 0) + ' of ' + v.doses_required +
+              '</td><td class="px-3 py-2">' + esc(v.last_label || '—') + '</td><td class="px-3 py-2">' + esc(v.next_label || '—') + '</td><td class="px-3 py-2">' + immBadge(v.status) + '</td></tr>';
+          }).join('') + '</tbody></table></div>';
+        var form = '';
+        if (record) {
+          form = '<div class="mt-4 flex flex-wrap items-end gap-3">' +
+            '<div><div class="text-[10px] uppercase font-bold text-slate-500 mb-1">Vaccine</div><select id="immVaccine" class="px-3 py-2 rounded-lg border border-slate-300 text-xs bg-white">' +
+            rows.map(function (v) { return '<option value="' + v.vaccine_id + '">' + esc(v.name) + '</option>'; }).join('') + '</select></div>' +
+            '<div><div class="text-[10px] uppercase font-bold text-slate-500 mb-1">Date given</div><input id="immDate" type="date" max="' + esc(res.j.today) + '" class="px-3 py-2 rounded-lg border border-slate-300 text-xs"></div>' +
+            '<button type="button" id="immSave" class="px-4 py-2 rounded-lg bg-indigo-700 hover:bg-indigo-800 text-white text-xs font-bold">Record dose</button>' +
+            '<span id="immMsg" class="text-xs font-semibold"></span></div>';
+        }
+        box.innerHTML = '<div class="text-[10px] uppercase font-bold text-indigo-900 mb-2">Student health &amp; immunization status</div>' + table + form;
+        if (record) {
+          document.getElementById('immSave').addEventListener('click', function () {
+            var m = document.getElementById('immMsg'), d = document.getElementById('immDate').value;
+            if (!d) { m.textContent = 'Choose the date given.'; m.className = 'text-xs font-semibold text-rose-600'; return; }
+            m.textContent = 'Saving…'; m.className = 'text-xs font-semibold text-slate-500';
+            fetch('/api/registrar/immunization/' + encodeURIComponent(no) + '?college=' + encodeURIComponent(COLLEGE), {
+              method: 'POST', credentials: 'same-origin', headers: { 'Content-Type': 'application/json' },
+              body: JSON.stringify({ vaccine_id: Number(document.getElementById('immVaccine').value), date_given: d })
+            }).then(function (r) { return r.json().then(function (j) { return { ok: r.ok, j: j }; }); })
+              .then(function (r2) {
+                if (!r2.ok) { m.textContent = r2.j.error || 'Could not record.'; m.className = 'text-xs font-semibold text-rose-600'; return; }
+                loadImm(no, boxId, record);
+              }).catch(function () { m.textContent = 'Could not record.'; m.className = 'text-xs font-semibold text-rose-600'; });
+          });
+        }
+      }).catch(function () { box.innerHTML = '<p class="text-xs text-rose-600">Could not load immunization status.</p>'; });
+  }
   // Clicking a student number shows the student's record here (like the CONM portal).
   // Manage Student goes to the Existing Student tab with that student loaded.
   function showViewRecord(no) {
@@ -444,8 +493,10 @@ window.cupYr = function (p, y) { var m = /\(([^)]+)\)\s*$/.exec(p || ''); return
         f('Student ID', no) + f('Full name', fullName(s)) + f('Gender', s.gender) + f('Birthday', String(s.birthday || '').slice(0, 10)) +
         f('Email address', s.email) + f('Contact number', s.contact_number) + f('Year & section', (s.year_level || '') + (s.section || '')) + f('Program', s.program) +
       '</div>' +
-      '<div id="viewSubjects" class="pt-2"></div>';
+      '<div id="viewSubjects" class="pt-2"></div>' +
+      '<div id="viewImm" class="pt-2"></div>';
     loadViewSubjects(no);
+    loadImm(no, 'viewImm', false);
     $('viewListView').hidden = true;
     $('viewRecord').hidden = false;
     $('viewManageBtn').addEventListener('click', function () {
@@ -509,6 +560,7 @@ function progAbbrOf(p) { var m = /\(([^)]+)\)\s*$/.exec(p || ''); return m ? m[1
       labelled('Year & Section', (s.year_level || '') + (s.section || '')) +
       labelled('Student ID', s.student_no);
     $('stuInfoView').hidden = false;
+    loadImm(no, 'existImm', true);
     $('stuInfoForm').hidden = true;
     if (s.year_level) $('ex_year_select').value = String(s.year_level);
     if (s.section) $('ex_section').value = s.section;
