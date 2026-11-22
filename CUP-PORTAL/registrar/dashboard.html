@@ -2658,7 +2658,11 @@ function cupYr(p, y) { var m = /\(([^)]+)\)\s*$/.exec(p || ''); return (m ? m[1]
       });
     });
     // Lets the tab buttons below reach the Student Records helpers in this scope.
-    window.__stuTabs = { select: function (t) { stuTab = t; showStuFrame(); }, current: function () { return stuTab; } };
+    window.__stuTabs = {
+      select: function (t) { stuTab = t; showStuFrame(); },
+      current: function () { return stuTab; },
+      goManage: function (no, col) { manageStu = { student_no: no, college: col }; stuTab = 'existing'; showStuFrame(); }
+    };
   })();
 </script>
 <script>
@@ -2695,6 +2699,13 @@ function cupYr(p, y) { var m = /\(([^)]+)\)\s*$/.exec(p || ''); return (m ? m[1]
         }
       });
     });
+  });
+  // A student number clicked in View Student opens that student in Manage Student.
+  window.addEventListener('message', function (e) {
+    if (!e.data || !e.data.goManage) return;
+    window.__stuTabs.goManage(e.data.goManage, e.data.college);
+    var hh = document.querySelector('h2.pn-tabs[data-own="1"]');
+    if (hh) paint(hh, 'existing');
   });
   (function () {
     var h = document.querySelector('h2.pn-tabs[data-own="1"]');

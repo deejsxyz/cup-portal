@@ -104,7 +104,8 @@
           <div><label class="block text-[10px] uppercase font-bold text-slate-500 mb-1">Email Address</label><input type="email" name="email" required maxlength="254" pattern="[A-Za-z0-9._%+\-]+@[A-Za-z0-9\-]+(\.[A-Za-z0-9\-]+)*\.[A-Za-z]{2,}" title="Enter a valid email address, for example name@example.com" class="w-full px-3 py-2 rounded-lg border border-slate-300 text-sm"></div>
           <div><label class="block text-[10px] uppercase font-bold text-slate-500 mb-1">Contact Number</label><input type="tel" name="contact_number" required inputmode="numeric" maxlength="13" pattern="(09[0-9]{9}|\+639[0-9]{9})" title="Philippine mobile number: 09XXXXXXXXX or +639XXXXXXXXX" placeholder="09171234567" class="w-full px-3 py-2 rounded-lg border border-slate-300 text-sm"></div>
           <div><label class="block text-[10px] uppercase font-bold text-slate-500 mb-1">Student Year Level</label>
-            <input type="hidden" name="year_level" value="1"><div class="bg-slate-50 w-full px-3 py-2 rounded-lg border border-slate-300 text-sm font-bold text-slate-700">1st Year (new record)</div></div>
+            <select name="year_level" class="bg-white w-full px-3 py-2 rounded-lg border border-slate-300 text-sm"><option value="1">1st Year</option><option value="2">2nd Year</option><option value="3">3rd Year</option><option value="4">4th Year</option></select></div>
+          <div class="sm:col-span-2"><label class="block text-[10px] uppercase font-bold text-slate-500 mb-1">Program</label><div id="stuProgramTile" class="bg-slate-50 w-full px-3 py-2 rounded-lg border border-slate-200 text-sm font-semibold text-slate-800">—</div></div>
           <div><label class="block text-[10px] uppercase font-bold text-slate-500 mb-1">Section</label>
             <select name="section" class="bg-white w-full px-3 py-2 rounded-lg border border-slate-300 text-sm"><option>A</option><option>B</option><option>C</option></select></div>
           <div class="col-span-2 md:col-span-4 flex gap-2 justify-end">
@@ -179,8 +180,7 @@
           <div class="w-full px-3 py-2 rounded-lg border border-slate-300 bg-slate-100 text-xs font-bold text-slate-700 cursor-not-allowed flex items-center justify-between" title="Set automatically from the Global System Settings">
             <span id="regAy">—</span><span class="text-[10px] font-semibold text-slate-500">🔒 Auto</span></div></div>
         <div><label class="block text-[10px] uppercase font-bold text-slate-500 mb-1">Student Year Level</label>
-          <select name="year_level" id="reg_year_select" class="w-full px-3 py-2 rounded-lg border border-slate-300 bg-white text-xs font-bold text-indigo-900 cursor-pointer">
-            <option value="1">1st Year</option><option value="2" selected>2nd Year</option><option value="3">3rd Year</option><option value="4">4th Year</option></select></div>
+          <input type="hidden" name="year_level" id="reg_year_select" value="1"><div class="w-full px-3 py-2 rounded-lg border border-slate-300 bg-slate-50 text-xs font-bold text-indigo-900">1st Year</div></div>
         <div><label class="block text-[10px] uppercase font-bold text-slate-500 mb-1">Section</label>
           <select name="section" required class="w-full px-3 py-2 rounded-lg border border-slate-300 bg-white text-xs font-bold text-indigo-900 cursor-pointer">
             <option value="A" selected>A</option><option value="B">B</option><option value="C">C</option></select></div>
@@ -580,7 +580,14 @@ window.cupYr = function (p, y) { var m = /\(([^)]+)\)\s*$/.exec(p || ''); return
   $('viewStudentTbody').addEventListener('click', function (e) {
     var b = e.target.closest('[data-open]');
     if (!b) return;
-    showViewRecord(b.getAttribute('data-open'));
+    var no = b.getAttribute('data-open');
+    // In the University Registrar's dashboard, the record opens in Manage Student instead.
+    if (new URLSearchParams(location.search).get('framed') === '1') {
+      var row = all.filter(function (x) { return x.student_no === no; })[0];
+      parent.postMessage({ goManage: no, college: (row && row.college) || COLLEGE }, '*');
+      return;
+    }
+    showViewRecord(no);
   });
   $('viewStudentSearch').addEventListener('input', function () { page = 1; renderList(); });
   $('viewStudentSearch').addEventListener('keydown', function (e) { if (e.key === 'Enter') { e.preventDefault(); page = 1; renderList(); } });
@@ -733,6 +740,7 @@ function progAbbrOf(p) { var m = /\(([^)]+)\)\s*$/.exec(p || ''); return m ? m[1
       f.elements[k].value = current[k] == null ? '' : current[k];
     });
     f.elements.year_level.value = String(current.year_level);
+    $('stuProgramTile').textContent = (current.program || '—') + (current.major ? ' - ' + current.major : '');
     $('stuInfoView').hidden = true;
     f.hidden = false;
     $('stuInfoMsg').textContent = '';
@@ -891,6 +899,7 @@ function progAbbrOf(p) { var m = /\(([^)]+)\)\s*$/.exec(p || ''); return m ? m[1
     var contactVal = f.elements.contact_number.value.trim();
     if (!emailVal || !EMAIL_RE.test(emailVal)) { msg.textContent = 'Enter a valid email address (e.g. name@example.com).'; return; }
     if (!contactVal || !CONTACT_RE.test(contactVal)) { msg.textContent = 'Contact number must be in the format 09XXXXXXXXX (11 digits) or +639XXXXXXXXX.'; return; }
+    if (!f.elements.gender.value) { msg.textContent = 'Choose the gender.'; return; }
     if (!f.elements.civil_status.value) { msg.textContent = 'Choose the civil status.'; return; }
     if (!f.elements.program.value) { msg.textContent = 'Choose the program.'; return; }
     var subjects = collectSubjects($('subjectChecklist'));

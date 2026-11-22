@@ -3506,6 +3506,7 @@ app.post('/api/registrar/enroll-student', requireRegistrar, async (req, res) => 
   if (!last || !first) return res.status(400).json({ error: 'Last name and first name are required.' });
   if (!Number.isInteger(yearLevel) || yearLevel < 1 || yearLevel > 4) return res.status(400).json({ error: 'Choose a year level.' });
   if (mode === 'new') {
+    if (!gender) return res.status(400).json({ error: 'Choose the gender.' });
     if (!civil) return res.status(400).json({ error: 'Choose the civil status.' });
     if (!choice) return res.status(400).json({ error: 'Choose a program of this college.' });
   }
