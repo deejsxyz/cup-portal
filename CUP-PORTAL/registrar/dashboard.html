@@ -173,7 +173,14 @@
   .pn-tabs button { border:1px solid rgba(255,255,255,.55); background:transparent; color:#fff; border-radius:8px; padding:6px 12px; font-size:12px; font-weight:700; cursor:pointer; }
   .pn-tabs button.on { background:#fff; color:#14532d; border-color:#fff; }
   /* Hide the header nav on phones until portal-menu.js moves it into the drawer, so it does not flash on reload. */
-  @media (max-width: 900px) { header nav { visibility: hidden; } }
+  @media (max-width: 900px) {
+    header nav { visibility: hidden; }
+    /* Phones: header, then the green bar, then the Student / Faculty / Locked Account buttons. */
+    header { display: flex; flex-direction: column; }
+    header > .top { order: 0; }
+    header > .pm-bar { order: 1; }
+    header > .college-bar { order: 2; }
+  }
 </style>
 <link rel="stylesheet" href="/CUP-PORTAL/portal-controls.css">
 <script src="/CUP-PORTAL/portal-session.js" data-logout="/api/registrar/logout" data-login="/CUP-PORTAL/registrar/"></script>
