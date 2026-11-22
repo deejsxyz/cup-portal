@@ -2295,7 +2295,7 @@ app.get('/api/registrar/certificate-of-grades.xlsx', requireRegistrar, async (re
       { const dc = ws.getCell('D' + row); dc.alignment = Object.assign({}, dc.alignment, { horizontal: 'left' }); }
       { const uc = ws.getCell('N' + row); uc.value = r.units; uc.alignment = Object.assign({}, uc.alignment, { horizontal: 'center', vertical: 'middle' }); }
       // A subject with no grade yet shows a dash on the COG (not NG, which means failed).
-      ws.getCell('Q' + row).value = r.grade === '' ? '-' : (Number.isFinite(Number(r.grade)) ? Number(r.grade).toFixed(2) : r.grade);
+      ws.getCell('Q' + row).value = r.grade === '' ? '—' : (Number.isFinite(Number(r.grade)) ? Number(r.grade).toFixed(2) : r.grade);
       ws.getCell('T' + row).value = r.grade === '' ? '' : reportRemark(r.grade);
     });
     for (let row = 12 + rows.length; row <= 25; row++) {
