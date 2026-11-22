@@ -2015,9 +2015,12 @@ function cupYr(p, y) { var m = /\(([^)]+)\)\s*$/.exec(p || ''); return (m ? m[1]
       if (frame.getAttribute('data-src') !== first) { frame.setAttribute('data-src', first); frame.src = first; }
     }
     // Program picker for Student Records: lists the chosen college's programs and filters the frame.
+    var stuProgs = [];
     function sendStuProgram() {
       var f = document.getElementById('stuAllFrame'), p = document.getElementById('stuAllProgram');
-      if (f && f.contentWindow && p) f.contentWindow.postMessage({ viewProgram: p.value }, '*');
+      if (!f || !f.contentWindow || !p) return;
+      var chosen = p.value !== '' ? (stuProgs[Number(p.value)] || null) : null;
+      f.contentWindow.postMessage({ viewProgram: chosen }, '*');
     }
     function fillStuPrograms() {
       var sel = document.getElementById('stuAllProgram'), col = document.getElementById('stuAllCollege');
@@ -2025,12 +2028,15 @@ function cupYr(p, y) { var m = /\(([^)]+)\)\s*$/.exec(p || ''); return (m ? m[1]
       var frame = document.getElementById('stuAllFrame');
       if (frame) frame.onload = sendStuProgram;
       sel.onchange = sendStuProgram;
+      var opts = [];
       fetch('/api/registrar/college-programs?college=' + encodeURIComponent(col.value), { credentials: 'same-origin' })
         .then(function (r) { return r.ok ? r.json() : { programs: [] }; }).catch(function () { return { programs: [] }; })
         .then(function (cp) {
-          var list = cp.programs || [], cur = sel.value;
-          sel.innerHTML = '<option value="">All programs</option>' + list.map(function (p) { return '<option value="' + esc(p) + '">' + esc(p) + '</option>'; }).join('');
-          sel.value = list.indexOf(cur) !== -1 ? cur : '';
+          opts = cp.programs || [];
+          stuProgs = opts;
+          var cur = sel.value;
+          sel.innerHTML = '<option value="">All programs</option>' + opts.map(function (o, i) { return '<option value="' + i + '">' + esc(o.label) + '</option>'; }).join('');
+          sel.value = (cur !== '' && opts[Number(cur)]) ? cur : '';
           sendStuProgram();
         });
     }
