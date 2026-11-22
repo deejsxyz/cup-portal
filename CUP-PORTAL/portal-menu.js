@@ -9,8 +9,7 @@
     '.pm-bar .live-clock{position:static !important;display:block !important;margin:0 !important;bottom:auto !important;right:auto !important;width:auto !important;text-align:right !important;white-space:nowrap;color:#fff !important;font-size:10px !important;line-height:1.2 !important;min-width:0;}',
     '.pm-burger{display:flex;flex-direction:column;justify-content:center;gap:4px;width:34px;height:26px;padding:0;margin-left:0;background:transparent;border:0;cursor:pointer;flex:0 0 auto;}',
     '.pm-burger span{display:block;height:2.5px;border-radius:2px;background:#fff;}',
-    '.pm-home{display:flex;align-items:center;justify-content:center;width:34px;height:26px;color:#fff;flex:0 0 auto;}',
-    '.pm-home svg{width:22px;height:22px;}',
+    '.pm-home-link{display:block;color:#fff;font-weight:700;text-decoration:none;padding:8px 10px;letter-spacing:.04em;}',
     '.pm-drawer{position:fixed;top:0;bottom:0;left:0;width:min(300px,85vw);background:#0f4d12;color:#fff;padding:14px;overflow-y:auto;display:flex;flex-direction:column;gap:12px;transform:translateX(-105%);transition:transform .2s ease;z-index:1000;box-shadow:4px 0 16px rgba(0,0,0,.35);}',
     '.pm-drawer.open{transform:none;}',
     '.pm-scrim{position:fixed;inset:0;background:rgba(0,0,0,.45);opacity:0;pointer-events:none;transition:opacity .2s;z-index:999;}',
@@ -75,6 +74,15 @@
     head.appendChild(closeBtn);
     drawer.appendChild(head);
     if (who) { who.classList.add('pm-who'); drawer.appendChild(who); }
+    // Pages can set data-home on the header to add a HOME link at the top of the menu, above the page sections.
+    var homeHref = header.getAttribute('data-home');
+    if (homeHref) {
+      var home = document.createElement('a');
+      home.className = 'pm-home-link';
+      home.href = homeHref;
+      home.textContent = 'HOME';
+      drawer.appendChild(home);
+    }
     if (nav) drawer.appendChild(nav);
     if (logout) drawer.appendChild(logout);
 
@@ -84,16 +92,6 @@
     // Pages with a logo at the left leave room so the hamburger sits to the right of it.
     if (header.querySelector('.seal')) bar.style.paddingLeft = '116px';
     bar.appendChild(burger);
-    // Pages can set data-home on the header to add a home icon after the hamburger.
-    var homeHref = header.getAttribute('data-home');
-    if (homeHref) {
-      var home = document.createElement('a');
-      home.className = 'pm-home';
-      home.href = homeHref;
-      home.setAttribute('aria-label', 'Home');
-      home.innerHTML = '<svg viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 11.5 12 4l9 7.5"/><path d="M5.5 10v9.5h13V10"/><path d="M10 19.5v-5h4v5"/></svg>';
-      bar.appendChild(home);
-    }
     if (clock) bar.appendChild(clock);
     header.appendChild(bar);
     document.body.appendChild(drawer);
