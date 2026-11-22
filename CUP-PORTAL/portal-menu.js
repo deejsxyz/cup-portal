@@ -27,7 +27,9 @@
     '.pm-drawer .menu .dd{position:static !important;box-shadow:none !important;border:0 !important;min-width:0 !important;background:none !important;padding:0 0 0 12px !important;}',
     '.pm-drawer .menu .dd.open{display:flex !important;flex-direction:column !important;gap:4px !important;}',
     '.pm-drawer .menu .dd button{background:rgba(255,255,255,.08) !important;color:#fff !important;}',
-    '.pm-drawer .menu > .tab{display:block !important;}'
+    '.pm-drawer .menu > .tab{display:block !important;width:100%;position:relative;padding-right:34px !important;text-align:left;}',
+    '.pm-drawer .menu > .tab::after{content:"\\25BE";position:absolute;right:12px;top:50%;transform:translateY(-50%);font-size:14px;transition:transform .15s ease;}',
+    '.pm-drawer .menu > .tab[aria-expanded="true"]::after{transform:translateY(-50%) rotate(180deg);}'
   ].join('\n');
 
   function init() {
