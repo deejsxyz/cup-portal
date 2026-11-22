@@ -38,7 +38,6 @@
   .msg { font-size: .8rem; min-height: 1.1em; }
   .msg.err { color: #9b1c1c; }
   .msg.ok { color: #1f6b2f; font-weight: 700; }
-  .colleges .dl-nav { background: #e6ece6; color: #1d2a1d; border: 0; border-radius: 8px; padding: 8px 14px; font-weight: 700; cursor: pointer; margin-left: auto; }
   .dl-action { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 10px; margin-top: 12px; }
   .dl-action[hidden] { display: none; }
   .dl-line { display: flex; flex-wrap: wrap; align-items: center; gap: 10px; }
@@ -177,8 +176,7 @@
   }
 
   /* Colleges */
-  $('colleges').innerHTML = COLLEGES.map(function (c) { return '<button type="button" data-c="' + c + '">' + c + '</button>'; }).join('') +
-    '<button type="button" class="dl-nav" id="downloads-btn">Downloads</button>';
+  $('colleges').innerHTML = COLLEGES.map(function (c) { return '<button type="button" data-c="' + c + '">' + c + '</button>'; }).join('');
   $('colleges').addEventListener('click', function (e) {
     var b = e.target.closest('[data-c]');
     if (b) chooseCollege(b.getAttribute('data-c'));
@@ -190,6 +188,8 @@
     state.college = c;
     if (!fromRestore) { state.course = ''; state.year = 0; state.section = ''; state.edits = {}; restore = null; writeDraft(); }
     markCollege(c);
+    var pmTag = document.getElementById('pmCollege');
+    if (pmTag) pmTag.textContent = c;
     $('sheetCard').hidden = true;
     $('filterCard').hidden = true;
     api('/api/faculty/college-assignments?college=' + encodeURIComponent(c)).then(function (res) {
@@ -203,7 +203,7 @@
       }).join('') : '<option value="">No subjects assigned to you in ' + esc(c) + '</option>';
       if (fromRestore && restore && restore.course) subj.value = restore.course;
       $('filterCard').hidden = false;
-      $('dlAction').hidden = true; // the Download Report row opens only from the Downloads button
+      $('dlAction').hidden = false;
       fillYearSection();
     });
   }
@@ -335,12 +335,6 @@
   });
 
   /* Session */
-  $('downloads-btn').addEventListener('click', function () {
-    var f = $('filterCard'), d = $('dlAction');
-    f.hidden = false;
-    d.hidden = false;
-    d.scrollIntoView({ behavior: 'smooth', block: 'start' });
-  });
   var dlTimer = null;
   // Opens the PDF in a hidden frame and sends it to the print dialog.
   function printBlob(blob) {
@@ -472,9 +466,8 @@
         }
         return;
       }
-      // Close the most recently opened item first: sheet (3), then Downloads (2), then filters (1).
-      var dl = document.getElementById('dlAction'), fc = document.getElementById('filterCard');
-      if (dl && !dl.hidden) { dl.hidden = true; return; }
+      // Close the most recently opened item first: sheet, then filters.
+      var fc = document.getElementById('filterCard');
       if (fc && !fc.hidden) { fc.hidden = true; return; }
     });
   })();

@@ -139,7 +139,7 @@
     // Choosing a page section closes the menu so the section is visible.
     // Capture phase, so it still runs when the page's own handlers stop the click (the college buttons do).
     drawer.addEventListener('click', function (e) {
-      var t = e.target && e.target.closest ? e.target.closest('button[data-panel], a') : null;
+      var t = e.target && e.target.closest ? e.target.closest('button[data-panel], a, nav.colleges button') : null;
       if (t) setTimeout(shut, 0);
     }, true);
 
