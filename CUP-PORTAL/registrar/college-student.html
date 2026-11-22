@@ -566,6 +566,11 @@ window.cupYr = function (p, y) { var m = /\(([^)]+)\)\s*$/.exec(p || ''); return
     $('viewListView').hidden = true;
     $('viewRecord').hidden = false;
     $('viewManageBtn').addEventListener('click', function () {
+      // In the University Registrar's dashboard, Manage Student opens in the parent's Manage tab.
+      if (new URLSearchParams(location.search).get('framed') === '1') {
+        parent.postMessage({ goManage: no, college: COLLEGE }, '*');
+        return;
+      }
       showTab('existing');
       $('studentSearchInput').value = no;
       $('gradeSearchInput').value = no;
@@ -580,14 +585,7 @@ window.cupYr = function (p, y) { var m = /\(([^)]+)\)\s*$/.exec(p || ''); return
   $('viewStudentTbody').addEventListener('click', function (e) {
     var b = e.target.closest('[data-open]');
     if (!b) return;
-    var no = b.getAttribute('data-open');
-    // In the University Registrar's dashboard, the record opens in Manage Student instead.
-    if (new URLSearchParams(location.search).get('framed') === '1') {
-      var row = all.filter(function (x) { return x.student_no === no; })[0];
-      parent.postMessage({ goManage: no, college: (row && row.college) || COLLEGE }, '*');
-      return;
-    }
-    showViewRecord(no);
+    showViewRecord(b.getAttribute('data-open'));
   });
   $('viewStudentSearch').addEventListener('input', function () { page = 1; renderList(); });
   $('viewStudentSearch').addEventListener('keydown', function (e) { if (e.key === 'Enter') { e.preventDefault(); page = 1; renderList(); } });
