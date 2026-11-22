@@ -129,9 +129,9 @@
     .top .name .small, .top .name .big { text-align: left; }
     .name { text-align: center; }
     .name .small { text-align: center; display: block; font-size: .72rem; margin-bottom: 2px; }
-    .name .big { font-size: 1.4rem; text-align: center; white-space: normal; }
-    .name .big .w1 { font-size: 1.4rem; }
-    .name .big .w2 { font-size: 1.7rem; }
+    .name .big { font-size: 1.7rem; text-align: center; white-space: normal; }
+    .name .big .w1 { font-size: 1.7rem; }
+    .name .big .w2 { font-size: 2rem; }
     .live-clock { font-size: 12px; }
     .nav { padding: 10px 14px; flex-direction: column; align-items: stretch; }
     .tabs { justify-content: center; }
@@ -216,7 +216,7 @@
         </div>
         <span id="collegeNav" class="college-nav" hidden></span>
       </div>
-      <span id="acctMenu" class="acct-menu"><button id="acctName" type="button" class="acct-btn" aria-haspopup="true" aria-expanded="false"></button><div id="acctDrop" class="acct-drop" hidden><button type="button" id="acctChangePw">Change Password</button></div></span>
+      <span id="acctMenu" class="acct-menu"><button id="acctName" type="button" class="acct-btn" aria-haspopup="true" aria-expanded="false"></button><div id="acctDrop" class="acct-drop" hidden><button type="button" id="acctChangeEmail">Change Email</button><button type="button" id="acctChangePw">Change Password</button></div></span>
       <button class="logout" id="logout" type="button">Log out</button>
     </nav>
     <div id="collegeBar" class="college-bar" hidden></div>
@@ -1413,7 +1413,64 @@ function cupYr(p, y) { var m = /\(([^)]+)\)\s*$/.exec(p || ''); return (m ? m[1]
       btn.addEventListener('click', function (e) { e.stopPropagation(); setOpen(drop.hidden); });
       document.addEventListener('click', function (e) { if (!menu.contains(e.target)) setOpen(false); });
       document.getElementById('acctChangePw').addEventListener('click', function () { setOpen(false); openPasswordPopup(); });
+      document.getElementById('acctChangeEmail').addEventListener('click', function () { setOpen(false); openEmailPopup(); });
     })();
+
+    function openEmailPopup() {
+      if (document.getElementById('emPopup')) return;
+      var wrap = document.createElement('div');
+      wrap.id = 'emPopup';
+      wrap.style.cssText = 'position:fixed;inset:0;background:rgba(0,0,0,.45);display:flex;align-items:center;justify-content:center;z-index:1000;padding:16px';
+      var field = 'width:100%;padding:8px;box-sizing:border-box';
+      wrap.innerHTML = '<div style="background:#fff;border-radius:12px;padding:24px;width:100%;max-width:380px;box-shadow:0 10px 30px rgba(0,0,0,.25)">' +
+        '<h3 style="margin:0 0 14px;color:#0f5a1c">Change Email</h3>' +
+        '<div id="emStep1">' +
+          '<label style="display:block;font-weight:600;margin-top:10px">Current password</label><input id="emCur" type="password" autocomplete="current-password" style="' + field + '">' +
+          '<label style="display:block;font-weight:600;margin-top:10px">New email address</label><input id="emNew" type="email" autocomplete="email" style="' + field + '">' +
+        '</div>' +
+        '<div id="emStep2" hidden>' +
+          '<p id="emHint" style="margin:0 0 6px;color:#333"></p>' +
+          '<label style="display:block;font-weight:600;margin-top:10px">6-digit code</label><input id="emCode" type="text" inputmode="numeric" maxlength="6" autocomplete="one-time-code" placeholder="6-digit code" style="' + field + '">' +
+        '</div>' +
+        '<p id="emMsg" style="color:#b00020;min-height:20px;margin:10px 0 0"></p>' +
+        '<div style="display:flex;gap:8px;justify-content:flex-end;margin-top:8px"><button id="emCancel" type="button" style="padding:8px 14px">Cancel</button><button id="emGo" type="button" style="padding:8px 14px;background:#0f5a1c;color:#fff;border:0;border-radius:6px;font-weight:700">Send verification code</button></div></div>';
+      document.body.appendChild(wrap);
+      var msg = document.getElementById('emMsg'), go = document.getElementById('emGo'), step = 1, newEmail = '';
+      function close() { wrap.remove(); }
+      function setMsg(t) { msg.textContent = t; }
+      document.getElementById('emCancel').addEventListener('click', close);
+      wrap.addEventListener('click', function (e) { if (e.target === wrap) close(); });
+      function sendCode() {
+        var cur = document.getElementById('emCur').value, em = document.getElementById('emNew').value.trim();
+        if (!cur || !em) { setMsg('Fill in all fields.'); return; }
+        go.disabled = true; setMsg('');
+        fetch('/api/registrar/email/send-code', { method: 'POST', credentials: 'same-origin', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ current: cur, newEmail: em }) })
+          .then(function (r) { return r.json().catch(function () { return {}; }).then(function (j) { return { ok: r.ok, j: j }; }); })
+          .then(function (res) {
+            go.disabled = false;
+            if (!res.ok) { setMsg(res.j.error || 'Could not send the code.'); return; }
+            step = 2; newEmail = em;
+            document.getElementById('emStep1').hidden = true;
+            document.getElementById('emStep2').hidden = false;
+            document.getElementById('emHint').textContent = 'We sent a 6-digit code to ' + (res.j.email_hint || 'your new email') + '.';
+            go.textContent = 'Verify and change email';
+            document.getElementById('emCode').focus();
+          }).catch(function () { go.disabled = false; setMsg('Could not send the code. Please try again.'); });
+      }
+      function confirmChange() {
+        var code = document.getElementById('emCode').value.trim();
+        if (!code) { setMsg('Enter the 6-digit code.'); return; }
+        go.disabled = true; setMsg('');
+        fetch('/api/registrar/email/confirm', { method: 'POST', credentials: 'same-origin', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ current: document.getElementById('emCur').value, newEmail: newEmail, code: code }) })
+          .then(function (r) { return r.json().catch(function () { return {}; }).then(function (j) { return { ok: r.ok, j: j }; }); })
+          .then(function (res) {
+            if (!res.ok) { go.disabled = false; setMsg(res.j.error || 'Could not change the email.'); return; }
+            close();
+            alert('Your email has been changed to ' + res.j.email + '.');
+          }).catch(function () { go.disabled = false; setMsg('Could not change the email. Try again.'); });
+      }
+      go.addEventListener('click', function () { if (step === 1) sendCode(); else confirmChange(); });
+    }
     function openPasswordPopup() {
       if (document.getElementById('pwPopup')) return;
       var wrap = document.createElement('div');

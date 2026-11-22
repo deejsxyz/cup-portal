@@ -38,7 +38,7 @@
     var nav = header.querySelector('nav');
     var logout = document.getElementById('logout');
     var clock = document.getElementById('liveClock');
-    var who = document.getElementById('who') || document.getElementById('whoName') || document.getElementById('userName');
+    var who = document.getElementById('acctMenu') || document.getElementById('who') || document.getElementById('whoName') || document.getElementById('userName');
     if (!nav && !logout) return;
 
     var style = document.createElement('style');
