@@ -2595,6 +2595,8 @@ function cupYr(p, y) { var m = /\(([^)]+)\)\s*$/.exec(p || ''); return (m ? m[1]
         }
       });
     });
+    // Lets the tab buttons below reach the Student Records helpers in this scope.
+    window.__stuTabs = { select: function (t) { stuTab = t; showStuFrame(); }, current: function () { return stuTab; } };
   })();
 </script>
 <script>
@@ -2639,12 +2641,11 @@ function cupYr(p, y) { var m = /\(([^)]+)\)\s*$/.exec(p || ''); return (m ? m[1]
     h.querySelectorAll('button').forEach(function (old) { var b = old.cloneNode(true); old.parentNode.replaceChild(b, old); });
     h.querySelectorAll('button').forEach(function (b) {
       b.addEventListener('click', function () {
-        stuTab = b.getAttribute('data-tab');
-        paint(h, stuTab);
-        showStuFrame();
+        window.__stuTabs.select(b.getAttribute('data-tab'));
+        paint(h, window.__stuTabs.current());
       });
     });
-    paint(h, stuTab);
+    paint(h, window.__stuTabs.current());
   })();
   var en = document.getElementById('en-college');
   if (en) en.addEventListener('change', function () {
