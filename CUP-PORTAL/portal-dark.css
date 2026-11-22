@@ -1,10 +1,9 @@
 /* Dark mode for the CUP portal. Follows the phone or computer setting (prefers-color-scheme).
-   The page background and header turn dark; content cards and form fields stay light with dark text
-   so they remain easy to read. Light mode keeps the original colors. */
+   The page colors are inverted and the hue is turned back, so every page gets a dark background
+   with light text, while the green and gold brand colors stay close to the original. Images are
+   inverted back so the seal and other pictures keep their colors. Light mode is unchanged. */
 @media (prefers-color-scheme: dark) {
-  html, body { background: #111815 !important; }
-  .top, header .top { background: #1b221c !important; }
-  .top .big, .top .w1, .top .w2, .name .big, .name .big .w1, .name .big .w2, .live-clock { color: #e4ebe4 !important; }
-  .top .small, .name .small { color: #8fd08f !important; }
-  footer { color: #9fb09f !important; }
+  html { background: #111815; }
+  body { filter: invert(1) hue-rotate(180deg); min-height: 100vh; }
+  img, video, canvas, picture, svg image { filter: invert(1) hue-rotate(180deg); }
 }
