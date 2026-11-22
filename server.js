@@ -1184,10 +1184,6 @@ app.get('/api/registrar/grades', requireRegistrar, async (req, res) => {
   const args = [];
   if (college) { args.push(college); where.push('g.college = $' + args.length); }
   if (['submitted', 'approved'].includes(status)) { args.push(status); where.push('g.status = $' + args.length); }
-  // Records appear to the registrars only after the student pre-registers for the active term.
-  const pg = await gradingTerm();
-  args.push(pg.term, pg.ay);
-  where.push("EXISTS (SELECT 1 FROM reg_preregistrations p WHERE p.student_no = g.student_no AND p.term = $" + (args.length - 1) + " AND p.academic_year = $" + args.length + ")");
   try {
     const { rows } = await pool.query(
       `SELECT g.student_no, g.college, g.course_code, g.final_grade, g.remarks, g.instructor, g.term, g.academic_year, g.status, g.updated_at, g.approved_at,
