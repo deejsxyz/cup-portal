@@ -1901,7 +1901,8 @@ function cupYr(p, y) { var m = /\(([^)]+)\)\s*$/.exec(p || ''); return (m ? m[1]
         var collegesMenu = document.getElementById('collegesMenu'); if (collegesMenu) collegesMenu.hidden = true;
         if (me.role === 'records') { var bu = document.getElementById('batch-uploads-tab'); if (bu) bu.hidden = true; }
       }
-      if (isSuper) { var apt = $('#approve-tab'); if (apt) apt.hidden = false; loadPortalUsers(); loadActivity(); }
+      // Accounts and logs load when their tab opens (see showPanel), not on every page load.
+      if (isSuper) { var apt = $('#approve-tab'); if (apt) apt.hidden = false; }
       if (isSuper) { var sjw = $('#sj-college-wrap'); if (sjw) sjw.hidden = false; }
       loadSubjects();
       if (!isSuper) { var glc = $('#gl-college'); if (glc) { glc.value = me.college; glc.hidden = true; } }
@@ -1980,6 +1981,8 @@ function cupYr(p, y) { var m = /\(([^)]+)\)\s*$/.exec(p || ''); return (m ? m[1]
     }
     function showPanel(id) {
       $$('.panel').forEach(function (p) { p.classList.toggle('on', p.id === id); });
+      if (id === 'portal-accounts' && typeof loadPortalUsers === 'function') loadPortalUsers();
+      if (id === 'security-logs' && typeof loadActivity === 'function') loadActivity();
       $$('.tab').forEach(function (t) { t.classList.remove('active'); });
       var item = $('.dd button[data-panel="' + id + '"]');
       if (item) item.closest('.menu').querySelector('.tab').classList.add('active');
