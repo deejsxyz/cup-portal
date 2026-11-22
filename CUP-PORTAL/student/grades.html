@@ -141,6 +141,10 @@
     </form>
   </section>
 
+  <section class="card" id="imm-card" hidden>
+    <h2>Student Health &amp; Immunization Status</h2>
+    <div id="imm-body"></div>
+  </section>
   <section class="card" id="enrolled-card" hidden>
     <h2 id="enrolled-title">Enrolled Subjects</h2>
     <p class="hint" id="enrolled-meta"></p>
@@ -674,6 +678,24 @@
       return String(v || '').split(/[\s,\/]+/).filter(Boolean).map(function (d) { return (map[d.toUpperCase()] || d).toUpperCase(); }).join('');
     }
     function progAbbrOf(p) { var m = /\(([^)]+)\)\s*$/.exec(p || ''); return m ? m[1] : (p || ''); }
+    // Read-only immunization status (CONM students only).
+    function immBadgeS(st) {
+      var c = /^Completed/.test(st) ? '#d1fae5;color:#065f46' : st === 'Not started' ? '#f1f5f9;color:#334155'
+        : /Expired/.test(st) ? '#fee2e2;color:#991b1b' : /Overdue|Series/.test(st) ? '#fef3c7;color:#92400e' : '#e0e7ff;color:#3730a3';
+      return '<span style="padding:2px 8px;border-radius:6px;font-size:11px;font-weight:700;background:' + c + '">' + esc(st) + '</span>';
+    }
+    function loadImmStudent() {
+      fetch('/api/student/immunization', { credentials: 'same-origin' }).then(function (r) { return r.json(); })
+        .then(function (j) {
+          if (!j.available) { $('imm-card').hidden = true; return; }
+          $('imm-card').hidden = false;
+          $('imm-body').innerHTML = '<div style="overflow-x:auto"><table><thead><tr><th>Vaccine</th><th>Doses given</th><th>Last dose</th><th>Next due</th><th>Status</th></tr></thead><tbody>' +
+            (j.immunization || []).map(function (v) {
+              return '<tr><td><b>' + esc(v.name) + '</b></td><td>' + (v.dose_number || 0) + ' of ' + v.doses_required + '</td><td>' + esc(v.last_date || '—') +
+                '</td><td>' + esc(v.next_due || '—') + '</td><td>' + immBadgeS(v.status) + '</td></tr>';
+            }).join('') + '</tbody></table></div>';
+        }).catch(function () { $('imm-card').hidden = true; });
+    }
     function loadEnrolled() {
       fetch('/api/student/enrolled-subjects', { credentials: 'same-origin' }).then(function (r) { return r.json().then(function (j) { return { ok: r.ok, j: j }; }); })
         .then(function (res) {
@@ -712,11 +734,12 @@
         }).catch(function () { $('proc').innerHTML = '<li><p>Could not load your enrollment steps.</p></li>'; });
     }
     loadProcedure();
-  window.cupRefreshEnroll = function () { applyEnrollWindow(); loadPrereg(); loadProcedure(); loadEnrolled(); };
+  window.cupRefreshEnroll = function () { applyEnrollWindow(); loadPrereg(); loadProcedure(); loadEnrolled(); loadImmStudent(); };
   applyEnrollWindow();
   loadPrereg();
   loadProcedure();
   loadEnrolled();
+  loadImmStudent();
   // Live updates: re-read the enrollment steps, window and subjects while the page is open.
   // The pre-registration form is not reloaded, so anything being typed is kept.
   setInterval(function () {

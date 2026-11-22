@@ -6925,6 +6925,29 @@ app.post('/api/student/prereg/submit', requirePortal('student'), async (req, res
   }
 });
 // Enrolled subjects for the active term (read-only on the student portal): the subjects the College Registrar assigned in Step 2.
+// Read-only immunization status for a CONM student (same rules as the College Registrar).
+app.get('/api/student/immunization', requirePortal('student'), async (req, res) => {
+  const no = req.portal.student_no || '';
+  try {
+    const st = no ? (await pool.query('SELECT college FROM reg_students WHERE student_no = $1', [no])).rows[0] : null;
+    if (!st || st.college !== 'CONM') return res.json({ available: false, immunization: [] });
+    const vt = (await pool.query('SELECT id, name, doses_required FROM reg_vaccine_types ORDER BY id')).rows;
+    const dr = (await pool.query(
+      `SELECT vaccine_id, dose_number, cycle_number, to_char(date_given, 'YYYY-MM-DD') AS date_str
+       FROM reg_student_vaccinations WHERE student_no = $1 AND voided_at IS NULL
+       ORDER BY cycle_number DESC, dose_number DESC, date_given DESC`, [no])).rows;
+    const report = vt.map((v) => {
+      const doses = dr.filter((d) => d.vaccine_id === v.id);
+      const s = immStatus(v, doses);
+      return { name: v.name, doses_required: v.doses_required, dose_number: s.dose,
+        last_date: doses[0] ? doses[0].date_str : null, next_due: s.next || null, status: s.status };
+    });
+    res.json({ available: true, immunization: report });
+  } catch (err) {
+    console.error(err);
+    res.status(500).json({ error: 'Could not load immunization status.' });
+  }
+});
 app.get('/api/student/enrolled-subjects', requirePortal('student'), async (req, res) => {
   try {
     const t = await gradingTerm();
