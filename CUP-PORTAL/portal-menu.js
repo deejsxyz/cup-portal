@@ -101,6 +101,10 @@
     alignBar();
     window.addEventListener('resize', alignBar);
     window.addEventListener('load', alignBar);
+    // The title font can load after the page, which moves the title; re-align when that happens.
+    if (document.fonts && document.fonts.ready) document.fonts.ready.then(alignBar);
+    var titleEl = header.querySelector('.top .name');
+    if (titleEl && window.ResizeObserver) new ResizeObserver(alignBar).observe(titleEl);
     bar.appendChild(burger);
     if (clock) bar.appendChild(clock);
     header.appendChild(bar);
