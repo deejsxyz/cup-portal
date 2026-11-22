@@ -606,7 +606,7 @@ function readRegSession(req) {
   try {
     const d = JSON.parse(Buffer.from(body, 'base64url').toString());
     if (!d.exp || d.exp < Date.now()) return null;
-    if (d.role === 'superadmin') return { role: 'superadmin', college: null, id: null };
+    if (d.role === 'superadmin') return { role: 'superadmin', college: null, id: d.id || null };
     if (d.role === 'registrar' && REG_COLLEGES.includes(d.college)) return { role: 'registrar', college: d.college, id: d.id };
     if (d.role === 'records' && REG_COLLEGES.includes(d.college)) return { role: 'registrar', college: d.college, id: d.id, records: true };
     return null;
@@ -716,7 +716,7 @@ app.post('/api/registrar/login', async (req, res) => {
       if (portal !== 'university') return res.status(403).json({ error: 'University Registrar accounts sign in on the University Registrar Portal.' });
       if (rows[0].must_change_password) return res.json({ ok: true, must_change: true, token: staffSetupTokenFor('uniregistrar', rows[0].username) });
       regAttempts.delete(ip);
-      setRegCookie(req, res, { role: 'superadmin' });
+      setRegCookie(req, res, { role: 'superadmin', id: rows[0].id });
       return res.json({ ok: true, role: 'superadmin' });
     }
     if (rows.length && rows[0].college && rows[0].must_change_password && verifyPassword(password, rows[0].password_hash)) return res.json({ ok: true, must_change: true, token: staffSetupTokenFor(rows[0].role === 'university' ? 'university' : 'registrar', rows[0].username) });
@@ -760,7 +760,7 @@ app.get('/api/registrar/me', async (req, res) => {
       }
     } catch (err) { console.error(err); }
   }
-  res.json({ ok: true, role: s.records ? 'records' : s.role, college: s.college, collegeName: COLLEGE_FULL_NAMES[s.college] || '', fullName, colleges: REG_COLLEGES });
+  res.json({ ok: true, role: s.records ? 'records' : s.role, college: s.college, collegeName: COLLEGE_FULL_NAMES[s.college] || '', fullName, canEdit: !!s.id, colleges: REG_COLLEGES });
 });
 
 // A college registrar changes their own password. A 6-digit code is emailed first, the same as for students.

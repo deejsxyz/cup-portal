@@ -1876,9 +1876,9 @@ function cupYr(p, y) { var m = /\(([^)]+)\)\s*$/.exec(p || ''); return (m ? m[1]
       var nameBtn = document.getElementById('acctName');
       if (nameBtn) nameBtn.textContent = me.fullName || '';
       var accMenu = document.getElementById('acctMenu');
-      // Superadmin has no account record to change, so the name shows as a label only.
       if (accMenu) accMenu.hidden = false;
-      if (nameBtn) { nameBtn.disabled = isSuper; nameBtn.style.cursor = isSuper ? 'default' : 'pointer'; }
+      // Sessions without a staff account record (the env superadmin login) show the name as a label only.
+      if (nameBtn) { nameBtn.disabled = !me.canEdit; nameBtn.style.cursor = me.canEdit ? 'pointer' : 'default'; }
       if (!isSuper) {
         var prefix = String(me.college || '').toLowerCase().replace('tesda-tvi', 'tesda');
         document.querySelectorAll('.tabs > .tab[data-panel$="-student"]').forEach(function (t) {
