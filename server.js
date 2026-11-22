@@ -3531,6 +3531,14 @@ app.post('/api/registrar/enroll-student', requireRegistrar, async (req, res) => 
         `INSERT INTO reg_students (student_no, college, last_name, first_name, middle_name, gender, birthday, email, contact_number, program, year_level, section, civil_status, status, enrolled_at, major)
          VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,'pre-registered',now(),$14)`,
         [no, college, last, first, middle, gender, birthday, email, contact, program, yearLevel, section, civil, major]);
+      // The University Registrar's new student is officially enrolled at once: all six steps are marked done.
+      await client.query(
+        `UPDATE reg_students SET status = 'enrolled', evaluated_at = now(),
+                step1_status = 'verified', step1_verified_at = now(),
+                step2_evaluated_at = now(), step2_advised_at = now(), step2_sectioned_at = now(),
+                nstp_enrolled_at = now(), id_validated_at = now(), csc_paid_at = now(),
+                advising_slip_at = now(), coe_printed_at = now()
+         WHERE student_no = $1`, [no]);
     } else {
       const st = await client.query(
         'SELECT s.college, s.status, (SELECT u.archived_at FROM reg_users u WHERE u.student_no = s.student_no LIMIT 1) AS account_archived FROM reg_students s WHERE s.student_no = $1 FOR UPDATE', [no]);
@@ -5374,6 +5382,7 @@ async function runStep1(studentNos) {
     const list = byNo[no] || [];
     let st = 'no-grades';
     if (list.length) st = list.every((g) => g.status === 'approved') ? (evaluated.has(no) ? 'verified' : 'awaiting') : 'awaiting';
+    else if (evaluated.has(no)) st = 'verified'; // evaluated with no grades to approve (e.g. a new student)
     result[no] = st; outNos.push(no); outStatus.push(st);
   });
   await pool.query(
