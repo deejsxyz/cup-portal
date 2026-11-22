@@ -584,7 +584,7 @@
     </div></div></section>
     <section class="panel" id="cas-locked"><div class="box"><h2>CAS | Locked Account</h2><div class="body"><span class="soon">Not connected yet</span></div></div></section>
     <section class="panel" id="student-all"><div class="box"><h2>Student Records</h2><div class="body" style="padding:0">
-      <div style="padding:12px 16px;border-bottom:1px solid #e2e8f0;display:flex;align-items:center;gap:10px;flex-wrap:wrap"><label for="stuAllCollege" style="font-size:11px;font-weight:700;text-transform:uppercase;color:#475569">College</label><select id="stuAllCollege" style="padding:8px 10px;border:1px solid #cbd5e1;border-radius:8px;min-width:200px"></select></div>
+      <div style="padding:12px 16px;border-bottom:1px solid #e2e8f0;display:flex;align-items:center;gap:10px;flex-wrap:wrap"><label for="stuAllCollege" style="font-size:11px;font-weight:700;text-transform:uppercase;color:#475569">College</label><select id="stuAllCollege" style="padding:8px 10px;border:1px solid #cbd5e1;border-radius:8px;min-width:200px"></select><label for="stuAllProgram" style="font-size:11px;font-weight:700;text-transform:uppercase;color:#475569">Program</label><select id="stuAllProgram" aria-label="Program" style="padding:8px 10px;border:1px solid #cbd5e1;border-radius:8px;min-width:200px;max-width:360px"><option value="">All programs</option></select></div>
       <iframe id="stuAllFrame" title="Student Records" style="width:100%;min-height:900px;border:0;display:block"></iframe>
     </div></div></section>
     <section class="panel" id="faculty-all"><div class="box"><h2>Faculty Records</h2><div class="body" style="padding:0">
@@ -2009,9 +2009,30 @@ function cupYr(p, y) { var m = /\(([^)]+)\)\s*$/.exec(p || ''); return (m ? m[1]
       sel.onchange = function () {
         var want = page + '?college=' + encodeURIComponent(sel.value) + '&framed=1';
         frame.setAttribute('data-src', want); frame.src = want;
+        if (selId === 'stuAllCollege') fillStuPrograms();
       };
       var first = page + '?college=' + encodeURIComponent(sel.value) + '&framed=1';
       if (frame.getAttribute('data-src') !== first) { frame.setAttribute('data-src', first); frame.src = first; }
+    }
+    // Program picker for Student Records: lists the chosen college's programs and filters the frame.
+    function sendStuProgram() {
+      var f = document.getElementById('stuAllFrame'), p = document.getElementById('stuAllProgram');
+      if (f && f.contentWindow && p) f.contentWindow.postMessage({ viewProgram: p.value }, '*');
+    }
+    function fillStuPrograms() {
+      var sel = document.getElementById('stuAllProgram'), col = document.getElementById('stuAllCollege');
+      if (!sel || !col) return;
+      var frame = document.getElementById('stuAllFrame');
+      if (frame) frame.onload = sendStuProgram;
+      sel.onchange = sendStuProgram;
+      fetch('/api/registrar/curriculum-programs?college=' + encodeURIComponent(col.value), { credentials: 'same-origin' })
+        .then(function (r) { return r.ok ? r.json() : { programs: [] }; }).catch(function () { return { programs: [] }; })
+        .then(function (cp) {
+          var list = cp.programs || [], cur = sel.value;
+          sel.innerHTML = '<option value="">All programs</option>' + list.map(function (p) { return '<option value="' + esc(p) + '">' + esc(agProgram(p)) + '</option>'; }).join('');
+          sel.value = list.indexOf(cur) !== -1 ? cur : '';
+          sendStuProgram();
+        });
     }
     function showPanel(id) {
       $$('.panel').forEach(function (p) { p.classList.toggle('on', p.id === id); });
@@ -2024,7 +2045,7 @@ function cupYr(p, y) { var m = /\(([^)]+)\)\s*$/.exec(p || ''); return (m ? m[1]
       var direct = $('.tabs > .tab[data-panel="' + id + '"]');
       if (direct) direct.classList.add('active');
       closeMenus();
-      if (id === 'student-all') fillAllColleges('stuAllCollege', 'stuAllFrame', '/CUP-PORTAL/registrar/college-student.html');
+      if (id === 'student-all') { fillAllColleges('stuAllCollege', 'stuAllFrame', '/CUP-PORTAL/registrar/college-student.html'); fillStuPrograms(); }
       if (id === 'faculty-all') fillAllColleges('facAllCollege', 'facAllFrame', '/CUP-PORTAL/registrar/college-faculty.html');
       try { history.replaceState(null, '', '#' + id); } catch (e) {}
       if (/-student$/.test(id) && id !== 'conm-student') loadStudents(id);

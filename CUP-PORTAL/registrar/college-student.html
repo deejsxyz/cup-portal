@@ -306,6 +306,20 @@ window.cupYr = function (p, y) { var m = /\(([^)]+)\)\s*$/.exec(p || ''); return
   });
 
   /* ----- roster ----- */
+  // The University Registrar's Student Records program picker sends the chosen program here.
+  var wantedProg = '';
+  function applyWantedProg() {
+    var pf = $('viewProgFilter');
+    if (!pf) return;
+    var has = Array.prototype.some.call(pf.options, function (o) { return o.value === wantedProg; });
+    var v = has ? wantedProg : '';
+    if (pf.value !== v) { pf.value = v; page = 1; renderList(); }
+  }
+  window.addEventListener('message', function (e) {
+    if (!e.data || typeof e.data.viewProgram !== 'string') return;
+    wantedProg = e.data.viewProgram;
+    applyWantedProg();
+  });
   function loadRoster() {
     return fetch('/api/registrar/students?college=' + COLLEGE, { credentials: 'same-origin' })
       .then(function (r) { return r.json().then(function (j) { return { ok: r.ok, j: j }; }); })
@@ -316,6 +330,7 @@ window.cupYr = function (p, y) { var m = /\(([^)]+)\)\s*$/.exec(p || ''); return
         progs.sort();
         pf.innerHTML = '<option value="">All Programs</option>' + progs.map(function (p) { return '<option value="' + esc(p) + '">' + esc(p) + '</option>'; }).join('');
         pf.value = progs.indexOf(cur) !== -1 ? cur : '';
+        applyWantedProg();
       });
   }
 
@@ -1354,6 +1369,8 @@ function progAbbrOf(p) { var m = /\(([^)]+)\)\s*$/.exec(p || ''); return m ? m[1
   // When framed by the College Registrar dashboard, its panel header holds these tabs.
   var framed = new URLSearchParams(location.search).get('framed') === '1';
   if (framed) {
+    var pfl = document.getElementById('viewProgFilter');
+    if (pfl) pfl.hidden = true; // the University Registrar's Student Records picker sets the program
     var tl = document.querySelector('[role="tablist"]');
     if (tl) {
       var target = (tl.parentElement && tl.parentElement.children.length === 1) ? tl.parentElement : tl;
