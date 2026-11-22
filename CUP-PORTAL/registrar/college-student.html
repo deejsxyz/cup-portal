@@ -899,7 +899,7 @@ function progAbbrOf(p) { var m = /\(([^)]+)\)\s*$/.exec(p || ''); return m ? m[1
         try { sessionStorage.removeItem('cupStuEdit'); } catch (e) {}
         if (!termEdit.year) { loadRoster().then(function () { openStudent(current.student_no); }); return; }
         var no = current.student_no, col = current.college || COLLEGE;
-        var enr = Object.assign({ mode: 'existing', college: col, student_no: no, gender: body.gender, birthday: body.birthday, email: body.email,
+        var enr = Object.assign({ mode: 'existing', edit: true, college: col, student_no: no, gender: body.gender, birthday: body.birthday, email: body.email,
           contact_number: body.contact_number, first_name: body.first_name, middle_name: body.middle_name, last_name: body.last_name,
           year_level: Number(body.year_level) || 1, section: body.section || 'A',
           subjects: termEdit.rows.map(function (r) { return { course_code: r.course_code, instructor_id: r.instructor_id }; }) });
