@@ -17,3 +17,9 @@
   .nav *, .pm-bar *, .pm-drawer * { filter: none; }
   /* Buttons inside a brand bar are already restored by the bar, so they are not inverted again. */
 }
+
+/* Header titles: the page is inverted in dark mode, so these values are the inverse of the softer colors shown on screen. */
+@media (prefers-color-scheme: dark) {
+  .top .big, .top .w1, .top .w2, .name .big, .name .big .w1, .name .big .w2, .live-clock { color: #261d26 !important; }
+  .top .small, .name .small { color: #704f70 !important; }
+}
