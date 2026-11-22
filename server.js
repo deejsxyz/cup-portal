@@ -2754,13 +2754,14 @@ app.post('/api/faculty/grades/batch', requirePortal('faculty'), async (req, res)
     for (const g of grades) {
       const no = String(g.student_no || '').trim();
       const grade = String(g.final_grade || '').trim();
+      const remarkIn = typeof g.remarks === 'string' ? g.remarks.trim().slice(0, 200) : '';
       if (!grade || !allowed.has(no)) continue;
       await client.query(
         `INSERT INTO reg_grades (student_no, college, course_code, final_grade, instructor, term, academic_year, remarks)
          VALUES ($1,$2,$3,$4,$5,$6,$7,$8)
          ON CONFLICT (student_no, course_code, term, academic_year)
          DO UPDATE SET final_grade = EXCLUDED.final_grade, instructor = EXCLUDED.instructor, remarks = EXCLUDED.remarks, updated_at = now(), status = 'submitted', approved_at = NULL`,
-        [no, college, code, grade, instructor, t.term, t.ay, registrarRemark(grade)]);
+        [no, college, code, grade, instructor, t.term, t.ay, remarkIn || registrarRemark(grade)]);
       saved += 1;
       touchedNos.add(no);
     }
