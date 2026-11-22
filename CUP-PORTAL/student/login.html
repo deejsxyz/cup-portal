@@ -211,5 +211,21 @@
   })();
 </script>
 <script src="/protect-logo.js"></script>
+<script>
+// Student numbers are typed as xxxx-x-xxxxxxx-xx; dashes are added as the digits are typed.
+(function () {
+  var el = document.getElementById('email');
+  if (!el) return;
+  el.addEventListener('input', function () {
+    if (/[a-zA-Z]/.test(el.value)) return; // usernames with letters are left as typed
+    var d = el.value.replace(/\D/g, '').slice(0, 14);
+    var out = d.slice(0, 4);
+    if (d.length > 4) out += '-' + d.slice(4, 5);
+    if (d.length > 5) out += '-' + d.slice(5, 12);
+    if (d.length > 12) out += '-' + d.slice(12, 14);
+    el.value = out;
+  });
+})();
+</script>
 </body>
 </html>

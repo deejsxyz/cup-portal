@@ -145,7 +145,7 @@
     <form id="preRegisterForm" class="space-y-4 text-sm" novalidate>
       <div class="grid grid-cols-1 sm:grid-cols-5 gap-3">
         <div><label class="block text-[10px] uppercase font-bold text-slate-500 mb-1">Student Number</label>
-          <input type="text" disabled value="Auto-generated" class="w-full px-3 py-2 rounded-lg border border-slate-300 bg-slate-100 text-xs font-mono text-slate-500 cursor-not-allowed"></div>
+          <input type="text" id="regStuNo" disabled value="Auto-generated" class="w-full px-3 py-2 rounded-lg border border-slate-300 bg-slate-100 text-xs font-mono text-slate-500 cursor-not-allowed"></div>
         <div><label class="block text-[10px] uppercase font-bold text-slate-500 mb-1">First Name</label>
           <input type="text" name="first_name" required placeholder="First Name" class="w-full px-3 py-2 rounded-lg border border-slate-300 bg-white text-xs"></div>
         <div><label class="block text-[10px] uppercase font-bold text-slate-500 mb-1">Middle Name</label>
@@ -673,16 +673,34 @@ function progAbbrOf(p) { var m = /\(([^)]+)\)\s*$/.exec(p || ''); return m ? m[1
     var subjects = collectSubjects($('subjectChecklist'));
     var body = { mode: 'new', subjects: subjects };
     ['first_name', 'middle_name', 'last_name', 'gender', 'birthday', 'email', 'contact_number', 'civil_status', 'program', 'year_level', 'section'].forEach(function (k) { body[k] = f.elements[k].value.trim(); });
+    body.reserved_no = regReservedNo;
     msg.textContent = 'Saving…';
     fetch('/api/registrar/enroll-student', { method: 'POST', credentials: 'same-origin', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(body) })
       .then(function (r) { return r.json().then(function (j) { return { ok: r.ok, j: j }; }); })
       .then(function (res) {
         if (!res.ok) { msg.textContent = res.j.error || 'Could not save.'; return; }
+        regReservedNo = ''; $('regStuNo').value = 'Auto-generated'; regPreviewNumber();
         msg.innerHTML = '<span class="text-emerald-800 font-bold">Enrolled. Student number: ' + esc(res.j.student_no) + '. The temporary password was emailed to the student.</span>';
         loadRoster();
       })
       .catch(function () { msg.textContent = 'Could not save.'; });
   }
+  // Shows the student number as soon as first and last name are typed (the save uses the same number if it is still free).
+  var regReservedNo = '', regPreviewTimer = null;
+  function regPreviewNumber() {
+    var f = $('preRegisterForm');
+    var fn = f.elements.first_name.value.trim(), ln = f.elements.last_name.value.trim();
+    if (!fn || !ln) { regReservedNo = ''; $('regStuNo').value = 'Auto-generated'; return; }
+    if (regReservedNo) return;
+    clearTimeout(regPreviewTimer);
+    regPreviewTimer = setTimeout(function () {
+      fetch('/api/registrar/next-student-number', { credentials: 'same-origin' })
+        .then(function (r) { return r.json(); })
+        .then(function (j) { if (j.student_no && !regReservedNo) { regReservedNo = j.student_no; $('regStuNo').value = j.student_no; } })
+        .catch(function () {});
+    }, 300);
+  }
+  $('preRegisterForm').addEventListener('input', regPreviewNumber);
   $('preRegisterForm').addEventListener('submit', regSubmit);
   $('reg_year_select').addEventListener('change', regLoadContext);
   document.querySelector('#preRegisterForm [name=section]').addEventListener('change', regLoadContext);
