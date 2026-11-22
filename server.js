@@ -3025,6 +3025,12 @@ app.put('/api/registrar/students/:no', requireRegistrar, async (req, res) => {
               email = $7, contact_number = $8, program = $9, year_level = $10, section = $11
        WHERE student_no = $1`,
       [no, last, first, middle, gender, birthday, email, contact, program, yearLevel, section]);
+    // Keep the active term's enrollment in step with the record (past terms keep their history).
+    const gt = await gradingTerm();
+    if (gt.term && gt.ay) {
+      await pool.query('UPDATE reg_enrollments SET year_level = $2, section = $3 WHERE student_no = $1 AND term = $4 AND academic_year = $5',
+        [no, yearLevel, section, gt.term, gt.ay]);
+    }
     logAction(req, college + ' registrar', 'student record saved', no);
     res.json({ ok: true });
   } catch (err) {
