@@ -90,7 +90,17 @@
     scrim.className = 'pm-scrim';
 
     // Pages with a logo at the left leave room so the hamburger sits to the right of it.
-    if (header.querySelector('.seal')) bar.style.paddingLeft = '116px';
+    // Pages with a logo at the left: line the hamburger up with the left edge of the page title.
+    function alignBar() {
+      if (!header.querySelector('.seal')) return;
+      var nm = header.querySelector('.top .name');
+      var left = 116;
+      if (nm) left = Math.max(0, Math.round(nm.getBoundingClientRect().left - header.getBoundingClientRect().left));
+      bar.style.paddingLeft = left + 'px';
+    }
+    alignBar();
+    window.addEventListener('resize', alignBar);
+    window.addEventListener('load', alignBar);
     bar.appendChild(burger);
     if (clock) bar.appendChild(clock);
     header.appendChild(bar);
