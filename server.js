@@ -5166,6 +5166,9 @@ async function runStep1(studentNos) {
   const result = {};
   if (!nos.length) return result;
   const { rows } = await pool.query('SELECT student_no, status FROM reg_grades WHERE student_no = ANY($1)', [nos]);
+  // A student the registrar marked Evaluated has proceeded to Step 2, so counts as verified.
+  const ev = await pool.query('SELECT student_no FROM reg_students WHERE student_no = ANY($1) AND evaluated_at IS NOT NULL', [nos]);
+  const evaluated = new Set(ev.rows.map((r) => r.student_no));
   const byNo = {};
   rows.forEach((r) => { (byNo[r.student_no] = byNo[r.student_no] || []).push(r); });
   const outNos = [], outStatus = [];
@@ -5173,6 +5176,7 @@ async function runStep1(studentNos) {
     const list = byNo[no] || [];
     let st = 'no-grades';
     if (list.length) st = list.every((g) => g.status === 'approved') ? 'verified' : 'awaiting';
+    if (evaluated.has(no)) st = 'verified';
     result[no] = st; outNos.push(no); outStatus.push(st);
   });
   await pool.query(
@@ -5237,6 +5241,7 @@ app.post('/api/registrar/evaluate', requireRegistrar, async (req, res) => {
        WHERE student_no = $1 AND college = $2 AND status IN ('enrolled','pre-registered') RETURNING evaluated_at`,
       [no, college, evaluated]);
     if (!r.rowCount) return res.status(404).json({ error: 'Student not found in this college.' });
+    await runStep1([no]);
     res.json({ ok: true, evaluated_at: r.rows[0].evaluated_at });
   } catch (err) {
     console.error(err);
