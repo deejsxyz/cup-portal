@@ -1743,7 +1743,7 @@ app.post('/api/registrar/portal-users', requireSuperAdmin, async (req, res) => {
 
 // University Registrar: list portal accounts (faculty and students), for assigning courses.
 app.get('/api/registrar/portal-users', requireSuperAdmin, async (req, res) => {
-  const { rows } = await pool.query("SELECT u.id, u.role, u.name, u.first_name, u.last_name, u.username, u.college, u.student_no, u.must_change_password, u.archived_at, s.program, s.major, s.year_level FROM reg_users u LEFT JOIN reg_students s ON s.student_no = u.student_no ORDER BY u.role, u.college, u.name");
+  const { rows } = await pool.query("SELECT u.id, u.role, u.name, u.first_name, u.last_name, u.username, u.college, u.student_no, u.email, u.must_change_password, u.archived_at, s.program, s.major, s.year_level FROM reg_users u LEFT JOIN reg_students s ON s.student_no = u.student_no ORDER BY u.role, u.college, u.name");
   res.json({ users: rows.filter((u) => !isHiddenUserRow(u)).map((u) => ({ ...u, program: u.program ? (canonicalProgram(u.program) || u.program) : u.program })) });
 });
 
