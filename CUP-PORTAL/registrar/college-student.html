@@ -709,11 +709,9 @@ function progAbbrOf(p) { var m = /\(([^)]+)\)\s*$/.exec(p || ''); return m ? m[1
           '</div>';
       }).join('') : '<p class="text-xs text-slate-500 italic mb-3">No subjects enrolled for this term yet.</p>') +
       (ed ? '<div class="mt-4 pt-4 border-t border-slate-200"><div class="text-[10px] uppercase font-bold text-slate-500 mb-2">Add subject to this term</div>' +
-        '<div class="flex flex-wrap gap-2 items-center"><select id="termAddCode" class="px-3 py-2 rounded-lg border border-slate-300 bg-white text-xs min-w-[260px] max-w-full"><option value="">--Select Subject to Add--</option>' +
+        '<div class="grid grid-cols-1 md:grid-cols-[minmax(0,1fr)_260px] gap-2 items-center"><select id="termAddCode" class="w-full px-3 py-2 rounded-lg border border-slate-300 bg-white text-xs"><option value="">--Select Subject to Add--</option>' +
         avail.map(function (c) { return '<option value="' + esc(c.course_code) + '">[' + esc(c.course_code) + '] ' + esc(c.descriptive_title || '') + '</option>'; }).join('') +
-        '</select><select id="termAddInstr" class="px-3 py-2 rounded-lg border border-slate-300 bg-white text-xs max-w-[260px]">' + termInstrOpts('') + '</select></div></div>' +
-        '<div class="mt-4 flex flex-wrap items-center justify-end gap-3"><p id="termSaveMsg" class="text-xs font-semibold text-rose-600 mr-auto"></p>' +
-        '<button type="button" id="termSaveBtn" class="px-5 py-2 rounded-lg bg-indigo-700 hover:bg-indigo-800 text-white text-xs font-bold">Save Subjects</button></div>' : '');
+        '</select><select id="termAddInstr" class="w-full px-3 py-2 rounded-lg border border-slate-300 bg-white text-xs">' + termInstrOpts('') + '</select></div></div>' : '');
   }
   function loadTermCatalog(st) {
     var col = (st && st.college) || COLLEGE;
@@ -742,23 +740,6 @@ function progAbbrOf(p) { var m = /\(([^)]+)\)\s*$/.exec(p || ''); return m ? m[1
     if (!termEdit.editing) return;
     var d = t.closest('button[data-del]');
     if (d) { termEdit.rows.splice(Number(d.getAttribute('data-del')), 1); drawTermEditor(); return; }
-    if (t.closest('#termSaveBtn')) {
-      if (!current) return;
-      var no = current.student_no, btn = t.closest('#termSaveBtn'), msg = $('termSaveMsg');
-      var col = current.college || COLLEGE;
-      var body = { mode: 'existing', college: col, student_no: no, first_name: current.first_name || '', middle_name: current.middle_name || '',
-        last_name: current.last_name || '', gender: current.gender || '', birthday: String(current.birthday || '').slice(0, 10), email: current.email || '',
-        contact_number: current.contact_number || '', year_level: Number(current.year_level) || 1, section: current.section || 'A',
-        subjects: termEdit.rows.map(function (r) { return { course_code: r.course_code, instructor_id: r.instructor_id }; }) };
-      btn.disabled = true; msg.className = 'text-xs font-semibold text-slate-600 mr-auto'; msg.textContent = 'Saving…';
-      fetch('/api/registrar/enroll-student?college=' + encodeURIComponent(col), { method: 'POST', credentials: 'same-origin', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(body) })
-        .then(function (r) { return r.json().then(function (j) { return { ok: r.ok, j: j }; }); })
-        .then(function (res) {
-          btn.disabled = false;
-          if (!res.ok) { msg.className = 'text-xs font-semibold text-rose-600 mr-auto'; msg.textContent = res.j.error || 'Could not save.'; return; }
-          loadEnrollments(no);
-        }).catch(function () { btn.disabled = false; msg.textContent = 'Could not save.'; });
-    }
   });
   function exLoadContext() {
     var year = $('ex_year_select').value, sec = $('ex_section').value || 'A';
@@ -837,7 +818,7 @@ function progAbbrOf(p) { var m = /\(([^)]+)\)\s*$/.exec(p || ''); return m ? m[1
     f.hidden = false;
     $('stuInfoMsg').textContent = '';
   });
-  $('stuInfoCancelBtn').addEventListener('click', function () { $('stuInfoForm').hidden = true; $('stuInfoView').hidden = false; termEdit.editing = false; if (termEdit.year) drawTermEditor(); });
+  $('stuInfoCancelBtn').addEventListener('click', function () { $('stuInfoForm').hidden = true; $('stuInfoView').hidden = false; termEdit.editing = false; if (current) openStudent(current.student_no); });
   var EMAIL_RE = /^[A-Za-z0-9._%+\-]+@[A-Za-z0-9\-]+(\.[A-Za-z0-9\-]+)*\.[A-Za-z]{2,}$/;
   var CONTACT_RE = /^(09\d{9}|\+639\d{9})$/;
   function cleanContactInput(v) {
@@ -874,7 +855,18 @@ function progAbbrOf(p) { var m = /\(([^)]+)\)\s*$/.exec(p || ''); return m ? m[1
       .then(function (r) { return r.json().then(function (j) { return { ok: r.ok, j: j }; }); })
       .then(function (res) {
         if (!res.ok) { msg.textContent = res.j.error || 'Could not save.'; return; }
-        loadRoster().then(function () { openStudent(current.student_no); });
+        if (!termEdit.year) { loadRoster().then(function () { openStudent(current.student_no); }); return; }
+        var no = current.student_no, col = current.college || COLLEGE;
+        var enr = Object.assign({ mode: 'existing', college: col, student_no: no, gender: body.gender, birthday: body.birthday, email: body.email,
+          contact_number: body.contact_number, first_name: body.first_name, middle_name: body.middle_name, last_name: body.last_name,
+          year_level: Number(body.year_level) || 1, section: body.section || 'A',
+          subjects: termEdit.rows.map(function (r) { return { course_code: r.course_code, instructor_id: r.instructor_id }; }) });
+        return fetch('/api/registrar/enroll-student?college=' + encodeURIComponent(col), { method: 'POST', credentials: 'same-origin', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(enr) })
+          .then(function (r) { return r.json().then(function (j) { return { ok: r.ok, j: j }; }); })
+          .then(function (res2) {
+            if (!res2.ok) { msg.textContent = res2.j.error || 'Could not save the subjects.'; return; }
+            loadRoster().then(function () { openStudent(no); });
+          });
       })
       .catch(function () { msg.textContent = 'Could not save.'; });
   });
