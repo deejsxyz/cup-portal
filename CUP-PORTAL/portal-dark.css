@@ -1,0 +1,29 @@
+/* Dark mode for the CUP portal. Follows the phone or computer setting (prefers-color-scheme).
+   Light mode keeps the original colors. Brand green bars and buttons keep their colors. */
+@media (prefers-color-scheme: dark) {
+  :root { color-scheme: dark; }
+  html, body { background: #111815 !important; color: #e4ebe4 !important; }
+  a { color: #8fd08f; }
+  .top, header .top { background: #1b221c !important; }
+  .top .big, .top .w1, .top .w2, .name .big, .name .big .w1, .name .big .w2, .live-clock { color: #e4ebe4 !important; }
+  .top .small, .name .small { color: #8fd08f !important; }
+  section, .panel, .box, .card, .body, .sub-body, .acct-pane, .acct-table-wrap, .search-row, .sub-tabs, .dd, .dd-menu, .acct-drop, .pm-drawer-ext {
+    background-color: #1a211b !important; color: #e4ebe4 !important; border-color: #3e4f3e !important;
+  }
+  .acct-drop button, .dd button, .dd-menu a, .sub-tab, .acct-tab {
+    background-color: #1e271f !important; color: #e4ebe4 !important; border-color: #3e4f3e !important;
+  }
+  .sub-tab.on, .acct-tab.on { color: #f2c200 !important; }
+  input:not([type=checkbox]):not([type=radio]), select, textarea {
+    background-color: #1d251e !important; color: #e4ebe4 !important; border-color: #3e4f3e !important;
+  }
+  input::placeholder, textarea::placeholder { color: #8c9c8c !important; }
+  table, th, td { color: #e4ebe4 !important; border-color: #2e3b2e !important; }
+  th, .acct-table th { background-color: #1a221b !important; }
+  footer, .hint, .muted, .acct-na, .soon { color: #9fb09f !important; }
+  /* Inline white backgrounds on popups and cards */
+  [style*="background:#fff"], [style*="background: #fff"], [style*="background:#ffffff"], [style*="background: #ffffff"], [style*="background:white"] {
+    background-color: #1a211b !important; color: #e4ebe4 !important;
+  }
+  .panel-head, .nav, .pm-bar, .choice, .tab, .btn, .pn-head-btn { color: #fff !important; }
+}
