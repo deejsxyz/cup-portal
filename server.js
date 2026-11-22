@@ -2221,6 +2221,35 @@ function cogStatus(failPct, enrolledUnits, flags) {
 // Numeric grades use their value. X, W, INC, NG and a dash count as 5.00.
 // Failed grades: 5.00, INC, X, W (retention policy) and 4.00. Everything else with a grade passes.
 // GPA shows only when the counted units and the passed units are each at least 9.
+// A lecture and its skills lab (for example "MC 3 LECT" and "MC 3 SL") are one subject on the COG and the View Student list.
+// Units add up, the title drops "Lecture"/"Skills Lab", and the grade is 70% lecture + 30% lab, rounded to the nearest 0.25.
+function combineLabStrip(title) { return String(title || '').replace(/\s+(Lecture|Skills Lab|Laboratory)\s*$/i, '').trim(); }
+function combineLabGrade(a, b) {
+  const blank = (v) => v == null || String(v).trim() === '';
+  if (blank(a) || blank(b)) return '';
+  const num = (v) => (/^\d+(\.\d+)?$/.test(String(v).trim()) ? Number(v) : null);
+  const x = num(a), y = num(b);
+  if (x !== null && y !== null) return (Math.round((x * 0.7 + y * 0.3) * 4) / 4).toFixed(2);
+  if (x === null) return String(a).trim();
+  return String(b).trim();
+}
+function combineLabLecture(rows) {
+  const parse = (code) => { const m = /^(.+?)\s+(LECT|SL)$/i.exec(String(code || '').trim()); return m ? { base: m[1], kind: m[2].toUpperCase() } : null; };
+  const pairs = new Map();
+  rows.forEach((r, i) => { const p = parse(r.code); if (!p) return; const k = p.base.toUpperCase(); if (!pairs.has(k)) pairs.set(k, {}); pairs.get(k)[p.kind] = i; });
+  const skip = new Set(), out = [];
+  rows.forEach((r, i) => {
+    if (skip.has(i)) return;
+    const p = parse(r.code);
+    const pair = p ? pairs.get(p.base.toUpperCase()) : null;
+    if (!pair || pair.LECT === undefined || pair.SL === undefined) { out.push(r); return; }
+    const lect = rows[pair.LECT], sl = rows[pair.SL];
+    skip.add(pair.LECT); skip.add(pair.SL);
+    out.push({ code: p.base, title: combineLabStrip(lect.title || sl.title), units: (Number(lect.units) || 0) + (Number(sl.units) || 0),
+      grade: combineLabGrade(lect.grade, sl.grade), outOfTerm: !!(lect.outOfTerm || sl.outOfTerm) });
+  });
+  return out;
+}
 function cogCompute(rows, flags) {
   let enrolled = 0, failed = 0, counted = 0, passed = 0, sumGU = 0, outUnits = 0;
   rows.forEach((r) => {
@@ -2264,12 +2293,12 @@ app.get('/api/registrar/certificate-of-grades.xlsx', requireRegistrar, async (re
     cs.rows.forEach((c) => { if (!course.has(c.course_code)) course.set(c.course_code, c); });
     const gr = await pool.query('SELECT course_code, final_grade FROM reg_grades WHERE student_no = $1 AND college = $2 AND term = $3 AND academic_year = $4', [no, college, term, ay]);
     const grade = new Map(gr.rows.map((g) => [g.course_code, g.final_grade]));
-    const rows = subjects.map((x) => {
+    const rows = combineLabLecture(subjects.map((x) => {
       const c = course.get(x.course_code) || {};
       const g = grade.has(x.course_code) ? grade.get(x.course_code) : '';
       const outOfTerm = !!c.course_code && !(Number(c.year_level) === Number(e.year_level) && c.semester === term);
-      return { code: x.course_code, units: Number(c.units) || 0, grade: g == null ? '' : String(g), outOfTerm };
-    });
+      return { code: x.course_code, title: c.descriptive_title || '', units: Number(c.units) || 0, grade: g == null ? '' : String(g), outOfTerm };
+    }));
     // Year-level alignment: the first enrollment's year level should advance one per academic year.
     const startYr = (v) => parseInt(String(v).split('-')[0], 10);
     const first = await pool.query('SELECT academic_year, year_level FROM reg_enrollments WHERE student_no = $1 ORDER BY academic_year ASC LIMIT 1', [no]);

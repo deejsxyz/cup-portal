@@ -407,6 +407,31 @@ window.cupYr = function (p, y) { var m = /\(([^)]+)\)\s*$/.exec(p || ''); return
   }
   // Enrolled subjects and grades, with A.Y. and semester filters to view other records.
   var viewHist = [], viewCtx = {}, viewNo = '';
+  // Same rule as the COG: a lecture and its skills lab show as one subject (70% lecture, 30% lab, nearest 0.25).
+  function combineLabLecture(list) {
+    var parse = function (code) { var m = /^(.+?)\s+(LECT|SL)$/i.exec(String(code || '').trim()); return m ? { base: m[1], kind: m[2].toUpperCase() } : null; };
+    var pairs = {};
+    list.forEach(function (r, i) { var p = parse(r.course_code); if (!p) return; var k = p.base.toUpperCase(); pairs[k] = pairs[k] || {}; pairs[k][p.kind] = i; });
+    var skip = {}, out = [];
+    list.forEach(function (r, i) {
+      if (skip[i]) return;
+      var p = parse(r.course_code), pair = p ? pairs[p.base.toUpperCase()] : null;
+      if (!pair || pair.LECT === undefined || pair.SL === undefined) { out.push(r); return; }
+      var lect = list[pair.LECT], sl = list[pair.SL];
+      skip[pair.LECT] = true; skip[pair.SL] = true;
+      var blank = function (v) { return v == null || String(v).trim() === ''; };
+      var num = function (v) { return /^\d+(\.\d+)?$/.test(String(v).trim()) ? Number(v) : null; };
+      var g = '';
+      if (!blank(lect.final_grade) && !blank(sl.final_grade)) {
+        var a = num(lect.final_grade), b = num(sl.final_grade);
+        if (a !== null && b !== null) g = (Math.round((a * 0.7 + b * 0.3) * 4) / 4).toFixed(2);
+        else g = a === null ? String(lect.final_grade).trim() : String(sl.final_grade).trim();
+      }
+      out.push({ course_code: p.base, descriptive_title: String(lect.descriptive_title || sl.descriptive_title || '').replace(/\s+(Lecture|Skills Lab|Laboratory)\s*$/i, '').trim(),
+        units: (Number(lect.units) || 0) + (Number(sl.units) || 0), final_grade: g });
+    });
+    return out;
+  }
   function renderViewSubjects() {
     var box = document.getElementById('viewSubjects');
     if (!box) return;
@@ -429,7 +454,7 @@ window.cupYr = function (p, y) { var m = /\(([^)]+)\)\s*$/.exec(p || ''); return
     var table = !cur || !(cur.subjects || []).length ? '<p class="text-xs text-slate-500 italic">No enrolled subjects for this term.</p>' :
       '<div class="overflow-x-auto"><table class="w-full text-sm"><thead><tr class="bg-slate-100 text-[10px] uppercase text-slate-500">' +
       '<th class="text-left px-3 py-2">Course code</th><th class="text-left px-3 py-2">Descriptive title</th><th class="text-left px-3 py-2">Units</th><th class="text-left px-3 py-2">Grade</th></tr></thead><tbody>' +
-      cur.subjects.map(function (x) {
+      combineLabLecture(cur.subjects).map(function (x) {
         return '<tr class="border-t border-slate-100"><td class="px-3 py-2 font-mono font-bold">' + esc(x.course_code) + '</td><td class="px-3 py-2">' + esc(x.descriptive_title || '') +
           '</td><td class="px-3 py-2">' + esc(x.units == null ? '' : x.units) + '</td><td class="px-3 py-2 font-bold">' + esc(x.final_grade || '—') + '</td></tr>';
       }).join('') + '</tbody></table></div>';
