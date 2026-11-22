@@ -105,10 +105,6 @@
           <div class="sm:col-span-2"><label class="block text-[10px] uppercase font-bold text-slate-500 mb-1">Program</label><div id="stuProgramTile" class="bg-slate-50 w-full px-3 py-2 rounded-lg border border-slate-200 text-sm font-semibold text-slate-800 truncate leading-5">—</div></div>
           <div><label class="block text-[10px] uppercase font-bold text-slate-500 mb-1">Section</label>
             <select name="section" class="bg-white w-full px-3 py-2 rounded-lg border border-slate-300 text-sm"><option>A</option><option>B</option><option>C</option></select></div>
-          <div class="col-span-2 md:col-span-4 flex gap-2 justify-end">
-            <button type="button" id="stuInfoCancelBtn" class="px-4 py-2 bg-slate-200 hover:bg-slate-300 text-slate-700 rounded-lg text-xs font-bold cursor-pointer">Cancel</button>
-            <button type="submit" class="px-5 py-2 bg-indigo-700 hover:bg-indigo-800 text-white rounded-lg text-xs font-bold shadow-md cursor-pointer">Save changes</button>
-          </div>
           <p id="stuInfoMsg" class="col-span-2 md:col-span-4 text-xs text-rose-700"></p>
         </form>
         <div id="enrollForTermBox" class="md:col-span-4 mt-5 space-y-3">
@@ -140,6 +136,10 @@
               <span id="enrollTermLabel" class="px-2 py-0.5 rounded bg-indigo-50 text-indigo-900 text-[11px] font-bold"></span>
             </div>
             <div id="enrollHist"></div>
+        <div id="stuEditBar" hidden class="mt-4 pt-4 border-t border-slate-200 flex justify-end gap-2">
+          <button type="button" id="stuInfoCancelBtn" class="px-4 py-2 bg-slate-200 hover:bg-slate-300 text-slate-700 rounded-lg text-xs font-bold cursor-pointer">Cancel</button>
+          <button type="submit" form="stuInfoForm" class="px-5 py-2 bg-indigo-700 hover:bg-indigo-800 text-white rounded-lg text-xs font-bold shadow-md cursor-pointer">Save changes</button>
+        </div>
           </div>
         </div>
       </div>
@@ -641,6 +641,7 @@ function progAbbrOf(p) { var m = /\(([^)]+)\)\s*$/.exec(p || ''); return m ? m[1
     $('stuInfoView').hidden = false;
     loadImm(no, 'existImm', true);
     $('stuInfoForm').hidden = true;
+    $('stuEditBar').hidden = true;
     termEdit.editing = false;
     var wantEdit = false;
     try { wantEdit = sessionStorage.getItem('cupStuEdit') === no; sessionStorage.removeItem('cupStuEdit'); } catch (e) {}
@@ -818,9 +819,10 @@ function progAbbrOf(p) { var m = /\(([^)]+)\)\s*$/.exec(p || ''); return m ? m[1
     $('stuProgramTile').title = $('stuProgramTile').textContent;
     $('stuInfoView').hidden = true;
     f.hidden = false;
+    $('stuEditBar').hidden = false;
     $('stuInfoMsg').textContent = '';
   }
-  $('stuInfoCancelBtn').addEventListener('click', function () { $('stuInfoForm').hidden = true; $('stuInfoView').hidden = false; termEdit.editing = false; if (current) openStudent(current.student_no); });
+  $('stuInfoCancelBtn').addEventListener('click', function () { $('stuInfoForm').hidden = true; $('stuEditBar').hidden = true; $('stuInfoView').hidden = false; termEdit.editing = false; if (current) openStudent(current.student_no); });
   var EMAIL_RE = /^[A-Za-z0-9._%+\-]+@[A-Za-z0-9\-]+(\.[A-Za-z0-9\-]+)*\.[A-Za-z]{2,}$/;
   var CONTACT_RE = /^(09\d{9}|\+639\d{9})$/;
   function cleanContactInput(v) {
