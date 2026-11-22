@@ -65,6 +65,7 @@
   .sub-tabs { display: flex; flex-wrap: wrap; gap: 6px; margin-bottom: 16px; }
   .sub-tab { font: inherit; font-size: .82rem; font-weight: 700; padding: 8px 12px; border-radius: 8px; border: 1px solid var(--line); background: #fff; color: var(--dg); cursor: pointer; }
   .sub-tab.on { background: var(--dg); color: var(--gold); border-color: var(--dg); }
+  .pn-head-btn[data-ptab="new"] { display: none !important; }
   .bulk-banner { border-radius: 10px; padding: 12px 14px; margin-bottom: 12px; display: grid; gap: 4px; }
   .bulk-banner.gold { background: #fff8d6; border: 1px solid var(--gold); color: #5a4500; }
   .bulk-banner.green { background: #e7f5e9; border: 1px solid var(--g2); color: var(--dg); }
@@ -170,7 +171,7 @@
 <script src="/CUP-PORTAL/portal-session.js" data-logout="/api/registrar/logout" data-login="/CUP-PORTAL/college-registrar/"></script>
 </head>
 <body>
-  <header>
+  <header data-home="/CUP-PORTAL/college-registrar/dashboard">
     <div class="top">
       <div class="live-clock" id="liveClock"></div>
       <a class="seal" href="/CUP-PORTAL/" title="Back to the CUP Portal" style="text-decoration:none;"><img src="/images/cup-logo-seal.png" alt="City University of Pasay seal"></a>
