@@ -1650,12 +1650,12 @@ app.post('/api/portal/first-login', async (req, res) => {
   if (next.length < 8) return res.status(400).json({ error: 'The new password must be at least 8 characters.' });
   if (next === current) return res.status(400).json({ error: 'The new password must be different from the temporary password.' });
   try {
-    const { rows } = await pool.query('SELECT id, password_hash, must_change_password FROM reg_users WHERE username = $1 AND archived_at IS NULL', [info.u]);
+    const { rows } = await pool.query('SELECT id, role, password_hash, must_change_password FROM reg_users WHERE username = $1 AND archived_at IS NULL', [info.u]);
     const row = rows[0];
     if (!row || !verifyPassword(current, row.password_hash)) return res.status(401).json({ error: 'The temporary password is incorrect.' });
     if (!row.must_change_password) return res.status(400).json({ error: 'This password was already changed. Please sign in with your new password.' });
     await pool.query('UPDATE reg_users SET password_hash = $2, must_change_password = FALSE WHERE id = $1', [row.id, hashPassword(next)]);
-    res.json({ ok: true });
+    res.json({ ok: true, role: row.role });
   } catch (err) {
     console.error('student first-login:', err.message);
     res.status(500).json({ error: 'Could not change the password. Try again.' });

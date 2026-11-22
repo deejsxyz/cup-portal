@@ -79,7 +79,7 @@
       .then(function (res) {
         if (!res.ok) { $('go').disabled = false; $('msg').textContent = res.j.error || 'Could not change the password.'; return; }
         // With the email link the password is changed but no session exists yet, so the student signs in with the new one.
-        if (token) { window.location.href = '/CUP-PORTAL/student/login'; return; }
+        if (token) { window.location.href = res.j.role === 'faculty' ? '/CUP-PORTAL/faculty/' : '/CUP-PORTAL/student/login'; return; }
         window.location.href = window.__role === 'faculty' ? '/CUP-PORTAL/faculty/grades' : '/CUP-PORTAL/student/grades';
       }).catch(function () { $('go').disabled = false; $('msg').textContent = 'Could not change the password. Try again.'; });
   });
