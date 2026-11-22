@@ -23,3 +23,9 @@
   .top .big, .top .w1, .top .w2, .name .big, .name .big .w1, .name .big .w2, .live-clock { color: #261d26 !important; }
   .top .small, .name .small { color: #704f70 !important; }
 }
+
+/* Login and first-login pages keep their original light design. */
+@media (prefers-color-scheme: dark) {
+  body[data-no-dark] { filter: none !important; background: #f5f7f5; }
+  body[data-no-dark] * { filter: none !important; }
+}
