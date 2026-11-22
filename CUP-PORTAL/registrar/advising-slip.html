@@ -90,7 +90,8 @@
 
   function loadAll() {
     getJson('/api/registrar/students?college=' + encodeURIComponent(COLLEGE)).then(function (res) {
-      students = res.ok ? (res.j.students || []) : [];
+      // Only students who finished Step 5 (CSC fee paid) appear here.
+      students = res.ok ? (res.j.students || []).filter(function (x) { return x.csc_paid; }) : [];
       if (!res.ok) qMsg.textContent = res.j.error || 'Could not load students.';
     });
     getJson('/api/registrar/enroll-context?year_level=1&college=' + encodeURIComponent(COLLEGE)).then(function (res) {
@@ -105,7 +106,7 @@
     getJson('/api/registrar/students?college=' + encodeURIComponent(COLLEGE)).then(function (res) {
       if (!res.ok) return;
       var before = current ? (current.status + '|' + !!current.csc_paid) : '';
-      students = res.j.students || [];
+      students = (res.j.students || []).filter(function (x) { return x.csc_paid; });
       if (!current) return;
       var now = students.filter(function (x) { return x.student_no === current.student_no; })[0];
       if (!now) return;
