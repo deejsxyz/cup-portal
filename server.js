@@ -5508,6 +5508,11 @@ app.post('/api/registrar/batch-upload/:type', requireRegistrar, async (req, res)
                contact_number = COALESCE(EXCLUDED.contact_number, reg_students.contact_number), program = EXCLUDED.program,
                year_level = EXCLUDED.year_level, section = EXCLUDED.section, civil_status = COALESCE(EXCLUDED.civil_status, reg_students.civil_status)`,
             [p.student_no, college, p.first_name, p.middle_name, p.last_name, p.extension, p.gender, p.birthday, p.email, p.contact_number, p.program, p.year_level, p.section, p.civil_status, enrollStatus]);
+          // A batch-uploaded student is pre-registered for the active term, like a student who pre-registers in the portal.
+          await client.query(
+            `INSERT INTO reg_preregistrations (student_no, term, academic_year, college, info) VALUES ($1,$2,$3,$4,$5)
+             ON CONFLICT (student_no, term, academic_year) DO NOTHING`,
+            [p.student_no, t.term, t.ay, college, JSON.stringify({ email: p.email || '', contact_number: p.contact_number || '', civil_status: p.civil_status || '' })]);
 
           const temp = generateTempPassword();
           const fullName = `${p.last_name}, ${p.first_name}${p.middle_name ? ' ' + p.middle_name : ''}${p.extension ? ' ' + p.extension : ''}`;
