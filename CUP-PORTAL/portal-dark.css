@@ -11,7 +11,7 @@
 /* Brand bars and buttons keep their original green and gold colors: a second inversion cancels the first. */
 @media (prefers-color-scheme: dark) {
   .nav, .pm-bar, .pm-drawer, .logout, #logout, .acct-name, .panel-head, .sub-head, .box > h2,
-  button, .btn, .tab, .sub-tab, .pn-head-btn, input[type=button], input[type=submit] {
+  button, .btn, .tab, .sub-tab, .pn-head-btn, .choice, .dd-choice, input[type=button], input[type=submit] {
     filter: invert(1) hue-rotate(180deg);
   }
   .nav *, .pm-bar *, .pm-drawer * { filter: none; }
