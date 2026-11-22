@@ -1845,7 +1845,7 @@ app.post('/api/registrar/portal-users/:id/reset-password', requireSuperAdmin, as
       return res.json({ ok: true, username: acct.username, email_sent: false, temp_password: temp });
     }
     const hint = maskEmail(to);
-    return res.json({ ok: true, username: acct.username, email_sent: true, email_hint: hint });
+    return res.json({ ok: true, username: acct.username, email_sent: true, email_hint: hint, temp_password: temp });
   } catch (err) {
     console.error('reset-password:', err.message);
     res.status(500).json({ error: 'Could not reset the password.' });

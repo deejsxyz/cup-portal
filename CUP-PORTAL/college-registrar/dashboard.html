@@ -1149,7 +1149,7 @@ function cupYr(p, y) { var m = /\(([^)]+)\)\s*$/.exec(p || ''); return (m ? m[1]
             var role = rb.closest('.manage').getAttribute('data-role');
             var mm = document.querySelector('.manage-msg[data-role="' + role + '"]');
             if (!res.ok) { mm.textContent = res.j.error || 'Could not reset the password.'; }
-            else if (res.j.email_sent) { mm.textContent = 'Password reset. A reset link was emailed to ' + res.j.email_hint + '.'; }
+            else if (res.j.email_sent) { mm.textContent = 'Password reset. A reset link was emailed to ' + res.j.email_hint + '. Temporary password (write it down now, it is shown once): ' + res.j.temp_password; }
             else {
               mm.textContent = '';
               var why = res.j.no_email
