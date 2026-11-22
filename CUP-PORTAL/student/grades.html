@@ -139,7 +139,7 @@
   </section>
 
   <section class="card" id="enrolled-card" hidden>
-    <h2>Enrolled Subjects</h2>
+    <h2 id="enrolled-title">Enrolled Subjects</h2>
     <p class="hint" id="enrolled-meta"></p>
     <div style="overflow-x:auto"><table style="width:100%;border-collapse:collapse;font-size:.95rem">
       <thead><tr><th style="text-align:left;padding:6px;border-bottom:1px solid #d5e2d5">Code</th><th style="text-align:left;padding:6px;border-bottom:1px solid #d5e2d5">Descriptive title</th><th style="text-align:left;padding:6px;border-bottom:1px solid #d5e2d5">Schedule</th><th style="text-align:left;padding:6px;border-bottom:1px solid #d5e2d5">Room</th><th style="text-align:left;padding:6px;border-bottom:1px solid #d5e2d5">Instructor</th></tr></thead>
@@ -609,6 +609,7 @@
         .then(function (res) {
           var card = $('enrolled-card');
           var officially = res.j.status === 'enrolled';
+          $('enrolled-title').textContent = officially ? 'Enrolled Subjects' : 'Pre-registered Subjects';
           if (!res.ok || (!res.j.enrolled && !officially)) { card.hidden = true; return; }
           if (!res.j.enrolled || !res.j.subjects.length) {
             card.hidden = false;
