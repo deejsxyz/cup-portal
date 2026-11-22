@@ -1084,15 +1084,17 @@ app.post('/api/registrar/accounts', requireSuperAdmin, async (req, res) => {
 
 // Student list: a college registrar sees only their own college's enrolled students.
 app.get('/api/registrar/students', requireRegistrar, async (req, res) => {
-  const college = req.reg.role === 'registrar' ? req.reg.college : String(req.query.college || '');
-  if (!REG_COLLEGES.includes(college)) return res.status(400).json({ error: 'Choose a college.' });
+  // University Registrar (superadmin) may ask for ALL colleges at once.
+  const wantAll = String(req.query.college || '').toUpperCase() === 'ALL' && req.reg.role === 'superadmin';
+  const college = req.reg.role === 'registrar' ? req.reg.college : (wantAll ? 'ALL' : String(req.query.college || ''));
+  if (college !== 'ALL' && !REG_COLLEGES.includes(college)) return res.status(400).json({ error: 'Choose a college.' });
   try {
     const pt = await gradingTerm();
     const { rows } = await pool.query(
-      `SELECT student_no, last_name, first_name, middle_name, name_extension, gender, birthday::text AS birthday, program, major, year_level, section, email, contact_number, civil_status,
+      `SELECT student_no, college, last_name, first_name, middle_name, name_extension, gender, birthday::text AS birthday, program, major, year_level, section, email, contact_number, civil_status,
               (SELECT u.archived_at FROM reg_users u WHERE u.student_no = reg_students.student_no LIMIT 1) AS account_archived,
               status, (csc_paid_at IS NOT NULL) AS csc_paid
-       FROM reg_students WHERE college = $1
+       FROM reg_students WHERE ($1 = 'ALL' OR college = $1)
        ORDER BY last_name, first_name`, [college]);
     res.json({ college, students: rows.filter((s) => !isHiddenStudentRow(s)) });
   } catch (err) {
@@ -4090,16 +4092,18 @@ app.get('/api/registrar/curriculum-programs', requireRegistrar, async (req, res)
 });
 // Every program of a college by its full name (used by the Student Records program picker).
 app.get('/api/registrar/college-programs', requireRegistrar, async (req, res) => {
-  const college = regCollege(req, req.query.college);
-  if (!college) return res.json({ programs: [] });
-  // Each program, then its majors (from the curriculum labels "Program - Major").
-  const base = REG_PROGRAM_COLLEGES[college] || [];
+  const wantAll = String(req.query.college || '').toUpperCase() === 'ALL' && req.reg.role === 'superadmin';
+  const colleges = wantAll ? REG_COLLEGES : [regCollege(req, req.query.college)].filter(Boolean);
+  if (!colleges.length) return res.json({ programs: [] });
+  // Each program, then its majors (from the curriculum labels "Program - Major"). ALL lists every college's programs.
   const out = [];
-  base.forEach((name) => {
-    out.push({ label: name, program: name, major: '' });
-    CURRICULUM_PROGRAMS.filter((x) => x.college === college).forEach((x) => {
-      const m = String(x.label).match(/^(.*\([^)]+\)) - (.+)$/);
-      if (m && m[1] === name) out.push({ label: x.label, program: name, major: m[2].trim() });
+  colleges.forEach((college) => {
+    (REG_PROGRAM_COLLEGES[college] || []).forEach((name) => {
+      out.push({ label: name, program: name, major: '' });
+      CURRICULUM_PROGRAMS.filter((x) => x.college === college).forEach((x) => {
+        const m = String(x.label).match(/^(.*\([^)]+\)) - (.+)$/);
+        if (m && m[1] === name) out.push({ label: x.label, program: name, major: m[2].trim() });
+      });
     });
   });
   res.json({ programs: out });
