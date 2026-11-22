@@ -2056,7 +2056,7 @@ function cupYr(p, y) { var m = /\(([^)]+)\)\s*$/.exec(p || ''); return (m ? m[1]
     function manageOpenMsg(f) {
       if (!manageStu || !f || !f.contentWindow) return;
       if (stuTab === 'grades') f.contentWindow.postMessage({ openGrade: manageStu.student_no }, '*');
-      else f.contentWindow.postMessage({ openStudent: manageStu.student_no }, '*');
+      else f.contentWindow.postMessage({ openStudent: manageStu.student_no, edit: true }, '*');
     }
     function hideStuFrames() {
       var base = document.getElementById('stuAllFrame');

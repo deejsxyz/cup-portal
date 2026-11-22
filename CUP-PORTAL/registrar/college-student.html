@@ -318,10 +318,10 @@ window.cupYr = function (p, y) { var m = /\(([^)]+)\)\s*$/.exec(p || ''); return
     renderList();
   });
   // The University Registrar's Manage Student search opens a student here once the roster is ready.
-  var rosterReady = false, pendingOpen = null, pendingGrade = null;
+  var rosterReady = false, pendingOpen = null, pendingEdit = false, pendingGrade = null;
   window.addEventListener('message', function (e) {
     if (!e.data) return;
-    if (e.data.openStudent) { if (rosterReady) openStudent(e.data.openStudent); else pendingOpen = e.data.openStudent; }
+    if (e.data.openStudent) { if (rosterReady) openStudent(e.data.openStudent, !!e.data.edit); else { pendingOpen = e.data.openStudent; pendingEdit = !!e.data.edit; } }
     if (e.data.openGrade) { if (rosterReady) gradeOpenStudent(e.data.openGrade); else pendingGrade = e.data.openGrade; }
   });
   function loadRoster() {
@@ -330,7 +330,7 @@ window.cupYr = function (p, y) { var m = /\(([^)]+)\)\s*$/.exec(p || ''); return
       .then(function (res) {
         all = res.ok ? (res.j.students || []) : [];
         rosterReady = true;
-        if (pendingOpen) { var n = pendingOpen; pendingOpen = null; openStudent(n); }
+        if (pendingOpen) { var n = pendingOpen, ed = pendingEdit; pendingOpen = null; pendingEdit = false; openStudent(n, ed); }
         if (pendingGrade) { var g = pendingGrade; pendingGrade = null; gradeOpenStudent(g); }
       });
   }
