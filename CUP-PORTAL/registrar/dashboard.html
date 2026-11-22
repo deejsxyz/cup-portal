@@ -180,13 +180,17 @@
     header > .top { order: 0; }
     header > .pm-bar { order: 1; }
     header > .college-bar { order: 2; }
+    /* Colleges list is always shown in the menu, not as a dropdown. */
+    .pm-drawer #collegesMenu .dd { display: flex !important; flex-direction: column; gap: 4px; }
+    .pm-drawer #collegesMenu > .tab { pointer-events: none; }
+    .pm-drawer #collegesMenu > .tab::after { display: none; }
   }
 </style>
 <link rel="stylesheet" href="/CUP-PORTAL/portal-controls.css">
 <script src="/CUP-PORTAL/portal-session.js" data-logout="/api/registrar/logout" data-login="/CUP-PORTAL/registrar/"></script>
 </head>
 <body>
-  <header>
+  <header data-home="/CUP-PORTAL/registrar/">
     <div class="top">
       <div class="live-clock" id="liveClock"></div>
       <a class="seal" href="/CUP-PORTAL/" title="Back to the CUP Portal" style="text-decoration:none;"><img src="/images/cup-logo-seal.png" alt="City University of Pasay seal"></a>
