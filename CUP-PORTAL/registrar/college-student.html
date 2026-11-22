@@ -449,9 +449,13 @@ window.cupYr = function (p, y) { var m = /\(([^)]+)\)\s*$/.exec(p || ''); return
       '</div>';
   }
   var immToday = '';
+  // Immunization status is only for the CONM College Registrar.
+  function immAllowed() { return COLLEGE === 'CONM' && window.regRole === 'registrar'; }
   function loadImm(no, boxId, record) {
     var box = document.getElementById(boxId);
     if (!box) return;
+    if (!immAllowed()) { box.innerHTML = ''; box.hidden = true; return; }
+    box.hidden = false;
     box.innerHTML = '<p class="text-xs text-slate-500">Loading immunization status…</p>';
     fetch('/api/registrar/immunization/' + encodeURIComponent(no) + '?college=' + encodeURIComponent(COLLEGE), { credentials: 'same-origin' })
       .then(function (r) { return r.json().then(function (j) { return { ok: r.ok, j: j }; }); })
@@ -1157,6 +1161,7 @@ function progAbbrOf(p) { var m = /\(([^)]+)\)\s*$/.exec(p || ''); return m ? m[1
       return;
     }
     r.clone().json().then(function (j) {
+      window.regRole = j.role;
       if (j.role === 'superadmin') return;
       var nb = document.querySelector('[data-tab="new"]'), ns = document.querySelector('[data-sec="new"]');
       if (nb) nb.hidden = true;

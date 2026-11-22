@@ -3214,6 +3214,10 @@ app.get('/api/registrar/coe/:no', requireRegistrar, async (req, res) => {
 });
 
 // ---- Immunization (College Registrar): the CONM portal's schedule and due-date rules ----
+// Student Health & Immunization Status is only for the CONM College Registrar (not the University Registrar, Records, or other colleges).
+function immAllowed(req, college) {
+  return !!req.reg && req.reg.role === 'registrar' && !req.reg.records && college === 'CONM';
+}
 (async () => {
   try {
     await pool.query(`CREATE TABLE IF NOT EXISTS reg_vaccine_types (id SERIAL PRIMARY KEY, name TEXT UNIQUE NOT NULL,
@@ -3278,6 +3282,7 @@ function immStatus(v, doses) {
 app.get('/api/registrar/immunization/:no', requireRegistrar, async (req, res) => {
   const college = regCollege(req, (req.body || {}).college || req.query.college);
   if (!college) return res.status(403).json({ error: 'Choose a college.' });
+  if (!immAllowed(req, college)) return res.status(403).json({ error: 'Student health and immunization status is only for the CONM College Registrar.' });
   const no = String(req.params.no || '').trim();
   try {
     const st = await pool.query('SELECT college FROM reg_students WHERE student_no = $1', [no]);
@@ -3304,6 +3309,7 @@ app.get('/api/registrar/immunization/:no', requireRegistrar, async (req, res) =>
 app.post('/api/registrar/immunization/:no', requireRegistrar, async (req, res) => {
   const college = regCollege(req, (req.body || {}).college || req.query.college);
   if (!college) return res.status(403).json({ error: 'Choose a college.' });
+  if (!immAllowed(req, college)) return res.status(403).json({ error: 'Student health and immunization status is only for the CONM College Registrar.' });
   const no = String(req.params.no || '').trim();
   const vaccineId = Number((req.body || {}).vaccine_id);
   const dateGiven = String((req.body || {}).date_given || '');
@@ -3347,6 +3353,7 @@ app.post('/api/registrar/immunization/:no', requireRegistrar, async (req, res) =
 app.post('/api/registrar/immunization/:no/void', requireRegistrar, async (req, res) => {
   const college = regCollege(req, (req.body || {}).college || req.query.college);
   if (!college) return res.status(403).json({ error: 'Choose a college.' });
+  if (!immAllowed(req, college)) return res.status(403).json({ error: 'Student health and immunization status is only for the CONM College Registrar.' });
   const no = String(req.params.no || '').trim();
   const vaccineId = Number((req.body || {}).vaccine_id);
   if (!Number.isInteger(vaccineId)) return res.status(400).json({ error: 'Choose a vaccine.' });
