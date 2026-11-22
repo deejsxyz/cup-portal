@@ -3489,7 +3489,7 @@ app.post('/api/registrar/enroll-student', requireRegistrar, async (req, res) => 
   const contact = String(b.contact_number || '').replace(/[^\d+]/g, '') || null; // accepts (0924) 536-5127 too
   if (contact && !/^(09\d{9}|\+639\d{9})$/.test(contact)) return res.status(400).json({ error: 'Contact number must be 09XXXXXXXXX or +639XXXXXXXXX.' });
   if (email && !/^[A-Za-z0-9._%+\-]+@[A-Za-z0-9\-]+(\.[A-Za-z0-9\-]+)*\.[A-Za-z]{2,}$/.test(email)) return res.status(400).json({ error: 'Enter a valid email address.' });
-  const yearLevel = Number(b.year_level);
+  const yearLevel = mode === 'new' ? 1 : Number(b.year_level); // a newly built record is always a first-year student
   const section = String(b.section || '').trim().slice(0, 10) || 'A';
   const civil = canonicalCivil(b.civil_status);
   if (await blockIfEnrollmentClosed(req, res)) return;
