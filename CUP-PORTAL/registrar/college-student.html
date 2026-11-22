@@ -1213,13 +1213,12 @@ function progAbbrOf(p) { var m = /\(([^)]+)\)\s*$/.exec(p || ''); return m ? m[1
         '<div class="sm:col-span-2"><span class="text-[10px] uppercase text-slate-400 block font-bold">Title</span><span class="text-slate-700 text-xs">' + esc(r.title) + '</span></div>' +
         '<div><span class="text-[10px] uppercase text-slate-400 block font-bold">Final Grade</span>' +
           '<select class="grade-sel w-full px-2 py-1.5 rounded border border-slate-300 font-bold text-indigo-700 bg-white text-xs" data-i="' + i + '"' + (grade.editing ? '' : ' disabled') + '>' + opts + '</select></div>' +
-        '<div><span class="text-[10px] uppercase text-slate-400 block font-bold">Remarks</span><span id="rem_' + i + '" class="block w-full px-2 py-1.5 rounded border border-slate-200 text-xs bg-slate-100 font-medium">' + esc(gradeRemark(r.final_grade)) + '</span></div>' +
-        '<div class="sm:col-span-6"><span class="text-[10px] uppercase text-slate-400 block font-bold">Instructor</span><span class="text-xs text-slate-700">' + esc(r.instructor || '—') + '</span></div>' +
+        '<div><span class="text-[10px] uppercase text-slate-400 block font-bold">Remarks</span><input type="text" id="rem_' + i + '" maxlength="200" value="' + esc(r.remarks || gradeRemark(r.final_grade)) + '"' + (grade.editing ? '' : ' disabled') + ' class="block w-full px-2 py-1.5 rounded border border-slate-300 text-xs font-medium disabled:bg-slate-100 disabled:border-slate-200"></div>' +
         '</div>';
     }).join('') : '<p class="text-sm text-slate-600">No subjects are enrolled in this term.</p>';
     $('gradeBody').innerHTML = head + '<div class="space-y-2">' + list + '</div>';
     document.querySelectorAll('.grade-sel').forEach(function (sel) {
-      sel.addEventListener('change', function () { $('rem_' + sel.getAttribute('data-i')).textContent = gradeRemark(sel.value); });
+      sel.addEventListener('change', function () { $('rem_' + sel.getAttribute('data-i')).value = gradeRemark(sel.value); });
     });
     var eb = $('gradeEditBtn'); if (eb) eb.addEventListener('click', function () { grade.editing = true; gradeRender(); });
     var cb = $('gradeCancelBtn'); if (cb) cb.addEventListener('click', function () { gradeLoad(); });
@@ -1228,9 +1227,11 @@ function progAbbrOf(p) { var m = /\(([^)]+)\)\s*$/.exec(p || ''); return m ? m[1
   function gradeSave() {
     var jobs = [];
     document.querySelectorAll('.grade-sel').forEach(function (sel) {
-      var r = grade.rows[Number(sel.getAttribute('data-i'))];
-      if (sel.value === r.final_grade || !sel.value) return;
-      jobs.push({ student_no: grade.no, course_code: r.course_code, final_grade: sel.value, instructor: r.instructor, term: grade.term, academic_year: grade.ay });
+      var i = Number(sel.getAttribute('data-i')), r = grade.rows[i], rem = $('rem_' + i).value.trim();
+      var oldRem = r.remarks || gradeRemark(r.final_grade);
+      if (sel.value === r.final_grade && rem === oldRem) return;
+      if (!sel.value) return;
+      jobs.push({ student_no: grade.no, course_code: r.course_code, final_grade: sel.value, instructor: r.instructor, term: grade.term, academic_year: grade.ay, remarks: rem });
     });
     if (!jobs.length) { gradeLoad(); return; }
     Promise.all(jobs.map(function (b) {

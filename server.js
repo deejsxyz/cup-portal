@@ -2980,6 +2980,7 @@ app.post('/api/registrar/grades', requireRegistrar, async (req, res) => {
   const instructor = String(b.instructor || '').trim().slice(0, 150);
   const term = String(b.term || '').trim().slice(0, 20);
   const ay = String(b.academic_year || '').trim();
+  const remarksIn = typeof b.remarks === 'string' ? b.remarks.trim().slice(0, 200) : '';
   if (grade && !REG_GRADES.includes(grade)) return res.status(400).json({ error: 'Choose a grade from the list.' });
   if (!studentNo || !course || !term || !/^\d{4}-\d{4}$/.test(ay)) {
     return res.status(400).json({ error: 'Student number, course, term and academic year (YYYY-YYYY) are required.' });
@@ -2993,7 +2994,7 @@ app.post('/api/registrar/grades', requireRegistrar, async (req, res) => {
        VALUES ($1,$2,$3,$4,$5,$6,$7,$8)
        ON CONFLICT (student_no, course_code, term, academic_year)
        DO UPDATE SET final_grade = EXCLUDED.final_grade, instructor = EXCLUDED.instructor, remarks = EXCLUDED.remarks, updated_at = now(), status = 'submitted', approved_at = NULL`,
-      [studentNo, college, course, grade, instructor, term, ay, registrarRemark(grade)]);
+      [studentNo, college, course, grade, instructor, term, ay, remarksIn || registrarRemark(grade)]);
     await runStep1([studentNo]).catch((err) => console.error(err));
     res.json({ ok: true });
   } catch (err) {
