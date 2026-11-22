@@ -2046,7 +2046,8 @@ function cupYr(p, y) { var m = /\(([^)]+)\)\s*$/.exec(p || ''); return (m ? m[1]
     function showStuFrame() {
       var wrap = document.getElementById('stuAllCollegeWrap');
       if (wrap) wrap.style.display = stuTab === 'view' ? 'none' : 'inline-flex';
-      showCollegeFrame('stuAllCollege', 'stuAllFrame', '/CUP-PORTAL/registrar/college-student.html', stuCurrentCollege());
+      var shown = showCollegeFrame('stuAllCollege', 'stuAllFrame', '/CUP-PORTAL/registrar/college-student.html', stuCurrentCollege());
+      if (shown && shown.contentWindow) { try { shown.contentWindow.postMessage({ panelTab: stuTab }, '*'); } catch (e) {} }
       fillStuPrograms();
     }
     function initStudentAll() {
