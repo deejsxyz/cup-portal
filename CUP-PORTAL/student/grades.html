@@ -234,6 +234,15 @@
 
 <div id="printArea"></div>
 
+<div id="cropModal" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,.6);z-index:2000;align-items:center;justify-content:center;padding:16px">
+  <div style="background:#fff;border-radius:12px;padding:16px;width:100%;max-width:360px;box-sizing:border-box">
+    <h3 style="margin:0 0 6px">Adjust your photo</h3>
+    <p class="hint" style="margin:0 0 10px">Drag the picture to position your face in the circle. Use the slider to zoom.</p>
+    <div id="cropBox" style="position:relative;width:100%;aspect-ratio:1/1;overflow:hidden;background:#e6ece6;border-radius:8px;touch-action:none;cursor:move"><img id="cropImg" alt="" draggable="false" style="position:absolute;left:0;top:0;transform-origin:0 0;max-width:none;user-select:none;-webkit-user-drag:none"></div>
+    <input id="cropZoom" type="range" min="1" max="3" step="0.01" value="1" style="width:100%;margin-top:10px" aria-label="Zoom">
+    <div style="display:flex;gap:8px;justify-content:flex-end;margin-top:12px"><button type="button" id="cropCancel" class="btn light">Cancel</button><button type="button" id="cropSave" class="btn">Save photo</button></div>
+  </div>
+</div>
 <script>
 (function () {
   var $ = function (id) { return document.getElementById(id); };
@@ -711,14 +720,5 @@
 </script>
 <script src="/protect-logo.js"></script>
 <script src="/CUP-PORTAL/portal-menu.js"></script>
-<div id="cropModal" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,.6);z-index:2000;align-items:center;justify-content:center;padding:16px">
-  <div style="background:#fff;border-radius:12px;padding:16px;width:100%;max-width:360px;box-sizing:border-box">
-    <h3 style="margin:0 0 6px">Adjust your photo</h3>
-    <p class="hint" style="margin:0 0 10px">Drag the picture to position your face in the circle. Use the slider to zoom.</p>
-    <div id="cropBox" style="position:relative;width:100%;aspect-ratio:1/1;overflow:hidden;background:#e6ece6;border-radius:8px;touch-action:none;cursor:move"><img id="cropImg" alt="" draggable="false" style="position:absolute;left:0;top:0;transform-origin:0 0;max-width:none;user-select:none;-webkit-user-drag:none"></div>
-    <input id="cropZoom" type="range" min="1" max="3" step="0.01" value="1" style="width:100%;margin-top:10px" aria-label="Zoom">
-    <div style="display:flex;gap:8px;justify-content:flex-end;margin-top:12px"><button type="button" id="cropCancel" class="btn light">Cancel</button><button type="button" id="cropSave" class="btn">Save photo</button></div>
-  </div>
-</div>
 </body>
 </html>
