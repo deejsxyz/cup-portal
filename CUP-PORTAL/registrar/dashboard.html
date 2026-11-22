@@ -1999,25 +1999,48 @@ function cupYr(p, y) { var m = /\(([^)]+)\)\s*$/.exec(p || ''); return (m ? m[1]
     }
     var ALL_COLLEGES = [['CONM', 'CONM'], ['CAS', 'CAS'], ['COBM', 'COBM'], ['COED', 'COED'], ['COACS', 'COACS'], ['LAW', 'School of Law'], ['GS', 'Graduate School'], ['TESDA-TVI', 'TESDA']];
     // Student and Faculty buttons: one list for all colleges (records accounts see only their own college).
+    // One iframe per college, kept loaded: changing college only shows another one (no reload, no flicker).
+    function visibleFrame(panel) {
+      var fs = panel ? panel.querySelectorAll('iframe') : [];
+      for (var i = 0; i < fs.length; i++) if (fs[i].style.display !== 'none') return fs[i];
+      return null;
+    }
+    function showCollegeFrame(selId, frameId, page) {
+      var sel = document.getElementById(selId), base = document.getElementById(frameId);
+      if (!sel || !base) return null;
+      var holder = base.parentElement, key = page + '|' + sel.value;
+      base.style.display = 'none';
+      holder.querySelectorAll('iframe[data-ckey]').forEach(function (f) { f.style.display = 'none'; });
+      var f = holder.querySelector('iframe[data-ckey="' + key.replace(/"/g, '') + '"]');
+      if (!f) {
+        f = document.createElement('iframe');
+        f.setAttribute('data-ckey', key);
+        f.title = base.title;
+        f.style.cssText = base.style.cssText;
+        f.src = page + '?college=' + encodeURIComponent(sel.value) + '&framed=1';
+        f.addEventListener('load', function () { if (selId === 'stuAllCollege') sendStuProgram(); });
+        holder.appendChild(f);
+      }
+      f.style.display = 'block';
+      return f;
+    }
     function fillAllColleges(selId, frameId, page) {
-      var sel = document.getElementById(selId), frame = document.getElementById(frameId);
-      if (!sel || !frame) return;
+      var sel = document.getElementById(selId);
+      if (!sel) return;
       var list = ALL_COLLEGES.filter(function (c) { return !me || me.role !== 'records' || c[0] === me.college; });
       var cur = sel.value;
       sel.innerHTML = list.map(function (c) { return '<option value="' + c[0] + '">' + c[1] + '</option>'; }).join('');
       if (cur && list.some(function (c) { return c[0] === cur; })) sel.value = cur;
       sel.onchange = function () {
-        var want = page + '?college=' + encodeURIComponent(sel.value) + '&framed=1';
-        frame.setAttribute('data-src', want); frame.src = want;
+        showCollegeFrame(selId, frameId, page);
         if (selId === 'stuAllCollege') fillStuPrograms();
       };
-      var first = page + '?college=' + encodeURIComponent(sel.value) + '&framed=1';
-      if (frame.getAttribute('data-src') !== first) { frame.setAttribute('data-src', first); frame.src = first; }
+      showCollegeFrame(selId, frameId, page);
     }
     // Program picker for Student Records: lists the chosen college's programs and filters the frame.
     var stuProgs = [];
     function sendStuProgram() {
-      var f = document.getElementById('stuAllFrame'), p = document.getElementById('stuAllProgram');
+      var f = visibleFrame(document.getElementById('student-all')), p = document.getElementById('stuAllProgram');
       if (!f || !f.contentWindow || !p) return;
       var chosen = p.value !== '' ? (stuProgs[Number(p.value)] || null) : null;
       f.contentWindow.postMessage({ viewProgram: chosen }, '*');
@@ -2025,8 +2048,6 @@ function cupYr(p, y) { var m = /\(([^)]+)\)\s*$/.exec(p || ''); return (m ? m[1]
     function fillStuPrograms() {
       var sel = document.getElementById('stuAllProgram'), col = document.getElementById('stuAllCollege');
       if (!sel || !col) return;
-      var frame = document.getElementById('stuAllFrame');
-      if (frame) frame.onload = sendStuProgram;
       sel.onchange = sendStuProgram;
       var opts = [];
       fetch('/api/registrar/college-programs?college=' + encodeURIComponent(col.value), { credentials: 'same-origin' })
@@ -2576,7 +2597,7 @@ function cupYr(p, y) { var m = /\(([^)]+)\)\s*$/.exec(p || ''); return (m ? m[1]
   document.querySelectorAll('h2.pn-tabs').forEach(function (h) {
     var kind = h.getAttribute('data-kind');
     var panel = h.closest('section.panel');
-    var frame = panel.querySelector('iframe');
+    var frame = null;
     var box = h.querySelector('.pn-btns') || h;
     box.innerHTML = KINDS[kind].map(function (t) {
       return '<button type="button" data-tab="' + t[0] + '">' + t[1] + '</button>';
@@ -2589,7 +2610,7 @@ function cupYr(p, y) { var m = /\(([^)]+)\)\s*$/.exec(p || ''); return (m ? m[1]
         paint(h, t);
         if (kind === 'step6') {
           panel.querySelectorAll('[data-sub]').forEach(function (x) { x.hidden = x.getAttribute('data-sub') !== t; });
-        } else if (frame && frame.contentWindow) {
+        } else if ((frame = Array.prototype.find.call(panel.querySelectorAll('iframe'), function (f) { return f.style.display !== 'none'; })) && frame.contentWindow) {
           frame.contentWindow.postMessage({ panelTab: t }, '*');
         }
       });
