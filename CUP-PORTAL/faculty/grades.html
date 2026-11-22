@@ -29,7 +29,18 @@
   .btn { background: var(--dg); color: #fff; border: 0; border-radius: 8px; font-weight: 700; cursor: pointer; }
   .btn.gold { background: var(--gold); color: var(--dg); }
   .btn.light { background: #e6ece6; color: #1d2a1d; }
-  .wrap { overflow: auto; max-height: 62vh; border: 1px solid var(--line); border-radius: 8px; }
+  .wrap { overflow: auto; max-height: 75vh; border: 1px solid #9fb29f; border-radius: 4px; background: #fff; }
+  .wrap table { border-collapse: collapse; min-width: 900px; }
+  .wrap th, .wrap td { border: 1px solid #c9d6c9; }
+  .wrap th { top: 0; z-index: 2; border-bottom: 2px solid #8fa98f; white-space: nowrap; }
+  .wrap td:first-child, .wrap th:first-child { position: sticky; left: 0; z-index: 1; background: #eef3ee; text-align: center; color: #4a5a4a; font-weight: 700; }
+  .wrap th:first-child { z-index: 3; background: #d9e5d9; }
+  .wrap tbody tr:nth-child(even) td { background: #f6f9f6; }
+  .wrap tbody tr:nth-child(even) td:first-child { background: #e6eee6; }
+  .wrap tbody tr:hover td { background: #eaf3ea; }
+  .wrap td select { border: 0; border-radius: 0; min-width: 90px; padding: 2px; background: transparent; }
+  .wrap td { white-space: nowrap; }
+  .wrap td.rem { white-space: normal; min-width: 160px; }
   table { width: 100%; border-collapse: collapse; }
   th { position: sticky; top: 0; background: #e6ece6; text-align: left; text-transform: uppercase; font-size: .7rem; color: #3a4a3a; }
   td, th { border-bottom: 1px solid var(--line); padding: .45em .6em; font-size: .75rem; }
@@ -140,7 +151,7 @@
         <button class="btn light" id="closeSheet" type="button">✕ Close Sheet</button>
       </div>
     </div>
-    <div class="bar" style="margin-top:10px">
+    <div class="bar" style="margin-top:10px" hidden>
       <label class="muted">Rows per page
         <select id="pageSize"><option>10</option><option>25</option><option>50</option><option>100</option></select></label>
       <div class="bar">
@@ -286,9 +297,10 @@
       });
   }
   function render() {
-    var size = Number($('pageSize').value) || 10;
-    var pages = Math.max(1, Math.ceil(state.roster.length / size));
-    if (state.page > pages) state.page = pages;
+    // The whole class list is shown on one sheet, like a spreadsheet; it scrolls inside the sheet.
+    var size = Math.max(1, state.roster.length);
+    var pages = 1;
+    state.page = 1;
     var from = (state.page - 1) * size;
     var rows = state.roster.slice(from, from + size);
     $('rows').innerHTML = rows.length ? rows.map(function (s, i) {
