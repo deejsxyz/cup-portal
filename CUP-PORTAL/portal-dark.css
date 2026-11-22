@@ -10,9 +10,10 @@
 
 /* Brand bars and buttons keep their original green and gold colors: a second inversion cancels the first. */
 @media (prefers-color-scheme: dark) {
-  .nav, .pm-bar, .pm-drawer, .logout, #logout, .acct-name, .panel-head, .sub-head, .box > h2 {
+  .nav, .pm-bar, .pm-drawer, .logout, #logout, .acct-name, .panel-head, .sub-head, .box > h2,
+  button, .btn, .tab, .sub-tab, .pn-head-btn, input[type=button], input[type=submit] {
     filter: invert(1) hue-rotate(180deg);
   }
+  .nav *, .pm-bar *, .pm-drawer * { filter: none; }
   /* Buttons inside a brand bar are already restored by the bar, so they are not inverted again. */
-  .nav .logout, .nav #logout, .pm-bar .logout, .pm-drawer .logout, .nav .acct-name, .pm-drawer .acct-name { filter: none; }
 }
