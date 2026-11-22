@@ -3368,11 +3368,12 @@ app.post('/api/registrar/enroll-student', requireRegistrar, async (req, res) => 
         [no, college, last, first, middle, gender, birthday, email, contact, program, yearLevel, section, civil, major]);
     } else {
       const st = await client.query(
-        'SELECT s.college, (SELECT u.archived_at FROM reg_users u WHERE u.student_no = s.student_no LIMIT 1) AS account_archived FROM reg_students s WHERE s.student_no = $1 FOR UPDATE', [no]);
+        'SELECT s.college, s.status, (SELECT u.archived_at FROM reg_users u WHERE u.student_no = s.student_no LIMIT 1) AS account_archived FROM reg_students s WHERE s.student_no = $1 FOR UPDATE', [no]);
       if (!st.rows.length) { await client.query('ROLLBACK'); return res.status(404).json({ error: 'Student number not found. Use New Student to register a new student.' }); }
       if (st.rows[0].account_archived) { await client.query('ROLLBACK'); return res.status(409).json({ error: "This student's portal account is archived. Restore the account in Accounts first." }); }
       if (st.rows[0].college !== college) { await client.query('ROLLBACK'); return res.status(403).json({ error: 'This student belongs to another college.' }); }
-      const already = await client.query('SELECT 1 FROM reg_enrollments WHERE student_no = $1 AND term = $2 AND academic_year = $3', [no, m.grading_semester, m.grading_ay]);
+      // Only an officially enrolled student is locked. A pre-registered student's subjects are saved to the same term record.
+      const already = st.rows[0].status === 'enrolled' ? await client.query('SELECT 1 FROM reg_enrollments WHERE student_no = $1 AND term = $2 AND academic_year = $3', [no, m.grading_semester, m.grading_ay]) : { rows: [] };
       if (already.rows.length) { await client.query('ROLLBACK'); return res.status(409).json({ error: 'This student is already enrolled for the active term.' }); }
       await client.query(
         `UPDATE reg_students SET last_name = $2, first_name = $3, middle_name = $4, gender = $5, birthday = $6,
