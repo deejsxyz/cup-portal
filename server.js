@@ -2292,8 +2292,10 @@ app.get('/api/registrar/certificate-of-grades.xlsx', requireRegistrar, async (re
       ws.getCell('D' + row).value = r.code;
       { const dc = ws.getCell('D' + row); dc.alignment = Object.assign({}, dc.alignment, { horizontal: 'left' }); }
       { const uc = ws.getCell('N' + row); uc.value = r.units; uc.alignment = Object.assign({}, uc.alignment, { horizontal: 'center', vertical: 'middle' }); }
-      ws.getCell('Q' + row).value = r.grade === '' ? '' : (Number.isFinite(Number(r.grade)) ? Number(r.grade).toFixed(2) : r.grade);
-      ws.getCell('T' + row).value = reportRemark(r.grade);
+      // A subject with no grade yet is printed as NG (NO GRADE) on the COG.
+      const shownGrade = r.grade === '' ? 'NG' : r.grade;
+      ws.getCell('Q' + row).value = shownGrade === 'NG' ? 'NG' : (Number.isFinite(Number(shownGrade)) ? Number(shownGrade).toFixed(2) : shownGrade);
+      ws.getCell('T' + row).value = shownGrade === 'NG' ? 'NO GRADE' : reportRemark(shownGrade);
     });
     for (let row = 12 + rows.length; row <= 25; row++) {
       ['B', 'D', 'N', 'Q', 'T'].forEach((c) => { ws.getCell(c + row).value = null; });
