@@ -641,6 +641,7 @@ function progAbbrOf(p) { var m = /\(([^)]+)\)\s*$/.exec(p || ''); return m ? m[1
     $('stuInfoView').hidden = false;
     loadImm(no, 'existImm', true);
     $('stuInfoForm').hidden = true;
+    termEdit.editing = false;
     if (s.year_level) $('ex_year_select').value = String(s.year_level);
     if (s.section) $('ex_section').value = s.section;
     exLoadContext();
@@ -678,7 +679,7 @@ function progAbbrOf(p) { var m = /\(([^)]+)\)\s*$/.exec(p || ''); return m ? m[1
     });
   }
   /* ----- Term Enrollment: editable subject list (instructor, delete, add, save) ----- */
-  var termEdit = { rows: [], ctx: null, year: null, catalog: [], instrs: [], dirty: false };
+  var termEdit = { rows: [], ctx: null, year: null, catalog: [], instrs: [], dirty: false, editing: false };
   function termInstrOpts(sel) {
     return '<option value="">-- Select Instructor --</option>' + termEdit.instrs.map(function (u) {
       return '<option value="' + u.id + '"' + (String(u.id) === String(sel) ? ' selected' : '') + '>' + esc(u.name) + '</option>';
@@ -686,6 +687,7 @@ function progAbbrOf(p) { var m = /\(([^)]+)\)\s*$/.exec(p || ''); return m ? m[1
   }
   function drawTermEditor() {
     var box = $('enrollHist');
+    var ed = termEdit.editing;
     termEdit.rows.forEach(function (r) {
       if (r.instructor_id == null && r.instructor_name) { var h = termEdit.instrs.filter(function (u) { return u.name === r.instructor_name; })[0]; if (h) r.instructor_id = h.id; }
     });
@@ -695,20 +697,22 @@ function progAbbrOf(p) { var m = /\(([^)]+)\)\s*$/.exec(p || ''); return m ? m[1
     var ay = (termEdit.ctx && termEdit.ctx.academic_year) || cur.academic_year || '';
     box.innerHTML =
       (termEdit.rows.length ? termEdit.rows.map(function (r, i) {
+        var iname = (termEdit.instrs.filter(function (u) { return String(u.id) === String(r.instructor_id); })[0] || {}).name || r.instructor_name || '—';
         return '<div class="rounded-lg border border-slate-200 bg-slate-50 p-4 mb-3 grid grid-cols-1 md:grid-cols-12 gap-3 items-center">' +
           '<div class="md:col-span-2"><div class="text-[10px] uppercase font-bold text-slate-500">Code (' + esc(ay) + ')</div><div class="font-mono font-bold text-slate-800">' + esc(r.course_code) + '</div></div>' +
           '<div class="md:col-span-5"><div class="text-[10px] uppercase font-bold text-slate-500">Title</div><div class="text-sm text-slate-800">' + esc(r.descriptive_title || '—') + '</div></div>' +
-          '<div class="md:col-span-3"><div class="text-[10px] uppercase font-bold text-slate-500 mb-1">Instructor</div><select data-i="' + i + '" class="w-full px-3 py-2 rounded-lg border border-slate-300 bg-white text-xs">' + termInstrOpts(r.instructor_id) + '</select></div>' +
-          '<div class="md:col-span-2 md:text-right"><button type="button" data-del="' + i + '" class="px-4 py-2 rounded-lg bg-red-600 hover:bg-red-700 text-white text-xs font-bold">Delete</button></div></div>';
+          '<div class="md:col-span-3"><div class="text-[10px] uppercase font-bold text-slate-500 mb-1">Instructor</div>' +
+            (ed ? '<select data-i="' + i + '" class="w-full px-3 py-2 rounded-lg border border-slate-300 bg-white text-xs">' + termInstrOpts(r.instructor_id) + '</select>'
+                : '<div class="text-sm text-slate-800">' + esc(iname) + '</div>') + '</div>' +
+          (ed ? '<div class="md:col-span-2 md:text-right"><button type="button" data-del="' + i + '" class="px-4 py-2 rounded-lg bg-red-600 hover:bg-red-700 text-white text-xs font-bold">Delete</button></div>' : '') +
+          '</div>';
       }).join('') : '<p class="text-xs text-slate-500 italic mb-3">No subjects enrolled for this term yet.</p>') +
-      '<div class="mt-4 pt-4 border-t border-slate-200"><div class="text-[10px] uppercase font-bold text-slate-500 mb-2">Add another subject to this term</div>' +
-      '<div class="flex flex-wrap gap-2 items-center"><select id="termAddCode" class="px-3 py-2 rounded-lg border border-slate-300 bg-white text-xs min-w-[260px] max-w-full"><option value="">--Select Subject to Add--</option>' +
-      avail.map(function (c) { return '<option value="' + esc(c.course_code) + '">[' + esc(c.course_code) + '] ' + esc(c.descriptive_title || '') + '</option>'; }).join('') +
-      '</select><select id="termAddInstr" class="px-3 py-2 rounded-lg border border-slate-300 bg-white text-xs max-w-[260px]">' + termInstrOpts('') + '</select>' +
-      '<button type="button" id="termAddBtn" class="px-4 py-2 rounded-lg bg-slate-800 hover:bg-slate-900 text-white text-xs font-bold">+ Add Subject</button></div></div>' +
-      '<div class="mt-4 flex flex-wrap items-center justify-end gap-3"><p id="termSaveMsg" class="text-xs font-semibold text-rose-600 mr-auto"></p>' +
-      '<button type="button" id="termCancelBtn" class="px-4 py-2 rounded-lg bg-slate-200 hover:bg-slate-300 text-slate-700 text-xs font-bold">Cancel</button>' +
-      '<button type="button" id="termSaveBtn" class="px-5 py-2 rounded-lg bg-indigo-700 hover:bg-indigo-800 text-white text-xs font-bold">Save Subjects</button></div>';
+      (ed ? '<div class="mt-4 pt-4 border-t border-slate-200"><div class="text-[10px] uppercase font-bold text-slate-500 mb-2">Add subject to this term</div>' +
+        '<div class="flex flex-wrap gap-2 items-center"><select id="termAddCode" class="px-3 py-2 rounded-lg border border-slate-300 bg-white text-xs min-w-[260px] max-w-full"><option value="">--Select Subject to Add--</option>' +
+        avail.map(function (c) { return '<option value="' + esc(c.course_code) + '">[' + esc(c.course_code) + '] ' + esc(c.descriptive_title || '') + '</option>'; }).join('') +
+        '</select><select id="termAddInstr" class="px-3 py-2 rounded-lg border border-slate-300 bg-white text-xs max-w-[260px]">' + termInstrOpts('') + '</select></div></div>' +
+        '<div class="mt-4 flex flex-wrap items-center justify-end gap-3"><p id="termSaveMsg" class="text-xs font-semibold text-rose-600 mr-auto"></p>' +
+        '<button type="button" id="termSaveBtn" class="px-5 py-2 rounded-lg bg-indigo-700 hover:bg-indigo-800 text-white text-xs font-bold">Save Subjects</button></div>' : '');
   }
   function loadTermCatalog(st) {
     var col = (st && st.college) || COLLEGE;
@@ -724,18 +728,19 @@ function progAbbrOf(p) { var m = /\(([^)]+)\)\s*$/.exec(p || ''); return m ? m[1
     var sel = e.target.closest('select[data-i]'); if (!sel) return;
     var r = termEdit.rows[Number(sel.getAttribute('data-i'))]; if (r) r.instructor_id = sel.value ? Number(sel.value) : null;
   });
+  $('enrollHist').addEventListener('change', function (e) {
+    if (e.target.id !== 'termAddCode' || !termEdit.editing) return;
+    var code = e.target.value; if (!code) return;
+    var ins = $('termAddInstr').value;
+    var c = termEdit.catalog.filter(function (x) { return x.course_code === code; })[0] || {};
+    termEdit.rows.push({ course_code: code, descriptive_title: c.descriptive_title || '', units: c.units, instructor_id: ins ? Number(ins) : null, instructor_name: '' });
+    drawTermEditor();
+  });
   $('enrollHist').addEventListener('click', function (e) {
     var t = e.target;
+    if (!termEdit.editing) return;
     var d = t.closest('button[data-del]');
     if (d) { termEdit.rows.splice(Number(d.getAttribute('data-del')), 1); drawTermEditor(); return; }
-    if (t.closest('#termAddBtn')) {
-      var code = $('termAddCode').value, ins = $('termAddInstr').value;
-      if (!code) { $('termSaveMsg').textContent = 'Choose a subject to add.'; return; }
-      var c = termEdit.catalog.filter(function (x) { return x.course_code === code; })[0] || {};
-      termEdit.rows.push({ course_code: code, descriptive_title: c.descriptive_title || '', units: c.units, instructor_id: ins ? Number(ins) : null, instructor_name: '' });
-      drawTermEditor(); return;
-    }
-    if (t.closest('#termCancelBtn')) { if (current) loadEnrollments(current.student_no); return; }
     if (t.closest('#termSaveBtn')) {
       if (!current) return;
       var no = current.student_no, btn = t.closest('#termSaveBtn'), msg = $('termSaveMsg');
@@ -818,6 +823,7 @@ function progAbbrOf(p) { var m = /\(([^)]+)\)\s*$/.exec(p || ''); return m ? m[1
     }
   });
   $('stuInfoEditBtn').addEventListener('click', function () {
+    termEdit.editing = true; if (termEdit.year) drawTermEditor();
     if (current && current.account_archived) { alert("This student's portal account is archived. Restore the account in Accounts first."); return; }
     var f = $('stuInfoForm');
     ['first_name', 'middle_name', 'last_name', 'gender', 'birthday', 'email', 'contact_number', 'year_level', 'section'].forEach(function (k) {
@@ -829,7 +835,7 @@ function progAbbrOf(p) { var m = /\(([^)]+)\)\s*$/.exec(p || ''); return m ? m[1
     f.hidden = false;
     $('stuInfoMsg').textContent = '';
   });
-  $('stuInfoCancelBtn').addEventListener('click', function () { $('stuInfoForm').hidden = true; $('stuInfoView').hidden = false; });
+  $('stuInfoCancelBtn').addEventListener('click', function () { $('stuInfoForm').hidden = true; $('stuInfoView').hidden = false; termEdit.editing = false; if (termEdit.year) drawTermEditor(); });
   var EMAIL_RE = /^[A-Za-z0-9._%+\-]+@[A-Za-z0-9\-]+(\.[A-Za-z0-9\-]+)*\.[A-Za-z]{2,}$/;
   var CONTACT_RE = /^(09\d{9}|\+639\d{9})$/;
   function cleanContactInput(v) {
