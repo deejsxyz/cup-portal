@@ -781,63 +781,46 @@ function progAbbrOf(p) { var m = /\(([^)]+)\)\s*$/.exec(p || ''); return m ? m[1
 
   /* ----- New Student ----- */
   var reg = { term: '', ay: '', instructors: [] };
+  // Standard Curriculum Subjects & Instructors, laid out like the CONM portal:
+  // one box per year level and semester, a checkbox and the instructor on each row.
   function regSubjectsRender(list, box, yr) {
     if (!list.length) { box.innerHTML = '<p class="text-slate-500">No curriculum subjects uploaded yet. Upload subjects in Subjects first.</p>'; return; }
-    // Preselected subjects (same year level, term and college) go to the top of the list.
-    var isPre = function (c) { return Number(c.year_level) === yr && (!c.semester || !reg.term || c.semester === reg.term) && (!c.college || c.college === COLLEGE); };
-    list = list.slice().sort(function (x, y) { return (isPre(y) ? 1 : 0) - (isPre(x) ? 1 : 0); });
-    var opts = '<option value="">-- Instructor --</option>' + reg.instructors.map(function (u) { return '<option value="' + u.id + '">' + esc(u.name) + '</option>'; }).join('');
+    var isCur = function (c) { return Number(c.year_level) === yr && (!c.semester || !reg.term || c.semester === reg.term); };
+    var opts = '<option value="">-- Select Instructor (Optional) --</option>' + reg.instructors.map(function (u) { return '<option value="' + u.id + '">' + esc(u.name) + '</option>'; }).join('');
     var defaults = list.map(function (c) { return c.default_instructor_id || ''; });
-    var filterBar = '<div class="flex flex-wrap items-center justify-between gap-2 mb-3 pb-2 border-b border-slate-200">' +
-      '<div class="flex flex-wrap items-center gap-2">' +
-      '<span class="font-bold text-slate-700">Show Subjects:</span>' +
-      '<select class="subj-year-filter bg-white px-2.5 py-1 rounded border border-slate-300 text-xs font-bold">' +
-      '<option value="all">All Subjects (All Year Levels & Terms)</option>' +
-      '<option value="current">Current Year Level Only (Year ' + yr + ')</option>' +
-      '<option value="1">1st Year Subjects</option>' +
-      '<option value="2">2nd Year Subjects</option>' +
-      '<option value="3">3rd Year Subjects</option>' +
-      '<option value="4">4th Year Subjects</option>' +
-      '</select>' +
-      '<input type="text" class="subj-search bg-white px-2.5 py-1 rounded border border-slate-300 text-xs w-56" placeholder="Search subject code or title...">' +
-      '</div>' +
-      '<span class="text-[11px] text-indigo-800 font-semibold">Tip: Check any subject from another year level or term to add it to this student.</span>' +
-      '</div>';
-    box.innerHTML = filterBar + '<div class="max-h-[55vh] overflow-y-auto"><table class="w-full text-xs"><thead class="bg-slate-100 text-[10px] uppercase text-slate-600 sticky top-0"><tr><th class="px-2 py-2 text-left">Take</th><th class="px-2 py-2 text-left">Code</th><th class="px-2 py-2 text-left">Descriptive Title</th><th class="px-2 py-2 text-left">Units</th><th class="px-2 py-2 text-left">Year &amp; Sem</th><th class="px-2 py-2 text-left">Instructor</th></tr></thead><tbody class="reg-subj-tbody">' +
-      list.map(function (c, i) {
-        var sameYear = Number(c.year_level) === yr;
-        var sameSem = !c.semester || !reg.term || c.semester === reg.term;
-        var sameCol = !c.college || c.college === COLLEGE;
-        var autoCheck = sameYear && sameSem && sameCol;
-        var yrLabel = c.year_level ? ('Year ' + esc(c.year_level)) : 'Any Year';
-        var semLabel = c.semester ? (' · ' + esc(c.semester)) : '';
+    // Groups: the current year level and semester first, then the others in curriculum order.
+    var groups = [], seen = {};
+    list.forEach(function (c, i) {
+      var key = (c.year_level || '') + '|' + (c.semester || '');
+      if (!seen[key]) { seen[key] = { yl: c.year_level, sem: c.semester || '', items: [] }; groups.push(seen[key]); }
+      seen[key].items.push(i);
+    });
+    groups.sort(function (a, b) {
+      var ca = isCur({ year_level: a.yl, semester: a.sem }) ? 0 : 1, cb = isCur({ year_level: b.yl, semester: b.sem }) ? 0 : 1;
+      return ca - cb || (Number(a.yl) || 0) - (Number(b.yl) || 0);
+    });
+    var html = '<div class="max-h-[400px] overflow-y-auto pr-2 space-y-4">';
+    groups.forEach(function (g) {
+      var cur = isCur({ year_level: g.yl, semester: g.sem });
+      html += '<div class="bg-white p-3 rounded-lg border ' + (cur ? 'border-indigo-400 bg-indigo-50/40' : 'border-slate-200') + ' shadow-sm">';
+      html += '<h4 class="text-[11px] font-bold uppercase tracking-wider ' + (cur ? 'text-indigo-800' : 'text-slate-500') + ' mb-2 border-b ' + (cur ? 'border-indigo-200' : 'border-slate-100') + ' pb-1">' +
+        esc((g.yl ? 'Year ' + g.yl : 'Any Year') + (g.sem ? ' · ' + g.sem : '')) + (cur ? ' (Standard Set)' : '') + '</h4>';
+      html += '<div class="space-y-2">';
+      g.items.forEach(function (i) {
+        var c = list[i];
         var colLabel = (c.college && c.college !== COLLEGE) ? (' [' + esc(c.college) + ']') : '';
-        return '<tr class="border-t border-slate-200 reg-subj-row" data-yr="' + esc(c.year_level || '') + '" data-q="' + esc((c.course_code + ' ' + c.descriptive_title + ' ' + (c.college || '')).toLowerCase()) + '">' +
-          '<td class="px-2 py-2"><input type="checkbox" class="reg-take" data-i="' + i + '"' + (autoCheck ? ' checked' : '') + '></td>' +
-          '<td class="px-2 py-2 font-mono font-bold whitespace-nowrap">' + esc(c.course_code) + colLabel + '</td>' +
-          '<td class="px-2 py-2">' + esc(c.descriptive_title) + '</td>' +
-          '<td class="px-2 py-2">' + esc(c.units) + '</td>' +
-          '<td class="px-2 py-2 ' + (sameYear ? 'text-slate-700' : 'text-amber-700 font-bold') + '">' + yrLabel + semLabel + (sameYear ? '' : ' (cross-year)') + '</td>' +
-          '<td class="px-2 py-2"><select class="reg-inst bg-white px-2 py-1 rounded border border-slate-300" data-i="' + i + '">' + opts.replace('value="' + defaults[i] + '"', 'value="' + defaults[i] + '" selected') + '</select></td></tr>';
-      }).join('') + '</tbody></table></div>';
-    box.dataset.list = JSON.stringify(list.map(function (c) { return c.course_code; }));
-
-    function applySubjFilter() {
-      var yf = box.querySelector('.subj-year-filter').value;
-      var q = (box.querySelector('.subj-search').value || '').trim().toLowerCase();
-      box.querySelectorAll('.reg-subj-row').forEach(function (tr) {
-        var rYr = tr.getAttribute('data-yr');
-        var rQ = tr.getAttribute('data-q') || '';
-        var cb = tr.querySelector('.reg-take');
-        var show = true;
-        if (yf === 'current' && String(rYr) !== String(yr) && !(cb && cb.checked)) show = false;
-        else if (['1', '2', '3', '4'].indexOf(yf) !== -1 && String(rYr) !== yf && !(cb && cb.checked)) show = false;
-        if (q && rQ.indexOf(q) === -1) show = false;
-        tr.hidden = !show;
+        var sel = opts.replace('value="' + defaults[i] + '"', 'value="' + defaults[i] + '" selected');
+        html += '<div class="flex flex-col sm:flex-row items-start sm:items-center justify-between p-2 rounded hover:bg-slate-100 gap-2 border border-slate-100 reg-subj-row" data-yr="' + esc(c.year_level || '') + '">' +
+          '<label class="flex items-center space-x-2 cursor-pointer flex-grow">' +
+          '<input type="checkbox" class="reg-take rounded border-slate-300 text-indigo-600 focus:ring-indigo-500" data-i="' + i + '"' + (cur ? ' checked' : '') + '>' +
+          '<span class="text-[11px] font-semibold text-slate-700">[' + esc(c.course_code) + ']' + colLabel + ' ' + esc(c.descriptive_title) + '</span></label>' +
+          '<div class="w-full sm:w-64"><select class="reg-inst w-full px-2 py-1 rounded border border-slate-300 bg-white text-[11px] font-medium text-slate-700 cursor-pointer" data-i="' + i + '">' + sel + '</select></div></div>';
       });
-    }
-    box.querySelector('.subj-year-filter').addEventListener('change', applySubjFilter);
-    box.querySelector('.subj-search').addEventListener('input', applySubjFilter);
+      html += '</div></div>';
+    });
+    html += '</div>';
+    box.innerHTML = html;
+    box.dataset.list = JSON.stringify(list.map(function (c) { return c.course_code; }));
   }
   function regLoadContext() {
     var year = $('reg_year_select').value;
