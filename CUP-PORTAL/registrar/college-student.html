@@ -438,7 +438,7 @@ window.cupYr = function (p, y) { var m = /\(([^)]+)\)\s*$/.exec(p || ''); return
     $('viewCloseBtn').addEventListener('click', function () {
       $('viewRecord').hidden = true; $('viewRecord').innerHTML = ''; $('viewListView').hidden = false;
     });
-    $('viewRecord').scrollIntoView({ block: 'start' });
+    $('viewRecord').scrollIntoView({ block: 'nearest' });
   }
   $('viewStudentTbody').addEventListener('click', function (e) {
     var b = e.target.closest('[data-open]');
