@@ -1,0 +1,3 @@
+/* Phones: hide the header navigation until portal-menu.js moves it into the menu drawer,
+   so the old desktop navigation does not show while the page loads or on refresh. */
+@media (max-width: 900px) { header nav { visibility: hidden; } }
