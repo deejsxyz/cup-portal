@@ -96,7 +96,8 @@
       var nm = header.querySelector('.top .name');
       var left = 116;
       if (nm) left = Math.max(0, Math.round(nm.getBoundingClientRect().left - header.getBoundingClientRect().left));
-      bar.style.paddingLeft = left + 'px';
+      // Nudge 10px left so the hamburger lines up with the title text.
+      bar.style.paddingLeft = Math.max(0, left - 10) + 'px';
     }
     alignBar();
     window.addEventListener('resize', alignBar);
