@@ -3343,6 +3343,30 @@ app.post('/api/registrar/immunization/:no', requireRegistrar, async (req, res) =
   }
 });
 
+// Removes the most recent dose of a vaccine (for corrections). The row is kept, marked as voided.
+app.post('/api/registrar/immunization/:no/void', requireRegistrar, async (req, res) => {
+  const college = regCollege(req, (req.body || {}).college || req.query.college);
+  if (!college) return res.status(403).json({ error: 'Choose a college.' });
+  const no = String(req.params.no || '').trim();
+  const vaccineId = Number((req.body || {}).vaccine_id);
+  if (!Number.isInteger(vaccineId)) return res.status(400).json({ error: 'Choose a vaccine.' });
+  try {
+    const st = await pool.query('SELECT college FROM reg_students WHERE student_no = $1', [no]);
+    if (!st.rows.length || st.rows[0].college !== college) return res.status(404).json({ error: 'Student not found in this college.' });
+    const r = await pool.query(
+      `UPDATE reg_student_vaccinations SET voided_at = now()
+       WHERE id = (SELECT id FROM reg_student_vaccinations WHERE student_no = $1 AND vaccine_id = $2 AND voided_at IS NULL
+                   ORDER BY cycle_number DESC, dose_number DESC, date_given DESC LIMIT 1)
+       RETURNING dose_number`, [no, vaccineId]);
+    if (!r.rows.length) return res.status(400).json({ error: 'There is no dose to remove.' });
+    logAction(req, college + ' registrar', 'immunization dose removed', no + ' vaccine ' + vaccineId + ' dose ' + r.rows[0].dose_number);
+    res.json({ ok: true });
+  } catch (err) {
+    console.error(err);
+    res.status(500).json({ error: 'Could not remove the dose.' });
+  }
+});
+
 app.get('/api/registrar/enrollments', requireRegistrar, async (req, res) => {
   const college = regCollege(req, (req.body || {}).college || req.query.college);
   if (!college) return res.status(403).json({ error: 'Choose a college.' });
