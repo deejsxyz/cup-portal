@@ -258,17 +258,17 @@ window.cupYr = function (p, y) { var m = /\(([^)]+)\)\s*$/.exec(p || ''); return
   }
 
   /* ----- Latest grades on file (read-only) ----- */
-  var gradesCache = null;
+  var gradesCache = null, gradesCachedAt = 0;
   function ensureGrades() {
-    if (gradesCache) return Promise.resolve(gradesCache);
+    if (gradesCache && Date.now() - gradesCachedAt < 60000) return Promise.resolve(gradesCache);
     return fetch('/api/registrar/grades?college=' + encodeURIComponent(COLLEGE), { credentials: 'same-origin' })
       .then(function (r) { return r.json(); })
-      .then(function (j) { gradesCache = j.grades || []; return gradesCache; });
+      .then(function (j) { gradesCache = j.grades || []; gradesCachedAt = Date.now(); return gradesCache; });
   }
   var TERM_RANK = { '1st Semester': 1, '2nd Semester': 2, 'Summer': 3 };
   function showLatestGrades(no) {
     var box = document.getElementById('evalGrades');
-    box.innerHTML = '<p class="text-xs text-slate-500">Loading grades…</p>';
+    if (box.getAttribute('data-no') !== no) { box.innerHTML = '<p class="text-xs text-slate-500">Loading grades…</p>'; box.setAttribute('data-no', no); }
     ensureGrades().then(function (list) {
       if (!current || current.student_no !== no) return;
       var mine = list.filter(function (g) { return g.student_no === no; });
@@ -280,8 +280,10 @@ window.cupYr = function (p, y) { var m = /\(([^)]+)\)\s*$/.exec(p || ''); return
       var body = rows.map(function (g) {
         return '<tr class="border-t border-slate-200"><td class="p-2 font-mono">' + esc(g.course_code) + '</td><td class="p-2">' + esc(g.final_grade) + '</td><td class="p-2">' + esc(g.remarks) + '</td><td class="p-2">' + esc(g.status === 'approved' ? 'Approved' : 'Submitted') + '</td></tr>';
       }).join('');
-      box.innerHTML = head + '<p class="text-xs text-slate-500 mb-2">' + esc(rows[0].term + ' (' + rows[0].academic_year + ')') + '</p>' +
+      var html = head + '<p class="text-xs text-slate-500 mb-2">' + esc(rows[0].term + ' (' + rows[0].academic_year + ')') + '</p>' +
         '<div style="overflow-x:auto"><table class="w-full text-xs"><thead class="bg-slate-100"><tr><th class="text-left p-2">Course</th><th class="text-left p-2">Final Grade</th><th class="text-left p-2">Remarks</th><th class="text-left p-2">Status</th></tr></thead><tbody>' + body + '</tbody></table></div>';
+      // Only redraw when the grades actually changed, so the live refresh does not flicker.
+      if (box.getAttribute('data-html') !== html) { box.innerHTML = html; box.setAttribute('data-html', html); }
     }).catch(function () { box.innerHTML = head + '<p class="text-xs text-rose-600">Could not load grades.</p>'; });
   }
 
@@ -369,7 +371,6 @@ window.cupYr = function (p, y) { var m = /\(([^)]+)\)\s*$/.exec(p || ''); return
 
   function load() {
     msgEl.textContent = '';
-    gradesCache = null;
     var q = 'college=' + encodeURIComponent(COLLEGE);
     return Promise.all([
       fetch('/api/registrar/step2?' + q, { credentials: 'same-origin' }).then(function (r) { return r.json().then(function (j) { return { ok: r.ok, j: j }; }); }),
