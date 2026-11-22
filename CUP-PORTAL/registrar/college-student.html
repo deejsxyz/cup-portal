@@ -777,7 +777,7 @@ function progAbbrOf(p) { var m = /\(([^)]+)\)\s*$/.exec(p || ''); return m ? m[1
     if (body.email && !EMAIL_RE.test(body.email)) { msg.textContent = 'Invalid email format. Use a valid email address (e.g. name@example.com).'; return; }
     if (body.contact_number && !CONTACT_RE.test(body.contact_number)) { msg.textContent = 'Invalid contact number format. Must be 09XXXXXXXXX (11 digits) or +639XXXXXXXXX.'; return; }
     msg.textContent = 'Saving…';
-    fetch('/api/registrar/students/' + encodeURIComponent(current.student_no), { method: 'PUT', credentials: 'same-origin', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(body) })
+    fetch('/api/registrar/students/' + encodeURIComponent(current.student_no) + '?college=' + encodeURIComponent(current.college || COLLEGE), { method: 'PUT', credentials: 'same-origin', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(body) })
       .then(function (r) { return r.json().then(function (j) { return { ok: r.ok, j: j }; }); })
       .then(function (res) {
         if (!res.ok) { msg.textContent = res.j.error || 'Could not save.'; return; }
@@ -1397,6 +1397,9 @@ function progAbbrOf(p) { var m = /\(([^)]+)\)\s*$/.exec(p || ''); return m ? m[1
   // When framed by the College Registrar dashboard, its panel header holds these tabs.
   var framed = new URLSearchParams(location.search).get('framed') === '1';
   if (framed) {
+    // The University Registrar's own search bar opens students here, so this one is hidden.
+    var si = document.getElementById('studentSearchInput');
+    if (si && si.closest('.bg-white')) si.closest('.bg-white').style.display = 'none';
     var tl = document.querySelector('[role="tablist"]');
     if (tl) {
       var target = (tl.parentElement && tl.parentElement.children.length === 1) ? tl.parentElement : tl;

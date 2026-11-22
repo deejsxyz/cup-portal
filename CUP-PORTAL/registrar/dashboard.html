@@ -2661,7 +2661,11 @@ function cupYr(p, y) { var m = /\(([^)]+)\)\s*$/.exec(p || ''); return (m ? m[1]
     window.__stuTabs = {
       select: function (t) { stuTab = t; showStuFrame(); },
       current: function () { return stuTab; },
-      goManage: function (no, col) { manageStu = { student_no: no, college: col }; stuTab = 'existing'; showStuFrame(); }
+      goManage: function (no, col) {
+        manageStu = { student_no: no, college: col }; stuTab = 'existing';
+        var si = document.getElementById('stuManageSearch'); if (si) si.value = no;
+        showStuFrame();
+      }
     };
   })();
 </script>
