@@ -6,8 +6,8 @@
   var mq = window.matchMedia('(max-width: 900px)');
   var CSS = [
     '.pm-bar{display:none;align-items:center;justify-content:space-between;gap:10px;padding:8px 14px;background:#0f4d12;color:#fff;min-height:44px;width:100%;}',
-    '.pm-bar .live-clock{position:static !important;display:block !important;margin:0 !important;bottom:auto !important;right:auto !important;width:auto !important;text-align:left !important;white-space:normal;color:#fff !important;font-size:12px !important;}',
-    '.pm-burger{display:flex;flex-direction:column;justify-content:center;gap:5px;width:44px;height:40px;padding:9px;margin-left:auto;background:transparent;border:0;cursor:pointer;flex:0 0 auto;}',
+    '.pm-bar .live-clock{position:static !important;display:block !important;margin:0 !important;bottom:auto !important;right:auto !important;width:auto !important;text-align:right !important;white-space:normal;color:#fff !important;font-size:12px !important;}',
+    '.pm-burger{display:flex;flex-direction:column;justify-content:center;gap:5px;width:44px;height:40px;padding:9px;margin-left:0;background:transparent;border:0;cursor:pointer;flex:0 0 auto;}',
     '.pm-burger span{display:block;height:3px;border-radius:2px;background:#fff;}',
     '.pm-drawer{position:fixed;top:0;bottom:0;left:0;width:min(300px,85vw);background:#0f4d12;color:#fff;padding:14px;overflow-y:auto;display:flex;flex-direction:column;gap:12px;transform:translateX(-105%);transition:transform .2s ease;z-index:1000;box-shadow:4px 0 16px rgba(0,0,0,.35);}',
     '.pm-drawer.open{transform:none;}',
@@ -77,8 +77,8 @@
     var scrim = document.createElement('div');
     scrim.className = 'pm-scrim';
 
-    if (clock) bar.appendChild(clock);
     bar.appendChild(burger);
+    if (clock) bar.appendChild(clock);
     header.appendChild(bar);
     document.body.appendChild(drawer);
     document.body.appendChild(scrim);
@@ -109,7 +109,7 @@
     function apply() {
       if (mq.matches) {
         bar.style.display = 'flex';
-        if (clock) bar.insertBefore(clock, burger);
+        if (clock) bar.appendChild(clock);
         if (nav) drawer.insertBefore(nav, logout && logout.parentNode === drawer ? logout : null);
         if (logout) drawer.appendChild(logout);
         if (who) drawer.insertBefore(who, drawer.children[1] || null);
