@@ -152,6 +152,8 @@ window.cupYr = function (p, y) { var m = /\(([^)]+)\)\s*$/.exec(p || ''); return
   /* ----- Advising: NSTP subject the student is pre-registered for (NSTP 1 = CWTS, ROTC 1 = ROTC) ----- */
   function renderNstpChoice(no, ev) {
     var box = document.getElementById('evalGrades');
+    // NSTP is handled in the NSTP portal, not on the College Registrar pre-enrollment page.
+    box.innerHTML = ''; return;
     if (!ev) { box.innerHTML = ''; return; }
     var cur = ev.nstp_subject || '';
     box.innerHTML = '<div class="mt-4 p-4 rounded-lg border border-slate-200 bg-slate-50">' +

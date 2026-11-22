@@ -4890,7 +4890,7 @@ const ENROLL_CHECKS = [
   { label: 'Step 2 · Advising', ok: (r) => !!r.step2_advised_at },
   { label: 'Step 2 · Section Assignment', ok: (r) => !!r.step2_sectioned_at },
   // NSTP: required unless the student already PASSED both NSTP 101 and NSTP 102. Otherwise Step 3 is automatically done.
-  { label: 'Step 3 · NSTP', ok: (r) => !!r.nstp_passed || !!r.nstp_enrolled_at },
+  { label: 'Step 3 · NSTP', ok: (r) => Number(r.year_level) >= 2 || !!r.nstp_passed || !!r.nstp_enrolled_at },
   // Step 4 (Official CUP ID): done automatically once the student has a student number.
   { label: 'Step 4 · Official CUP ID', ok: (r) => !!String(r.student_no || '').trim() },
   { label: 'Step 5 · CSC payment', ok: (r) => !!r.csc_paid_at },
@@ -6785,7 +6785,7 @@ app.get('/api/student/enrollment-steps', requirePortal('student'), async (req, r
          FROM reg_students WHERE student_no = $1`, [no])).rows[0] : null;
     const row = r || {};
     const step2 = !!(row.step2_evaluated_at && row.step2_advised_at && row.step2_sectioned_at);
-    const nstpRequired = !row.nstp_passed;
+    const nstpRequired = !row.nstp_passed && Number(row.year_level) === 1;
     const steps = [
       { n: 1, label: 'Evaluation', note: 'Grades verified by the Registrar', done: row.step1_status === 'verified' || !!row.evaluated_at },
       { n: 2, label: "Dean's Office", note: 'Evaluation, advising and section', done: step2 },
