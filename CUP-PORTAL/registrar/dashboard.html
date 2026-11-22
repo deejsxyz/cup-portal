@@ -2020,7 +2020,7 @@ function cupYr(p, y) { var m = /\(([^)]+)\)\s*$/.exec(p || ''); return (m ? m[1]
         f.title = base.title;
         f.style.cssText = base.style.cssText;
         f.src = page + '?college=' + encodeURIComponent(value) + '&framed=1';
-        f.addEventListener('load', function () { if (selId === 'stuAllCollege') { try { f.contentWindow.postMessage({ panelTab: stuTab }, '*'); } catch (e) {} sendStuProgram(); } });
+        f.addEventListener('load', function () { if (selId === 'stuAllCollege') { try { f.contentWindow.postMessage({ panelTab: stuTab }, '*'); if (stuTab === 'existing' || stuTab === 'grades') manageOpenMsg(f); } catch (e) {} sendStuProgram(); } });
         holder.appendChild(f);
       }
       f.style.display = 'block';
@@ -2052,6 +2052,12 @@ function cupYr(p, y) { var m = /\(([^)]+)\)\s*$/.exec(p || ''); return (m ? m[1]
         .then(function (r) { return r.ok ? r.json() : { students: [] }; }).catch(function () { return { students: [] }; })
         .then(function (j) { manageList = j.students || []; return manageList; });
     }
+    // Opens the picked student on the right tab of their college's frame.
+    function manageOpenMsg(f) {
+      if (!manageStu || !f || !f.contentWindow) return;
+      if (stuTab === 'grades') f.contentWindow.postMessage({ openGrade: manageStu.student_no }, '*');
+      else f.contentWindow.postMessage({ openStudent: manageStu.student_no }, '*');
+    }
     function hideStuFrames() {
       var base = document.getElementById('stuAllFrame');
       if (!base) return;
@@ -2060,7 +2066,7 @@ function cupYr(p, y) { var m = /\(([^)]+)\)\s*$/.exec(p || ''); return (m ? m[1]
     }
     function showStuFrame() {
       var wrap = document.getElementById('stuAllCollegeWrap');
-      var isManage = stuTab === 'existing';
+      var isManage = stuTab === 'existing' || stuTab === 'grades';
       if (wrap) wrap.style.display = (stuTab === 'view' || isManage) ? 'none' : 'inline-flex';
       var progLbl = document.querySelector('label[for="stuAllProgram"]'), progSel = document.getElementById('stuAllProgram');
       if (progLbl) progLbl.style.display = isManage ? 'none' : '';
@@ -2071,9 +2077,7 @@ function cupYr(p, y) { var m = /\(([^)]+)\)\s*$/.exec(p || ''); return (m ? m[1]
         stuLoadManageList();
         if (!manageStu) { hideStuFrames(); return; }
         var mf = showCollegeFrame('stuAllCollege', 'stuAllFrame', '/CUP-PORTAL/registrar/college-student.html', manageStu.college);
-        if (mf && mf.contentWindow) {
-          try { mf.contentWindow.postMessage({ panelTab: 'existing' }, '*'); mf.contentWindow.postMessage({ openStudent: manageStu.student_no }, '*'); } catch (e) {}
-        }
+        if (mf && mf.contentWindow) { try { mf.contentWindow.postMessage({ panelTab: stuTab }, '*'); manageOpenMsg(mf); } catch (e) {} }
         return;
       }
       var shown = showCollegeFrame('stuAllCollege', 'stuAllFrame', '/CUP-PORTAL/registrar/college-student.html', stuCurrentCollege());
