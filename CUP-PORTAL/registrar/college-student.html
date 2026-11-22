@@ -447,12 +447,12 @@ function progAbbrOf(p) { var m = /\(([^)]+)\)\s*$/.exec(p || ''); return m ? m[1
       if (lastEl && current && current.student_no === no) lastEl.textContent = official ? 'Currently enrolled' : (hist.length ? ('A.Y. ' + hist[0].academic_year + ', ' + hist[0].term) : 'No enrollment yet');
       var curSubj = cur && cur.subjects ? cur.subjects : [];
       // Already enrolled for the active term: lock enrolling and hide the subject picker.
-      $('exEnrollBtn').disabled = !!cur;
-      $('exEnrollBtn').classList.toggle('opacity-50', !!cur);
-      $('exEnrollBtn').classList.toggle('cursor-not-allowed', !!cur);
-      $('exToggleSubjectsBtn').hidden = !!cur;
-      $('enrollForTermBox').hidden = !!cur;
-      if (cur) { $('exSubjectWrap').hidden = true; $('exEnrollMsg').textContent = ''; }
+      // Existing Student does not enroll subjects: pre-registration is done on the Pre-enrollment page.
+      $('exEnrollBtn').disabled = true;
+      $('exEnrollBtn').classList.add('opacity-50', 'cursor-not-allowed');
+      $('exToggleSubjectsBtn').hidden = true;
+      $('enrollForTermBox').hidden = true;
+      $('exSubjectWrap').hidden = true; $('exEnrollMsg').textContent = '';
       $('enrollTermLabel').textContent = ctx.term + ' ' + ctx.academic_year;
       $('enrollHist').innerHTML = !cur
         ? '<p class="text-xs text-slate-500 italic">The student has no enrollment for the current term.</p>'
