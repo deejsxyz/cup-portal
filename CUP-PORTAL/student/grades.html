@@ -624,9 +624,20 @@
               }
             }).catch(function () {});
           } else {
-            $('prereg-title').textContent = 'Pre-Registration';
-            $('pr-state').textContent = 'Check your information, then submit. Once you submit, you cannot change it.';
-            $('pr-state').className = 'msg info'; $('pr-state').hidden = false;
+            // Not submitted here, but the registrar may already have officially enrolled the student.
+            fetch('/api/student/enrollment-steps', { credentials: 'same-origin' }).then(function (r) { return r.json(); }).then(function (st) {
+              if (st.officiallyEnrolled) {
+                $('prereg-title').textContent = 'OFFICIALLY ENROLLED';
+                ['pr-email', 'pr-contact', 'pr-civil'].forEach(function (id) { $(id).disabled = true; });
+                $('pr-actions').dataset.done = '1'; $('pr-actions').hidden = true;
+                $('pr-state').innerHTML = '<span class="pr-status">Officially Enrolled for A.Y. ' + j.term.ay + ', ' + j.term.term + '.</span> Please, proceed to Registrar\u2019s Office to update your details.';
+                $('pr-state').className = 'msg ok'; $('pr-state').hidden = false;
+              } else {
+                $('prereg-title').textContent = 'Pre-Registration';
+                $('pr-state').textContent = 'Check your information, then submit. Once you submit, you cannot change it.';
+                $('pr-state').className = 'msg info'; $('pr-state').hidden = false;
+              }
+            }).catch(function () {});
           }
           applyEnrollWindow();
         }).catch(function () { $('pr-state').textContent = 'Could not load the form.'; $('pr-state').hidden = false; });
