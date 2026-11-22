@@ -579,12 +579,9 @@
           ['pr-email', 'pr-contact', 'pr-civil'].forEach(function (id) { $(id).disabled = done; });
           $('pr-actions').dataset.done = done ? '1' : '0';
           $('pr-actions').hidden = done || enrollClosed;
-          // Pre-registration still open or only submitted: Pre-registered Subjects. Enrolled only once officially enrolled.
-          $('enrolled-title').textContent = 'Pre-registered Subjects';
           if (done) {
             fetch('/api/student/enrollment-steps', { credentials: 'same-origin' }).then(function (r) { return r.json(); }).then(function (st) {
               var official = !!st.officiallyEnrolled;
-              $('enrolled-title').textContent = official ? 'Enrolled Subjects' : 'Pre-registered Subjects';
               $('prereg-title').textContent = official ? 'OFFICIALLY ENROLLED' : 'Pre-Registration';
               if (official) {
                 $('pr-state').innerHTML = '<span class="pr-status">Officially Enrolled for A.Y. ' + j.term.ay + ', ' + j.term.term + '.</span> Please, proceed to Registrar\u2019s Office to update your details.';
@@ -598,7 +595,6 @@
             // Closed: only the student information. Officially enrolled students still see the registrar note.
             fetch('/api/student/enrollment-steps', { credentials: 'same-origin' }).then(function (r) { return r.json(); }).then(function (st) {
               if (st.officiallyEnrolled) {
-                $('enrolled-title').textContent = 'Enrolled Subjects';
                 $('prereg-title').textContent = 'OFFICIALLY ENROLLED';
                 $('pr-state').innerHTML = '<span class="pr-status">Officially Enrolled for A.Y. ' + j.term.ay + ', ' + j.term.term + '.</span> Please, proceed to Registrar\u2019s Office to update your details.';
                 $('pr-state').className = 'msg ok'; $('pr-state').hidden = false;
@@ -667,6 +663,9 @@
         .then(function (res) {
           var card = $('enrolled-card');
           var officially = res.j.status === 'enrolled';
+          // Heading follows the student's status: enrolled, pre-registered, or not yet pre-registered.
+          var st = res.j.status;
+          $('enrolled-title').textContent = st === 'enrolled' ? 'Enrolled Subjects' : (st === 'pre-registered' ? 'Pre-registered Subjects' : 'For Registration');
           if (!res.ok || (!res.j.enrolled && !officially)) { card.hidden = true; return; }
           if (!res.j.enrolled || !res.j.subjects.length) {
             card.hidden = false;
