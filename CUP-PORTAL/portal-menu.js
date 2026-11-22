@@ -105,6 +105,9 @@
     if (document.fonts && document.fonts.ready) document.fonts.ready.then(alignBar);
     var titleEl = header.querySelector('.top .name');
     if (titleEl && window.ResizeObserver) new ResizeObserver(alignBar).observe(titleEl);
+    // Keep re-checking for a few seconds in case the header settles after load.
+    var alignTries = 0;
+    var alignTimer = setInterval(function () { alignBar(); if (++alignTries > 15) clearInterval(alignTimer); }, 200);
     bar.appendChild(burger);
     if (clock) bar.appendChild(clock);
     header.appendChild(bar);
