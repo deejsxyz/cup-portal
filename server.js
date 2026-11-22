@@ -2821,7 +2821,7 @@ app.get('/api/student/profile', requirePortal('student'), async (req, res) => {
     program: canonicalProgram(s.program) || s.program, year_level: s.year_level, section: s.section, status: s.status,
     birthday: s.birthday, birthday_changed: s.birthday_changed, email_hint: s.email ? maskEmail(s.email) : '',
     photo: s.photo || null,
-    photo_next_change: s.photo_changed_at ? new Date(new Date(s.photo_changed_at).getTime() + PHOTO_CHANGE_DAYS * 86400000).toISOString() : null,
+    photo_next_change: null,
   });
 });
 app.put('/api/student/birthday', requirePortal('student'), async (req, res) => {
@@ -2836,16 +2836,11 @@ const PHOTO_CHANGE_DAYS = 30;
 app.post('/api/student/photo', requirePortal('student'), async (req, res) => {
   const photo = req.body && req.body.photo;
   if (typeof photo !== 'string' || photo.length > 2800000 || !isJpegPngDataUrl(photo)) return res.status(400).json({ error: 'Upload a JPG or PNG image up to 2 MB.' });
-  // The photo can be changed once a month. The first upload is always allowed.
+  // The photo can be changed any time; the student confirms it before saving because it is printed on the CUP ID.
   const r = await pool.query(
-    `UPDATE reg_students SET photo = $2, photo_changed_at = now()
-      WHERE student_no = $1 AND (photo_changed_at IS NULL OR photo_changed_at < now() - ($3 || ' days')::interval)
-      RETURNING student_no`, [req.portal.student_no, photo, String(PHOTO_CHANGE_DAYS)]);
-  if (!r.rowCount) {
-    const cur = await pool.query('SELECT photo_changed_at FROM reg_students WHERE student_no = $1', [req.portal.student_no]);
-    const next = new Date(new Date(cur.rows[0].photo_changed_at).getTime() + PHOTO_CHANGE_DAYS * 86400000);
-    return res.status(400).json({ error: 'You can change your photo once a month. You can change it again on ' + next.toISOString().slice(0, 10) + '.' });
-  }
+    `UPDATE reg_students SET photo = $2, photo_changed_at = now() WHERE student_no = $1 RETURNING student_no`,
+    [req.portal.student_no, photo]);
+  if (!r.rowCount) return res.status(404).json({ error: 'No student record found for this account.' });
   res.json({ ok: true });
 });
 app.post('/api/student/password/otp', requirePortal('student'), async (req, res) => {

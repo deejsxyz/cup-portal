@@ -183,7 +183,7 @@
       <img class="photo" id="photo" alt="Student photo">
       <div class="row"><label class="btn light" for="photoInput" style="margin:0">Change photo</label></div>
       <input type="file" id="photoInput" accept=".jpg,.jpeg,.png,image/jpeg,image/png" hidden>
-      <p class="hint" id="photoHint" style="margin:6px 0 0">You can change your photo once a month.</p>
+      <p class="hint" id="photoHint" style="margin:6px 0 0">Your photo is printed on your CUP ID. Use a clear, recent, front-facing photo of yourself.</p>
       <p class="msg" id="photoMsg"></p>
 
       <h2 class="name" id="fullName">—</h2>
@@ -355,10 +355,8 @@
     $('gYear').textContent = PROG_ABBR(p.program) + p.year_level + (p.section ? '-' + p.section : '');
     $('gStatus').innerHTML = p.status === 'enrolled' ? '<span class="badge">OFFICIALLY ENROLLED</span>' : '<span class="hint">' + esc(p.term_status || p.status || '') + '</span>';
     $('photo').src = p.photo || '/images/student-default-photo.webp';
-    var next = p.photo_next_change ? new Date(p.photo_next_change) : null;
-    var locked = !!next && next > new Date();
-    $('photoInput').disabled = locked;
-    $('photoHint').textContent = locked ? 'You can change your photo again on ' + next.toISOString().slice(0, 10) + '.' : 'You can change your photo once a month.';
+    $('photoInput').disabled = false;
+    $('photoHint').textContent = 'Your photo is printed on your CUP ID. Use a clear, recent, front-facing photo of yourself.';
     $('fullName').textContent = fullName(p).toUpperCase();
     $('bday').value = p.birthday ? String(p.birthday).slice(0, 10) : '';
     $('bday').disabled = !!p.birthday_changed;
@@ -431,6 +429,7 @@
     out.width = 400; out.height = 400;
     var side = crop.box / crop.scale;
     out.getContext('2d').drawImage($('cropImg'), -crop.x / crop.scale, -crop.y / crop.scale, side, side, 0, 0, 400, 400);
+    if (!window.confirm('This photo will be printed on your CUP ID. Save this photo?')) return;
     $('cropModal').style.display = 'none';
     savePhoto(out.toDataURL('image/jpeg', 0.9));
   });
