@@ -36,10 +36,16 @@
         <button type="button" id="evGradesClose" class="px-2 py-1 rounded border border-slate-300 text-xs font-bold bg-white cursor-pointer">Close</button>
       </div>
       <div id="evStuInfo" class="grid grid-cols-2 md:grid-cols-4 gap-3 mb-4 text-xs"></div>
-      <p class="text-[11px] font-bold uppercase tracking-wide text-slate-500 mb-1">A.Y.</p>
-      <div id="evAY" class="flex flex-wrap gap-2 mb-3"></div>
-      <p class="text-[11px] font-bold uppercase tracking-wide text-slate-500 mb-1">Semester</p>
-      <div id="evTerm" class="flex flex-wrap gap-2 mb-3"></div>
+      <div class="flex flex-wrap items-end gap-x-6 gap-y-3 mb-3">
+        <div>
+          <p class="text-[11px] font-bold uppercase tracking-wide text-slate-500 mb-1">A.Y.</p>
+          <div id="evAY" class="flex flex-wrap gap-2"></div>
+        </div>
+        <div>
+          <p class="text-[11px] font-bold uppercase tracking-wide text-slate-500 mb-1">Semester</p>
+          <div id="evTerm" class="flex flex-wrap gap-2"></div>
+        </div>
+      </div>
       <div id="evGradeList"></div>
     </div>
   </div>
@@ -69,6 +75,7 @@ window.cupYr = function (p, y) { var m = /\(([^)]+)\)\s*$/.exec(p || ''); return
 
   // Grades section (below the list): A.Y. and semester filter buttons.
   var selectedNo = '', grades = [], selAY = '', selTerm = '';
+  var GRADE_PAGE_SIZE = 10, gradePage = 1, gradeList = [];
   var gradesEl = document.getElementById('evGrades'), gradesList = document.getElementById('evGradeList');
   function btn(label, on, attrs) {
     return '<button type="button" ' + attrs + ' class="px-3 py-1.5 rounded-lg border text-xs font-bold cursor-pointer ' + (on ? 'bg-emerald-800 text-white border-emerald-800' : 'bg-white text-slate-700 border-slate-300') + '">' + esc(label) + '</button>';
@@ -106,13 +113,32 @@ window.cupYr = function (p, y) { var m = /\(([^)]+)\)\s*$/.exec(p || ''); return
     }
     if (!grades.length) { gradesList.innerHTML = '<p class="text-xs text-slate-500">No grades on file for this student.</p>'; return; }
     if (!list.length) { gradesList.innerHTML = '<p class="text-xs text-slate-500">No grades for this A.Y. and semester.</p>'; return; }
+    gradeList = list;
+    var pages = Math.max(1, Math.ceil(list.length / GRADE_PAGE_SIZE));
+    if (gradePage > pages) gradePage = pages;
+    if (gradePage < 1) gradePage = 1;
+    var start = (gradePage - 1) * GRADE_PAGE_SIZE;
+    var slice = list.slice(start, start + GRADE_PAGE_SIZE);
+    var pager = pages > 1
+      ? '<div class="flex flex-wrap items-center justify-between gap-2 mt-3 text-xs"><span class="text-slate-500">' + (start + 1) + '–' + (start + slice.length) + ' of ' + list.length + '</span><div class="flex items-center gap-2">' +
+        '<button type="button" data-gpage="prev" ' + (gradePage <= 1 ? 'disabled' : '') + ' class="px-3 py-1.5 rounded-lg border border-slate-300 bg-white text-slate-700 font-bold cursor-pointer disabled:opacity-40 disabled:cursor-default">Prev</button>' +
+        '<span class="font-semibold text-slate-700">Page ' + gradePage + ' of ' + pages + '</span>' +
+        '<button type="button" data-gpage="next" ' + (gradePage >= pages ? 'disabled' : '') + ' class="px-3 py-1.5 rounded-lg border border-slate-300 bg-white text-slate-700 font-bold cursor-pointer disabled:opacity-40 disabled:cursor-default">Next</button>' +
+        '</div></div>'
+      : '';
     gradesList.innerHTML = '<div style="overflow-x:auto"><table class="w-full text-xs"><thead class="bg-slate-100"><tr><th class="text-left p-2">A.Y.</th><th class="text-left p-2">Semester</th><th class="text-left p-2">Subject</th><th class="text-left p-2">Grade</th><th class="text-left p-2">Status</th><th class="text-left p-2">Verification</th></tr></thead><tbody>' +
-      list.map(function (g) {
+      slice.map(function (g) {
         return '<tr class="border-t border-slate-200"><td class="p-2">' + esc(g.academic_year) + '</td><td class="p-2">' + esc(g.term) + '</td><td class="p-2 font-mono">' + esc(g.course_code) + '</td><td class="p-2">' + esc(g.final_grade || '—') + '</td><td class="p-2">' + esc(gradeStatus(g)) + '</td><td class="p-2">' + esc(g.status === 'approved' ? 'Verified' : 'Submitted') + '</td></tr>';
-      }).join('') + '</tbody></table></div>';
+      }).join('') + '</tbody></table></div>' + pager;
   }
+  gradesList.addEventListener('click', function (e) {
+    var b = e.target.closest('button[data-gpage]');
+    if (!b || b.disabled) return;
+    gradePage += b.getAttribute('data-gpage') === 'next' ? 1 : -1;
+    renderGrades();
+  });
   function openGrades(no) {
-    selectedNo = no; selAY = ''; selTerm = '';
+    selectedNo = no; selAY = ''; selTerm = ''; gradePage = 1;
     document.getElementById('evGradesName').textContent = no;
     var stu = rows.filter(function (r) { return r.student_no === no; })[0] || {};
     var yrText = stu.year_level ? (window.cupYr(stu.program, stu.year_level) + (stu.section ? '-' + stu.section : '')) : '—';
@@ -129,8 +155,8 @@ window.cupYr = function (p, y) { var m = /\(([^)]+)\)\s*$/.exec(p || ''); return
       }).catch(function () { gradesList.innerHTML = '<p class="text-xs text-rose-600">Could not load the grades.</p>'; });
   }
   document.getElementById('evGradesClose').addEventListener('click', function () { gradesEl.hidden = true; selectedNo = ''; });
-  document.getElementById('evAY').addEventListener('click', function (e) { var b = e.target.closest('button[data-ay]'); if (!b) return; selAY = b.getAttribute('data-ay'); renderGrades(); });
-  document.getElementById('evTerm').addEventListener('click', function (e) { var b = e.target.closest('button[data-term]'); if (!b) return; selTerm = b.getAttribute('data-term'); renderGrades(); });
+  document.getElementById('evAY').addEventListener('click', function (e) { var b = e.target.closest('button[data-ay]'); if (!b) return; selAY = b.getAttribute('data-ay'); gradePage = 1; renderGrades(); });
+  document.getElementById('evTerm').addEventListener('click', function (e) { var b = e.target.closest('button[data-term]'); if (!b) return; selTerm = b.getAttribute('data-term'); gradePage = 1; renderGrades(); });
 
   // Evaluated toggle: saves, then reloads the table so every change shows at once.
   listEl.addEventListener('click', function (e) {
