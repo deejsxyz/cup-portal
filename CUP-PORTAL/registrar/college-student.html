@@ -34,7 +34,7 @@
     <div id="viewListView" class="space-y-4">
       <div class="flex flex-col lg:flex-row lg:items-center justify-between gap-3">
         <div class="flex flex-wrap items-center gap-2">
-          <input id="viewStudentSearch" type="text" autocomplete="off" placeholder="Search student number or name" class="w-full sm:w-64 px-3 py-2 rounded-lg border border-slate-300 text-xs">
+          <div class="relative w-full sm:w-64"><input id="viewStudentSearch" type="text" autocomplete="off" placeholder="Search student number or name" class="w-full pl-3 pr-8 py-2 rounded-lg border border-slate-300 text-xs"><button type="button" id="viewSearchClear" title="Close and clear search" aria-label="Close and clear search" class="absolute right-2 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-700 text-base leading-none px-1">&times;</button></div>
           <button type="button" id="viewAllBtn" class="px-4 py-2 rounded-lg bg-indigo-600 hover:bg-indigo-700 text-white text-xs font-bold shadow-sm">View All Students</button>
           <button type="button" id="viewPrintListBtn" class="px-4 py-2 rounded-lg bg-slate-700 hover:bg-slate-800 text-white text-xs font-bold shadow-sm">🖨️ Print Student List</button>
           <select id="viewYearFilter" class="bg-white px-3 py-2 rounded-lg border border-slate-300 text-xs font-bold"><option value="">All Year Levels</option><option value="1">1st Year</option><option value="2">2nd Year</option><option value="3">3rd Year</option><option value="4">4th Year</option></select>
@@ -77,7 +77,7 @@
   <div id="studentManageSection" data-sec="existing" hidden class="space-y-4">
     <div class="bg-white p-5 rounded-xl shadow-sm border border-slate-200">
       <div style="position:relative" class="max-w-xl">
-        <input type="text" id="studentSearchInput" placeholder="Search student number or name" autocomplete="off" class="w-full px-3 py-2 rounded-lg border border-slate-300 text-xs">
+        <input type="text" id="studentSearchInput" placeholder="Search student number or name" autocomplete="off" class="w-full pl-3 pr-8 py-2 rounded-lg border border-slate-300 text-xs"><button type="button" id="stuSearchClear" title="Close and clear search" aria-label="Close and clear search" class="absolute right-2 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-700 text-base leading-none px-1">&times;</button>
         <div id="stuSuggest" hidden style="position:absolute;left:0;right:0;top:100%;margin-top:4px;z-index:30;background:#fff;border:1px solid #cbd5e1;border-radius:8px;max-height:280px;overflow:auto;box-shadow:0 8px 20px rgba(0,0,0,.12)"></div>
       </div>
       <p id="stuSearchMsg" class="text-xs font-semibold text-rose-600 mt-2"></p>
@@ -211,7 +211,7 @@
   <div id="manageGradeSection" data-sec="grades" hidden class="space-y-4">
     <div class="bg-white rounded-xl shadow-sm border border-slate-200 p-5">
       <div style="position:relative" class="max-w-xl">
-        <input type="text" id="gradeSearchInput" placeholder="Search student number or name" autocomplete="off" class="w-full px-3 py-2 rounded-lg border border-slate-300 text-xs">
+        <input type="text" id="gradeSearchInput" placeholder="Search student number or name" autocomplete="off" class="w-full pl-3 pr-8 py-2 rounded-lg border border-slate-300 text-xs"><button type="button" id="gradeSearchClear" title="Close and clear search" aria-label="Close and clear search" class="absolute right-2 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-700 text-base leading-none px-1">&times;</button>
         <div id="gradeSuggest" hidden style="position:absolute;left:0;right:0;top:100%;margin-top:4px;z-index:30;background:#fff;border:1px solid #cbd5e1;border-radius:8px;max-height:280px;overflow:auto;box-shadow:0 8px 20px rgba(0,0,0,.12)"></div>
       </div>
       <p id="gradeSearchMsg" class="text-xs font-semibold text-rose-600 mt-2"></p>
@@ -602,6 +602,11 @@ window.cupYr = function (p, y) { var m = /\(([^)]+)\)\s*$/.exec(p || ''); return
     if (!b) return;
     showViewRecord(b.getAttribute('data-open'));
   });
+  $('viewSearchClear').addEventListener('click', function () {
+    $('viewStudentSearch').value = '';
+    $('viewRecord').hidden = true; $('viewRecord').innerHTML = ''; $('viewListView').hidden = false;
+    page = 1; renderList(); $('viewStudentSearch').focus();
+  });
   $('viewStudentSearch').addEventListener('input', function () { page = 1; renderList(); });
   $('viewStudentSearch').addEventListener('keydown', function (e) { if (e.key === 'Enter') { e.preventDefault(); page = 1; renderList(); } });
   $('viewYearFilter').addEventListener('change', function () { page = 1; renderList(); });
@@ -626,7 +631,7 @@ function progAbbrOf(p) { var m = /\(([^)]+)\)\s*$/.exec(p || ''); return m ? m[1
   function labelled(label, value) {
     return '<div><span class="block text-[10px] uppercase font-bold text-slate-500">' + label + '</span><span class="font-semibold text-slate-900 break-all">' + esc(value || '—') + '</span></div>';
   }
-  function openStudent(no) {
+  function openStudent(no, editNow) {
     var msg = $('stuSearchMsg');
     msg.textContent = '';
     if (!validId(no)) { $('enrollRecordArea').hidden = true; msg.textContent = 'Student not found. Please check the student number.'; return; }
@@ -652,7 +657,7 @@ function progAbbrOf(p) { var m = /\(([^)]+)\)\s*$/.exec(p || ''); return m ? m[1
     termEdit.editing = false;
     var wantEdit = false;
     try { wantEdit = sessionStorage.getItem('cupStuEdit') === no; sessionStorage.removeItem('cupStuEdit'); } catch (e) {}
-    if (wantEdit && !s.account_archived) startStuEdit();
+    if ((wantEdit || editNow) && !s.account_archived) startStuEdit();
     if (s.year_level) $('ex_year_select').value = String(s.year_level);
     if (s.section) $('ex_section').value = s.section;
     exLoadContext();
@@ -798,10 +803,10 @@ function progAbbrOf(p) { var m = /\(([^)]+)\)\s*$/.exec(p || ''); return m ? m[1
   $('studentSearchInput').addEventListener('input', function (e) {
     e.target.value = stuMask(e.target.value);
     var v = e.target.value.trim();
-    if (validId(v)) { $('stuSuggest').hidden = true; openStudent(v); }
+    if (validId(v)) { $('stuSuggest').hidden = true; openStudent(v, true); }
     else {
       $('enrollRecordArea').hidden = true; $('stuSearchMsg').textContent = '';
-      stuSuggest($('stuSuggest'), v, function (no) { $('studentSearchInput').value = no; openStudent(no); });
+      stuSuggest($('stuSuggest'), v, function (no) { $('studentSearchInput').value = no; openStudent(no, true); });
     }
   });
   $('studentSearchInput').addEventListener('blur', function () { setTimeout(function () { $('stuSuggest').hidden = true; }, 150); });
@@ -811,11 +816,12 @@ function progAbbrOf(p) { var m = /\(([^)]+)\)\s*$/.exec(p || ''); return m ? m[1
       e.target.value = stuMask(e.target.value);
       var first = $('stuSuggest').querySelector('[data-i]');
       if (!validId(e.target.value.trim()) && first) { first.dispatchEvent(new MouseEvent('mousedown')); return; }
-      openStudent(e.target.value.trim());
+      openStudent(e.target.value.trim(), true);
     }
   });
   function startStuEdit() {
     termEdit.editing = true; if (termEdit.year) drawTermEditor();
+    $('termBody').hidden = false; $('termToggleLabel').textContent = 'click to hide';
     if (current && current.account_archived) { alert("This student's portal account is archived. Restore the account in Accounts first."); return; }
     var f = $('stuInfoForm');
     ['first_name', 'middle_name', 'last_name', 'gender', 'birthday', 'email', 'contact_number', 'year_level', 'section'].forEach(function (k) {
@@ -829,6 +835,13 @@ function progAbbrOf(p) { var m = /\(([^)]+)\)\s*$/.exec(p || ''); return m ? m[1
     $('stuEditBar').hidden = false;
     $('stuInfoMsg').textContent = '';
   }
+  $('stuSearchClear').addEventListener('click', function () {
+    $('studentSearchInput').value = ''; $('stuSuggest').hidden = true; $('stuSearchMsg').textContent = '';
+    $('enrollRecordArea').hidden = true; $('stuEditBar').hidden = true; $('stuInfoForm').hidden = true;
+    termEdit.editing = false; current = null;
+    try { sessionStorage.removeItem('cupStu:' + COLLEGE); } catch (e) {}
+    $('studentSearchInput').focus();
+  });
   $('stuInfoCancelBtn').addEventListener('click', function () { $('stuInfoForm').hidden = true; $('stuEditBar').hidden = true; $('stuInfoView').hidden = false; termEdit.editing = false; if (current) openStudent(current.student_no); });
   var EMAIL_RE = /^[A-Za-z0-9._%+\-]+@[A-Za-z0-9\-]+(\.[A-Za-z0-9\-]+)*\.[A-Za-z]{2,}$/;
   var CONTACT_RE = /^(09\d{9}|\+639\d{9})$/;
@@ -1241,6 +1254,11 @@ function progAbbrOf(p) { var m = /\(([^)]+)\)\s*$/.exec(p || ''); return m ? m[1
       if (!validId(e.target.value.trim()) && first) { first.dispatchEvent(new MouseEvent('mousedown')); return; }
       gradeOpenStudent(e.target.value.trim());
     }
+  });
+  $('gradeSearchClear').addEventListener('click', function () {
+    $('gradeSearchInput').value = ''; $('gradeSuggest').hidden = true; $('gradeSearchMsg').textContent = '';
+    $('gradeRecordArea').hidden = true; grade.no = null; grade.stu = null;
+    $('gradeSearchInput').focus();
   });
   $('gradeAySel').addEventListener('change', function () { gradeFillTerms(); gradeLoad(); });
   $('gradeTermSel').addEventListener('change', gradeLoad);
