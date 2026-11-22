@@ -3213,6 +3213,26 @@ app.get('/api/registrar/enrollments', requireRegistrar, async (req, res) => {
   res.json({ enrollments: r.rows, student_type: prior.rows.length ? 'Old' : 'New', standing: standingStatus, load });
 });
 
+// Suggests a free student number for a new enrollment, shown on the form once the name is typed.
+app.get('/api/registrar/next-student-number', requireRegistrar, async (req, res) => {
+  try {
+    const set = await pool.query("SELECT key, value FROM reg_settings WHERE key IN ('grading_semester','grading_ay')");
+    const m = Object.fromEntries(set.rows.map((r) => [r.key, r.value]));
+    const ayM = String(m.grading_ay || '').match(/^(\d{4})-\d{4}$/);
+    const semD = { '1st Semester': '1', '2nd Semester': '2', 'Summer': '3' }[m.grading_semester];
+    if (!ayM || !semD) return res.status(400).json({ error: 'The grading period is not set correctly.' });
+    for (let i = 0; i < 50; i++) {
+      const cand = `${ayM[1]}-${semD}-${String(crypto.randomInt(0, 10000000)).padStart(7, '0')}-${String(crypto.randomInt(0, 100)).padStart(2, '0')}`;
+      const taken = await pool.query('SELECT 1 FROM reg_students WHERE student_no = $1', [cand]);
+      if (!taken.rows.length) return res.json({ student_no: cand });
+    }
+    res.status(500).json({ error: 'Could not preview a student number.' });
+  } catch (err) {
+    console.error(err);
+    res.status(500).json({ error: 'Could not preview a student number.' });
+  }
+});
+
 // Enroll a University-issued student for the active term with the chosen subjects and instructors.
 app.post('/api/registrar/enroll-student', requireRegistrar, async (req, res) => {
   const college = regCollege(req, (req.body || {}).college || req.query.college);
@@ -3259,6 +3279,12 @@ app.post('/api/registrar/enroll-student', requireRegistrar, async (req, res) => 
       const semD = { '1st Semester': '1', '2nd Semester': '2', 'Summer': '3' }[m.grading_semester];
       if (!ayM || !semD) { await client.query('ROLLBACK'); return res.status(400).json({ error: 'The grading period is not set correctly.' }); }
       no = '';
+      // Use the number shown on the form when it is still free; otherwise generate a new one.
+      const reserved = String(b.reserved_no || '').trim();
+      if (/^\d{4}-\d-\d{7}-\d{2}$/.test(reserved) && reserved.startsWith(`${ayM[1]}-${semD}-`)) {
+        const t = await client.query('SELECT 1 FROM reg_students WHERE student_no = $1', [reserved]);
+        if (!t.rows.length) no = reserved;
+      }
       for (let i = 0; i < 50 && !no; i++) {
         const cand = `${ayM[1]}-${semD}-${String(crypto.randomInt(0, 10000000)).padStart(7, '0')}-${String(crypto.randomInt(0, 100)).padStart(2, '0')}`;
         const taken = await client.query('SELECT 1 FROM reg_students WHERE student_no = $1', [cand]);
