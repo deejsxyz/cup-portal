@@ -171,7 +171,7 @@
 <script src="/CUP-PORTAL/portal-session.js" data-logout="/api/registrar/logout" data-login="/CUP-PORTAL/college-registrar/"></script>
 </head>
 <body>
-  <header data-home="/CUP-PORTAL/college-registrar/dashboard">
+  <header data-home="/CUP-PORTAL/college-registrar/dashboard?home=1">
     <div class="top">
       <div class="live-clock" id="liveClock"></div>
       <a class="seal" href="/CUP-PORTAL/" title="Back to the CUP Portal" style="text-decoration:none;"><img src="/images/cup-logo-seal.png" alt="City University of Pasay seal"></a>
@@ -2153,7 +2153,7 @@ function cupYr(p, y) { var m = /\(([^)]+)\)\s*$/.exec(p || ''); return (m ? m[1]
         else allowed = /^(security-logs|grade-logs|batch-uploads)$/.test(id);
       }
       if (allowed) showPanel(id);
-      else if (fallbackId) showPanel(fallbackId);
+      else if (fallbackId && location.search.indexOf('home=1') === -1) showPanel(fallbackId);
     }
 
     // Refresh or close warns while any college page has unsaved form work.
