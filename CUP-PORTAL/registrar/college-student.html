@@ -650,6 +650,7 @@ function progAbbrOf(p) { var m = /\(([^)]+)\)\s*$/.exec(p || ''); return m ? m[1
   function openStudent(no, editNow) {
     var msg = $('stuSearchMsg');
     msg.textContent = '';
+    $('stuInfoMsg').textContent = '';
     if (!validId(no)) { $('enrollRecordArea').hidden = true; msg.textContent = 'Student not found. Please check the student number.'; return; }
     var s = all.filter(function (x) { return x.student_no === no; })[0];
     if (!s) { $('enrollRecordArea').hidden = true; msg.textContent = 'Student not found. Please check the student number.'; return; }
