@@ -6766,14 +6766,14 @@ app.get('/api/student/enrollment-steps', requirePortal('student'), async (req, r
   try {
     const no = req.portal.student_no || '';
     const r = no ? (await pool.query(
-      `SELECT student_no, status, year_level, COALESCE(nstp_subject, '') AS nstp_subject, nstp_enrolled_at, ${nstpPassedSql()} AS nstp_passed, step1_status,
+      `SELECT student_no, status, year_level, COALESCE(nstp_subject, '') AS nstp_subject, nstp_enrolled_at, ${nstpPassedSql()} AS nstp_passed, step1_status, evaluated_at,
               step2_evaluated_at, step2_advised_at, step2_sectioned_at, csc_paid_at, advising_slip_at
          FROM reg_students WHERE student_no = $1`, [no])).rows[0] : null;
     const row = r || {};
     const step2 = !!(row.step2_evaluated_at && row.step2_advised_at && row.step2_sectioned_at);
     const nstpRequired = !row.nstp_passed;
     const steps = [
-      { n: 1, label: 'Evaluation', note: 'Grades verified by the Registrar', done: row.step1_status === 'verified' },
+      { n: 1, label: 'Evaluation', note: 'Grades verified by the Registrar', done: row.step1_status === 'verified' || !!row.evaluated_at },
       { n: 2, label: "Dean's Office", note: 'Evaluation, advising and section', done: step2 },
       { n: 3, label: 'NSTP enrollment', note: nstpRequired ? 'NSTP subject' : 'Not required: NSTP 1 and 2 already passed', done: !nstpRequired || !!row.nstp_enrolled_at },
       { n: 4, label: 'Official CUP ID', note: 'Student number issued', done: !!String(row.student_no || '').trim() },
