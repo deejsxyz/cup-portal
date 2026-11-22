@@ -88,9 +88,22 @@ window.cupYr = function (p, y) { var m = /\(([^)]+)\)\s*$/.exec(p || ''); return
   function renderGrades() {
     var ays = [], terms = [];
     grades.forEach(function (g) { if (ays.indexOf(g.academic_year) === -1) ays.push(g.academic_year); if (terms.indexOf(g.term) === -1) terms.push(g.term); });
-    document.getElementById('evAY').innerHTML = btn('All', selAY === '', 'data-ay=""') + ays.map(function (a) { return btn(a, selAY === a, 'data-ay="' + esc(a) + '"'); }).join('');
-    document.getElementById('evTerm').innerHTML = btn('All', selTerm === '', 'data-term=""') + terms.map(function (t) { return btn(t, selTerm === t, 'data-term="' + esc(t) + '"'); }).join('');
-    var list = grades.filter(function (g) { return (!selAY || g.academic_year === selAY) && (!selTerm || g.term === selTerm); });
+    document.getElementById('evAY').innerHTML = btn('Latest', selAY === '' && selTerm === '', 'data-ay=""') + ays.map(function (a) { return btn(a, selAY === a, 'data-ay="' + esc(a) + '"'); }).join('');
+    document.getElementById('evTerm').innerHTML = btn('Latest', selAY === '' && selTerm === '', 'data-term=""') + terms.map(function (t) { return btn(t, selTerm === t, 'data-term="' + esc(t) + '"'); }).join('');
+    // Default view: the latest grade per subject. A.Y. and Semester buttons show the other grades on file.
+    var TERM_RANK = { '1st Semester': 1, '2nd Semester': 2, 'Summer': 3 };
+    var latestMode = !selAY && !selTerm;
+    var list;
+    if (latestMode) {
+      var sorted = grades.slice().sort(function (a, b) {
+        return String(a.academic_year).localeCompare(String(b.academic_year)) || ((TERM_RANK[a.term] || 0) - (TERM_RANK[b.term] || 0));
+      });
+      var last = {}, order = [];
+      sorted.forEach(function (g) { if (!(g.course_code in last)) order.push(g.course_code); last[g.course_code] = g; });
+      list = order.map(function (c) { return last[c]; });
+    } else {
+      list = grades.filter(function (g) { return (!selAY || g.academic_year === selAY) && (!selTerm || g.term === selTerm); });
+    }
     if (!grades.length) { gradesList.innerHTML = '<p class="text-xs text-slate-500">No grades on file for this student.</p>'; return; }
     if (!list.length) { gradesList.innerHTML = '<p class="text-xs text-slate-500">No grades for this A.Y. and semester.</p>'; return; }
     gradesList.innerHTML = '<div style="overflow-x:auto"><table class="w-full text-xs"><thead class="bg-slate-100"><tr><th class="text-left p-2">A.Y.</th><th class="text-left p-2">Semester</th><th class="text-left p-2">Subject</th><th class="text-left p-2">Grade</th><th class="text-left p-2">Status</th><th class="text-left p-2">Verification</th></tr></thead><tbody>' +
