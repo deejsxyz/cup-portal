@@ -600,7 +600,7 @@ function progAbbrOf(p) { var m = /\(([^)]+)\)\s*$/.exec(p || ''); return m ? m[1
       '</div>' +
       '<span class="text-[11px] text-indigo-800 font-semibold">Tip: Check any subject from another year level or term to add it to this student.</span>' +
       '</div>';
-    box.innerHTML = filterBar + '<div class="max-h-[55vh] overflow-y-auto"><table class="w-full text-xs"><thead class="bg-slate-100 text-[10px] uppercase text-slate-600 sticky top-0"><tr><th class="px-2 py-2 text-left">Take</th><th class="px-2 py-2 text-left">Code</th><th class="px-2 py-2 text-left">Descriptive Title</th><th class="px-2 py-2 text-left">Units</th><th class="px-2 py-2 text-left">Year &amp; Sem</th><th class="px-2 py-2 text-left">Instructor</th><th class="px-2 py-2 text-left">Student status</th></tr></thead><tbody class="reg-subj-tbody">' +
+    box.innerHTML = filterBar + '<div class="max-h-[55vh] overflow-y-auto"><table class="w-full text-xs"><thead class="bg-slate-100 text-[10px] uppercase text-slate-600 sticky top-0"><tr><th class="px-2 py-2 text-left">Take</th><th class="px-2 py-2 text-left">Code</th><th class="px-2 py-2 text-left">Descriptive Title</th><th class="px-2 py-2 text-left">Units</th><th class="px-2 py-2 text-left">Year &amp; Sem</th><th class="px-2 py-2 text-left">Instructor</th></tr></thead><tbody class="reg-subj-tbody">' +
       list.map(function (c, i) {
         var sameYear = Number(c.year_level) === yr;
         var sameSem = !c.semester || !reg.term || c.semester === reg.term;
@@ -615,8 +615,7 @@ function progAbbrOf(p) { var m = /\(([^)]+)\)\s*$/.exec(p || ''); return m ? m[1
           '<td class="px-2 py-2">' + esc(c.descriptive_title) + '</td>' +
           '<td class="px-2 py-2">' + esc(c.units) + '</td>' +
           '<td class="px-2 py-2 ' + (sameYear ? 'text-slate-700' : 'text-amber-700 font-bold') + '">' + yrLabel + semLabel + (sameYear ? '' : ' (cross-year)') + '</td>' +
-          '<td class="px-2 py-2"><select class="reg-inst bg-white px-2 py-1 rounded border border-slate-300" data-i="' + i + '">' + opts.replace('value="' + defaults[i] + '"', 'value="' + defaults[i] + '" selected') + '</select></td>' +
-          '<td class="px-2 py-2 reg-status whitespace-nowrap text-slate-500" data-code="' + esc(c.course_code) + '">Loading…</td></tr>';
+          '<td class="px-2 py-2"><select class="reg-inst bg-white px-2 py-1 rounded border border-slate-300" data-i="' + i + '">' + opts.replace('value="' + defaults[i] + '"', 'value="' + defaults[i] + '" selected') + '</select></td></tr>';
       }).join('') + '</tbody></table></div>';
     box.dataset.list = JSON.stringify(list.map(function (c) { return c.course_code; }));
 
@@ -633,30 +632,6 @@ function progAbbrOf(p) { var m = /\(([^)]+)\)\s*$/.exec(p || ''); return m ? m[1
         if (q && rQ.indexOf(q) === -1) show = false;
         tr.hidden = !show;
       });
-    }
-    // Student status: the latest grade on file for each subject (pass, fail, INC, dropped and so on). Information only.
-    fetch('/api/registrar/evaluation-grades?college=' + encodeURIComponent(COLLEGE) + '&student_no=' + encodeURIComponent(current.student_no), { credentials: 'same-origin' })
-      .then(function (r) { return r.ok ? r.json() : { grades: [] }; })
-      .then(function (j) {
-        var latest = {};
-        (j.grades || []).forEach(function (g) { latest[g.course_code] = g; });
-        box.querySelectorAll('.reg-status').forEach(function (td) {
-          var g = latest[td.getAttribute('data-code')];
-          td.textContent = g ? gradeStatusText(g) : 'No grade on file';
-        });
-      }).catch(function () {
-        box.querySelectorAll('.reg-status').forEach(function (td) { td.textContent = '—'; });
-      });
-    function gradeStatusText(g) {
-      var v = String(g.final_grade || '').trim();
-      if (/^[1-3]\.\d\d$/.test(v)) return v + ' Passed';
-      if (v === '4.00') return '4.00 Conditional';
-      if (v === '5.00') return '5.00 Failed';
-      if (v === 'INC') return 'INC Incomplete';
-      if (v === 'X') return 'X Absent from examination';
-      if (v === 'W') return 'W Dropped';
-      if (v === 'NG') return 'NG No grade';
-      return v || '—';
     }
     box.querySelector('.subj-year-filter').addEventListener('change', applySubjFilter);
     box.querySelector('.subj-search').addEventListener('input', applySubjFilter);
