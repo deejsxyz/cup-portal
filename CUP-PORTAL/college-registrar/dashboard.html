@@ -2153,7 +2153,7 @@ function cupYr(p, y) { var m = /\(([^)]+)\)\s*$/.exec(p || ''); return (m ? m[1]
         else allowed = /^(security-logs|grade-logs|batch-uploads)$/.test(id);
       }
       if (allowed) showPanel(id);
-      else if (fallbackId && location.search.indexOf('home=1') === -1) showPanel(fallbackId);
+      else if (fallbackId && location.search.indexOf('home=1') === -1 && !window.matchMedia('(max-width: 900px)').matches) showPanel(fallbackId);
     }
 
     // Refresh or close warns while any college page has unsaved form work.
