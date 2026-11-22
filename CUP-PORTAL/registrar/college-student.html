@@ -137,8 +137,11 @@
             <div id="enrollHist"></div>
         <div id="stuEditBar" hidden class="mt-4 pt-4 border-t border-slate-200 flex justify-end gap-2">
           <p id="stuInfoMsg" class="mr-auto self-center text-xs font-semibold text-rose-700"></p>
-          <button type="button" id="stuInfoCancelBtn" class="px-4 py-2 bg-slate-200 hover:bg-slate-300 text-slate-700 rounded-lg text-xs font-bold cursor-pointer">Cancel</button>
-          <button type="submit" form="stuInfoForm" class="px-5 py-2 bg-indigo-700 hover:bg-indigo-800 text-white rounded-lg text-xs font-bold shadow-md cursor-pointer">Save changes</button>
+          <div id="stuEditGroup" hidden class="flex gap-2">
+            <button type="button" id="stuInfoCancelBtn" class="px-4 py-2 bg-slate-200 hover:bg-slate-300 text-slate-700 rounded-lg text-xs font-bold cursor-pointer">Cancel</button>
+            <button type="submit" form="stuInfoForm" class="px-5 py-2 bg-indigo-700 hover:bg-indigo-800 text-white rounded-lg text-xs font-bold shadow-md cursor-pointer">Save changes</button>
+          </div>
+          <button type="button" id="stuEditModeBtn" hidden class="px-5 py-2 bg-amber-500 hover:bg-amber-600 text-white rounded-lg text-xs font-bold shadow-md cursor-pointer">✏️ Edit</button>
         </div>
           </div>
         </div>
@@ -638,6 +641,12 @@ function progAbbrOf(p) { var m = /\(([^)]+)\)\s*$/.exec(p || ''); return m ? m[1
   function labelled(label, value) {
     return '<div><span class="block text-[10px] uppercase font-bold text-slate-500">' + label + '</span><span class="font-semibold text-slate-900 break-all">' + esc(value || '—') + '</span></div>';
   }
+  // Bottom bar: "Edit" while viewing; "Cancel" and "Save changes" while editing.
+  function setStuBarMode(editing) {
+    $('stuEditBar').hidden = false;
+    $('stuEditGroup').hidden = !editing;
+    $('stuEditModeBtn').hidden = editing;
+  }
   function openStudent(no, editNow) {
     var msg = $('stuSearchMsg');
     msg.textContent = '';
@@ -660,7 +669,7 @@ function progAbbrOf(p) { var m = /\(([^)]+)\)\s*$/.exec(p || ''); return m ? m[1
     $('stuInfoView').hidden = false;
     loadImm(no, 'existImm', true);
     $('stuInfoForm').hidden = true;
-    $('stuEditBar').hidden = true;
+    setStuBarMode(false);
     termEdit.editing = false;
     var wantEdit = false;
     try { wantEdit = sessionStorage.getItem('cupStuEdit') === no; } catch (e) {}
@@ -839,7 +848,7 @@ function progAbbrOf(p) { var m = /\(([^)]+)\)\s*$/.exec(p || ''); return m ? m[1
     $('stuProgramTile').title = $('stuProgramTile').textContent;
     $('stuInfoView').hidden = true;
     f.hidden = false;
-    $('stuEditBar').hidden = false;
+    setStuBarMode(true);
     $('stuInfoMsg').textContent = '';
   }
   $('stuSearchClear').addEventListener('click', function () {
@@ -849,7 +858,8 @@ function progAbbrOf(p) { var m = /\(([^)]+)\)\s*$/.exec(p || ''); return m ? m[1
     try { sessionStorage.removeItem('cupStu:' + COLLEGE); } catch (e) {}
     $('studentSearchInput').focus();
   });
-  $('stuInfoCancelBtn').addEventListener('click', function () { try { sessionStorage.removeItem('cupStuEdit'); } catch (e) {} $('stuInfoForm').hidden = true; $('stuEditBar').hidden = true; $('stuInfoView').hidden = false; termEdit.editing = false; if (current) openStudent(current.student_no); });
+  $('stuInfoCancelBtn').addEventListener('click', function () { try { sessionStorage.removeItem('cupStuEdit'); } catch (e) {} $('stuInfoForm').hidden = true; $('stuInfoView').hidden = false; termEdit.editing = false; if (current) openStudent(current.student_no); });
+  $('stuEditModeBtn').addEventListener('click', function () { startStuEdit(); });
   var EMAIL_RE = /^[A-Za-z0-9._%+\-]+@[A-Za-z0-9\-]+(\.[A-Za-z0-9\-]+)*\.[A-Za-z]{2,}$/;
   var CONTACT_RE = /^(09\d{9}|\+639\d{9})$/;
   function cleanContactInput(v) {
