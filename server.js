@@ -1092,8 +1092,8 @@ app.get('/api/registrar/students', requireRegistrar, async (req, res) => {
       `SELECT student_no, last_name, first_name, middle_name, name_extension, gender, birthday::text AS birthday, program, year_level, section, email, contact_number, civil_status,
               (SELECT u.archived_at FROM reg_users u WHERE u.student_no = reg_students.student_no LIMIT 1) AS account_archived,
               status, (csc_paid_at IS NOT NULL) AS csc_paid
-       FROM reg_students WHERE college = $1 AND status IN ('enrolled','pre-registered') AND EXISTS (SELECT 1 FROM reg_preregistrations p WHERE p.student_no = reg_students.student_no AND p.term = $2 AND p.academic_year = $3)
-       ORDER BY last_name, first_name`, [college, pt.term, pt.ay]);
+       FROM reg_students WHERE college = $1
+       ORDER BY last_name, first_name`, [college]);
     res.json({ college, students: rows.filter((s) => !isHiddenStudentRow(s)) });
   } catch (err) {
     console.error(err);
