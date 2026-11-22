@@ -2235,7 +2235,8 @@ function cogCompute(rows, flags) {
     counted += u; sumGU += n * u;
     if (isPass) passed += u; else failed += u;
   });
-  const gpa = counted >= 9 && passed >= 9 ? (sumGU / counted).toFixed(2) : '-';
+  // GPA is not computed unless the passed units are at least 50% of the total units enrolled.
+  const gpa = enrolled > 0 && passed * 2 >= enrolled && counted > 0 ? (sumGU / counted).toFixed(2) : '-';
   const failPct = enrolled > 0 ? (failed / enrolled) * 100 : 0;
   const outOfTermShare = enrolled > 0 ? outUnits / enrolled : 0;
   return { gpa, status: cogStatus(failPct, enrolled, Object.assign({ outOfTermShare }, flags)) };
@@ -2292,10 +2293,9 @@ app.get('/api/registrar/certificate-of-grades.xlsx', requireRegistrar, async (re
       ws.getCell('D' + row).value = r.code;
       { const dc = ws.getCell('D' + row); dc.alignment = Object.assign({}, dc.alignment, { horizontal: 'left' }); }
       { const uc = ws.getCell('N' + row); uc.value = r.units; uc.alignment = Object.assign({}, uc.alignment, { horizontal: 'center', vertical: 'middle' }); }
-      // A subject with no grade yet is printed as NG (NO GRADE) on the COG.
-      const shownGrade = r.grade === '' ? 'NG' : r.grade;
-      ws.getCell('Q' + row).value = shownGrade === 'NG' ? 'NG' : (Number.isFinite(Number(shownGrade)) ? Number(shownGrade).toFixed(2) : shownGrade);
-      ws.getCell('T' + row).value = shownGrade === 'NG' ? 'NO GRADE' : reportRemark(shownGrade);
+      // A subject with no grade yet shows a dash on the COG (not NG, which means failed).
+      ws.getCell('Q' + row).value = r.grade === '' ? '-' : (Number.isFinite(Number(r.grade)) ? Number(r.grade).toFixed(2) : r.grade);
+      ws.getCell('T' + row).value = r.grade === '' ? '' : reportRemark(r.grade);
     });
     for (let row = 12 + rows.length; row <= 25; row++) {
       ['B', 'D', 'N', 'Q', 'T'].forEach((c) => { ws.getCell(c + row).value = null; });
