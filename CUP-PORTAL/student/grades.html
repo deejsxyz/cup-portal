@@ -371,18 +371,69 @@
     if (!/^image\/(jpeg|png)$/.test(f.type)) { $('photoMsg').textContent = 'Choose a JPG or PNG image.'; e.target.value = ''; return; }
     if (f.size > 2 * 1024 * 1024) { $('photoMsg').textContent = 'Choose an image up to 2 MB.'; e.target.value = ''; return; }
     var reader = new FileReader();
-    reader.onload = function () {
-      post('/api/student/photo', { photo: reader.result }).then(function (res) {
-        if (!res.ok) { $('photoMsg').textContent = res.j.error || 'Could not save the photo.'; return; }
-        profile.photo = reader.result; $('photo').src = reader.result;
-        profile.photo_next_change = new Date(Date.now() + 30 * 86400000).toISOString();
-        renderProfile();
-        $('photoMsg').className = 'msg ok'; $('photoMsg').textContent = 'Photo saved.';
-      });
-    };
+    reader.onload = function () { cropOpen(reader.result); };
     reader.readAsDataURL(f);
     e.target.value = '';
   });
+
+  // Photo: the student positions and zooms the picture in a square before it is saved.
+  var crop = { scale: 1, minScale: 1, x: 0, y: 0, box: 0 };
+  function cropApply() {
+    var im = $('cropImg');
+    var w = im.naturalWidth * crop.scale, h = im.naturalHeight * crop.scale;
+    crop.x = Math.min(0, Math.max(crop.box - w, crop.x));
+    crop.y = Math.min(0, Math.max(crop.box - h, crop.y));
+    im.style.transform = 'translate(' + crop.x + 'px,' + crop.y + 'px) scale(' + crop.scale + ')';
+  }
+  function cropOpen(src) {
+    var im = $('cropImg');
+    im.onload = function () {
+      crop.box = $('cropBox').clientWidth;
+      crop.minScale = Math.max(crop.box / im.naturalWidth, crop.box / im.naturalHeight);
+      crop.scale = crop.minScale;
+      crop.x = (crop.box - im.naturalWidth * crop.scale) / 2;
+      crop.y = (crop.box - im.naturalHeight * crop.scale) / 2;
+      $('cropZoom').value = 1;
+      cropApply();
+      $('cropModal').style.display = 'flex';
+    };
+    im.src = src;
+  }
+  $('cropZoom').addEventListener('input', function () {
+    var old = crop.scale, next = crop.minScale * Number(this.value), c = crop.box / 2;
+    crop.x = c - (c - crop.x) * next / old;
+    crop.y = c - (c - crop.y) * next / old;
+    crop.scale = next;
+    cropApply();
+  });
+  var cropDrag = null;
+  $('cropBox').addEventListener('pointerdown', function (e) { cropDrag = { x: e.clientX, y: e.clientY }; this.setPointerCapture(e.pointerId); });
+  $('cropBox').addEventListener('pointermove', function (e) {
+    if (!cropDrag) return;
+    crop.x += e.clientX - cropDrag.x; crop.y += e.clientY - cropDrag.y;
+    cropDrag = { x: e.clientX, y: e.clientY };
+    cropApply();
+  });
+  $('cropBox').addEventListener('pointerup', function () { cropDrag = null; });
+  $('cropBox').addEventListener('pointercancel', function () { cropDrag = null; });
+  $('cropCancel').addEventListener('click', function () { $('cropModal').style.display = 'none'; $('photoInput').value = ''; });
+  $('cropSave').addEventListener('click', function () {
+    var out = document.createElement('canvas');
+    out.width = 400; out.height = 400;
+    var side = crop.box / crop.scale;
+    out.getContext('2d').drawImage($('cropImg'), -crop.x / crop.scale, -crop.y / crop.scale, side, side, 0, 0, 400, 400);
+    $('cropModal').style.display = 'none';
+    savePhoto(out.toDataURL('image/jpeg', 0.9));
+  });
+  function savePhoto(dataUrl) {
+    post('/api/student/photo', { photo: dataUrl }).then(function (res) {
+      if (!res.ok) { $('photoMsg').textContent = res.j.error || 'Could not save the photo.'; return; }
+      profile.photo = dataUrl; $('photo').src = dataUrl;
+      profile.photo_next_change = new Date(Date.now() + 30 * 86400000).toISOString();
+      renderProfile();
+      $('photoMsg').className = 'msg ok'; $('photoMsg').textContent = 'Photo saved.';
+    });
+  }
 
   $('bdaySave').addEventListener('click', function () {
     var v = $('bday').value;
@@ -661,5 +712,14 @@
 </script>
 <script src="/protect-logo.js"></script>
 <script src="/CUP-PORTAL/portal-menu.js"></script>
+<div id="cropModal" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,.6);z-index:2000;align-items:center;justify-content:center;padding:16px">
+  <div style="background:#fff;border-radius:12px;padding:16px;width:100%;max-width:360px;box-sizing:border-box">
+    <h3 style="margin:0 0 6px">Adjust your photo</h3>
+    <p class="hint" style="margin:0 0 10px">Drag the picture to position your face in the circle. Use the slider to zoom.</p>
+    <div id="cropBox" style="position:relative;width:100%;aspect-ratio:1/1;overflow:hidden;background:#e6ece6;border-radius:8px;touch-action:none;cursor:move"><img id="cropImg" alt="" draggable="false" style="position:absolute;left:0;top:0;transform-origin:0 0;max-width:none;user-select:none;-webkit-user-drag:none"></div>
+    <input id="cropZoom" type="range" min="1" max="3" step="0.01" value="1" style="width:100%;margin-top:10px" aria-label="Zoom">
+    <div style="display:flex;gap:8px;justify-content:flex-end;margin-top:12px"><button type="button" id="cropCancel" class="btn light">Cancel</button><button type="button" id="cropSave" class="btn">Save photo</button></div>
+  </div>
+</div>
 </body>
 </html>
