@@ -11,7 +11,6 @@
 <div class="space-y-4">
 
   <div class="bg-white rounded-xl shadow-sm border border-slate-200 p-5">
-    <p class="text-xs text-slate-500 mb-4">Automated cross-check of each student's grades on file. When the University Registrar approves all of a student's grades, the student is Verified and proceeds to Step 2. Grades that Failed, are Conditional, Incomplete, Dropped, Absent, No Grade, or mismatched are listed for review through the College Registrar.</p>
     <div class="flex flex-wrap items-center gap-2 mb-4">
       <input id="evSearch" type="text" placeholder="Search student number or name" autocomplete="off" class="flex-1 min-w-[200px] px-3 py-2 rounded-lg border border-slate-300 text-sm">
       <select id="evFilter" aria-label="Evaluation status" class="px-3 py-2 rounded-lg border border-slate-300 text-sm bg-white cursor-pointer">
@@ -120,6 +119,7 @@ window.cupYr = function (p, y) { var m = /\(([^)]+)\)\s*$/.exec(p || ''); return
       }).catch(function () { msgEl.textContent = 'Could not update the evaluation.'; b.disabled = false; });
   });
 
+  var autoNo = '';
   function filtered() {
     var q = searchEl.value.trim().toLowerCase(), f = filterEl.value;
     return rows.filter(function (r) {
@@ -135,7 +135,16 @@ window.cupYr = function (p, y) { var m = /\(([^)]+)\)\s*$/.exec(p || ''); return
     var summary = counts.evaluated + ' evaluated · ' + counts.verified + ' verified · ' + counts.awaiting + ' awaiting approval · ' + counts['no-grades'] + ' no grades yet';
     try { parent.postMessage({ evalCount: summary }, '*'); } catch (e) {}
 
+    var q0 = searchEl.value.trim();
+    if (!q0) {
+      listEl.innerHTML = '<p class="text-xs text-slate-500">Type a student number or name to find a student.</p>';
+      infoEl.textContent = ''; prevEl.disabled = nextEl.disabled = true; autoNo = '';
+      if (!gradesEl.hidden) { gradesEl.hidden = true; selectedNo = ''; }
+      return;
+    }
     var list = filtered();
+    if (list.length === 1 && autoNo !== list[0].student_no) { autoNo = list[0].student_no; openGrades(autoNo); }
+    if (!list.length) autoNo = '';
     var pages = Math.max(1, Math.ceil(list.length / PAGE_SIZE));
     if (page > pages) page = pages;
     if (page < 1) page = 1;
