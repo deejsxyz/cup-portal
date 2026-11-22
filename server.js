@@ -1800,6 +1800,21 @@ app.post('/api/registrar/portal-users/delete', requireSuperAdmin, async (req, re
 });
 
 // Reset a portal account's password to a new temporary one (University Registrar).
+// University Registrar: change the email address on any portal account. A student's email is also kept on the student record.
+app.post('/api/registrar/portal-users/:id/email', requireSuperAdmin, async (req, res) => {
+  const id = Number(req.params.id);
+  if (!Number.isInteger(id) || id <= 0) return res.status(400).json({ error: 'Invalid account.' });
+  const email = String((req.body && req.body.email) || '').trim().toLowerCase().slice(0, 254);
+  if (!/^[A-Za-z0-9._%+\-]+@[A-Za-z0-9\-]+(\.[A-Za-z0-9\-]+)*\.[A-Za-z]{2,}$/.test(email)) return res.status(400).json({ error: 'Enter a valid email address.' });
+  try {
+    const r = await pool.query('UPDATE reg_users SET email = $2 WHERE id = $1 RETURNING role, username, student_no', [id, email]);
+    if (!r.rowCount) return res.status(404).json({ error: 'Account not found.' });
+    const acct = r.rows[0];
+    if (acct.role === 'student' && acct.student_no) await pool.query('UPDATE reg_students SET email = $2 WHERE student_no = $1', [acct.student_no, email]);
+    logAction(req, 'University Registrar', 'email changed', acct.role + ' ' + acct.username);
+    res.json({ ok: true, email });
+  } catch (err) { console.error('email:', err.message); res.status(500).json({ error: 'Could not update the email address.' }); }
+});
 app.post('/api/registrar/portal-users/:id/reset-password', requireSuperAdmin, async (req, res) => {
   const id = Number(req.params.id);
   if (!Number.isInteger(id) || id <= 0) return res.status(400).json({ error: 'Invalid account.' });

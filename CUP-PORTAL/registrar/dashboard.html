@@ -977,7 +977,8 @@ function cupYr(p, y) { var m = /\(([^)]+)\)\s*$/.exec(p || ''); return (m ? m[1]
       box._rowFn = function (u) {
         var cells = student ? [keyOf(u), u.name, u.college, u.program || '', cupYr(u.program, u.year_level)] : [keyOf(u), u.name, u.college, u.email || ''];
         return '<tr>' + cells.map(function (c) { return '<td>' + esc(c) + '</td>'; }).join('') + '<td>' + statusPill(u) +
-          '</td><td><button type="button" class="btn green sm" data-reset="' + u.id + '" data-label="' + esc(keyOf(u)) + '">Reset password</button></td></tr>';
+          '</td><td><button type="button" class="btn light sm" data-email-id="' + u.id + '" data-label="' + esc(keyOf(u)) + '" data-cur="' + esc(u.email || '') + '">Edit email</button> ' +
+          '<button type="button" class="btn green sm" data-reset="' + u.id + '" data-label="' + esc(keyOf(u)) + '">Reset password</button></td></tr>';
       };
       box.innerHTML = '<div class="search-row"><input class="acct-search q" placeholder="' + (student ? 'Student number or name' : 'Username or name') + '">' +
         '<select class="mf-college" aria-label="College"' + (role === 'csc' ? ' hidden' : '') + '>' + colOpts() + '</select>' +
@@ -1146,6 +1147,23 @@ function cupYr(p, y) { var m = /\(([^)]+)\)\s*$/.exec(p || ''); return (m ? m[1]
           .then(function (res) {
             msg.textContent = res.ok ? res.j.count + ' account(s) ' + ({ archive: 'archived', restore: 'restored', delete: 'deleted' }[mode]) + '.' : (res.j.error || 'Could not complete the action.');
             if (res.ok) { bx._sel.clear(); var c = bx.querySelector('.confirm-text'); if (c) c.value = ''; }
+            loadPortalUsers();
+          });
+        return;
+      }
+      var eb = t.closest('button[data-email-id]');
+      if (eb) {
+        var role0 = eb.closest('.manage').getAttribute('data-role');
+        var mm0 = document.querySelector('.manage-msg[data-role="' + role0 + '"]');
+        var next = window.prompt('New email address for ' + eb.getAttribute('data-label') + ':', eb.getAttribute('data-cur') || '');
+        if (next === null) return;
+        next = next.trim();
+        if (!/^[A-Za-z0-9._%+\-]+@[A-Za-z0-9\-]+(\.[A-Za-z0-9\-]+)*\.[A-Za-z]{2,}$/.test(next)) { mm0.textContent = 'Enter a valid email address (e.g. name@example.com).'; return; }
+        fetch('/api/registrar/portal-users/' + eb.getAttribute('data-email-id') + '/email', { method: 'POST', credentials: 'same-origin', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ email: next }) })
+          .then(function (r) { return r.json().then(function (j) { return { ok: r.ok, j: j }; }); })
+          .then(function (res) {
+            if (!res.ok) { mm0.textContent = res.j.error || 'Could not update the email address.'; return; }
+            mm0.textContent = 'Email updated for ' + eb.getAttribute('data-label') + ' to ' + res.j.email + '.';
             loadPortalUsers();
           });
         return;
