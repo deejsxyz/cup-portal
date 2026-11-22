@@ -58,9 +58,9 @@
   .live-clock { font-size: 13px; font-weight: 700; white-space: nowrap; }
   .acct { position: relative; }
   .acct-name { background: transparent; border: 0; color: #fff; font: inherit; font-weight: 700; cursor: pointer; padding: 2px 0; }
-  .acct-drop { position: absolute; top: 100%; right: 0; z-index: 50; margin-top: 6px; min-width: 180px; background: #fff; border-radius: 8px; box-shadow: 0 6px 18px rgba(0,0,0,.25); display: flex; flex-direction: column; padding: 6px; }
+  .acct-drop { box-sizing: border-box; position: absolute; top: 100%; right: 0; z-index: 50; margin-top: 6px; min-width: 180px; background: #fff; border-radius: 8px; box-shadow: 0 6px 18px rgba(0,0,0,.25); display: flex; flex-direction: column; padding: 6px; }
   .acct-drop[hidden] { display: none; }
-  .acct-drop a, .acct-drop button { display: block; width: 100%; text-align: left; padding: 8px 10px; border: 0; background: transparent; color: #1d2a1d; font: inherit; font-weight: 600; text-decoration: none; border-radius: 6px; cursor: pointer; }
+  .acct-drop a, .acct-drop button { box-sizing: border-box; display: block; width: 100%; text-align: left; padding: 8px 10px; border: 0; background: transparent; color: #1d2a1d; font: inherit; font-weight: 600; text-decoration: none; border-radius: 6px; cursor: pointer; }
   .acct-drop a:hover, .acct-drop button:hover { background: #e6ece6; }
 </style>
 <script src="/CUP-PORTAL/portal-session.js" data-logout="/api/portal/logout" data-login="/CUP-PORTAL/faculty/"></script>
