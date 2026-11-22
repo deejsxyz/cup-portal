@@ -1151,7 +1151,7 @@ app.post('/api/registrar/enroll', requireSuperAdmin, async (req, res) => {
       try {
         await client.query(
           `INSERT INTO reg_students (student_no, college, first_name, middle_name, last_name, gender, birthday, email, contact_number, program, year_level, section, status, enrolled_at, major)
-           VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,'enrolled', now(), $13)`,
+           VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,'pre-registered', now(), $13)`,
           [studentNo, college, first, String(r.middle_name || '').trim().slice(0, 100) || null, last,
            String(r.gender || '').trim().slice(0, 10) || null, birthday,
            String(r.email || '').trim().toLowerCase().slice(0, 254) || null,
