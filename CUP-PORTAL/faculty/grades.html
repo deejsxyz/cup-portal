@@ -57,7 +57,18 @@
   .dl-status.muted { color: #5a6a5a; font-weight: 400; }
   .live-clock { font-size: 13px; font-weight: 700; white-space: nowrap; }
   .acct { position: relative; }
-  .acct-name { background: transparent; border: 0; color: #fff; font: inherit; font-weight: 700; cursor: pointer; padding: 2px 0; }
+  .desk-only { display: none; }
+  @media (max-width: 900px) {
+    #downloads-btn { display: none !important; }
+    .acct-name { background: transparent; border: 0; color: #fff; font: inherit; font-weight: 700; cursor: pointer; padding: 2px 0; }
+  }
+  @media (min-width: 901px) {
+    .desk-only { display: inline; }
+    .acct-drop { display: none !important; }
+    .acct-name { pointer-events: none; cursor: default; }
+    .acct-name .caret { display: none; }
+  }
+  .colleges .dl-nav { background: #e6ece6; color: #1d2a1d; border: 0; border-radius: 8px; padding: 8px 14px; font-weight: 700; cursor: pointer; margin-left: auto; }
   .acct-drop { box-sizing: border-box; position: absolute; top: 100%; right: 0; z-index: 50; margin-top: 6px; min-width: 180px; background: #fff; border-radius: 8px; box-shadow: 0 6px 18px rgba(0,0,0,.25); display: flex; flex-direction: column; padding: 6px; }
   .acct-drop[hidden] { display: none; }
   .acct-drop a, .acct-drop button { box-sizing: border-box; display: block; width: 100%; text-align: left; padding: 8px 10px; border: 0; background: transparent; color: #1d2a1d; font: inherit; font-weight: 600; text-decoration: none; border-radius: 6px; cursor: pointer; }
@@ -81,6 +92,7 @@
           <button type="button" id="acctChangeEmail">Change Email</button>
         </div>
       </div>
+      <a class="desk-only" href="/CUP-PORTAL/change-password">Change Password</a>
       <button class="btn gold" id="logout" type="button">Log Out</button>
     </div>
   </div>
@@ -176,7 +188,8 @@
   }
 
   /* Colleges */
-  $('colleges').innerHTML = COLLEGES.map(function (c) { return '<button type="button" data-c="' + c + '">' + c + '</button>'; }).join('');
+  $('colleges').innerHTML = COLLEGES.map(function (c) { return '<button type="button" data-c="' + c + '">' + c + '</button>'; }).join('') +
+    '<button type="button" class="dl-nav" id="downloads-btn">Downloads</button>';
   $('colleges').addEventListener('click', function (e) {
     var b = e.target.closest('[data-c]');
     if (b) chooseCollege(b.getAttribute('data-c'));
@@ -203,7 +216,7 @@
       }).join('') : '<option value="">No subjects assigned to you in ' + esc(c) + '</option>';
       if (fromRestore && restore && restore.course) subj.value = restore.course;
       $('filterCard').hidden = false;
-      $('dlAction').hidden = false;
+      $('dlAction').hidden = !window.matchMedia('(max-width: 900px)').matches;
       fillYearSection();
     });
   }
@@ -335,6 +348,12 @@
   });
 
   /* Session */
+  $('downloads-btn').addEventListener('click', function () {
+    var f = $('filterCard'), d = $('dlAction');
+    f.hidden = false;
+    d.hidden = false;
+    d.scrollIntoView({ behavior: 'smooth', block: 'start' });
+  });
   var dlTimer = null;
   // Opens the PDF in a hidden frame and sends it to the print dialog.
   function printBlob(blob) {
@@ -466,8 +485,9 @@
         }
         return;
       }
-      // Close the most recently opened item first: sheet, then filters.
-      var fc = document.getElementById('filterCard');
+      // Close the most recently opened item first: sheet (3), then Downloads (2), then filters (1).
+      var dl = document.getElementById('dlAction'), fc = document.getElementById('filterCard');
+      if (dl && !dl.hidden) { dl.hidden = true; return; }
       if (fc && !fc.hidden) { fc.hidden = true; return; }
     });
   })();
