@@ -421,13 +421,14 @@ window.cupYr = function (p, y) { var m = /\(([^)]+)\)\s*$/.exec(p || ''); return
     box.innerHTML = filters + table;
     document.getElementById('viewTermSel').addEventListener('change', renderViewSubjects);
   }
-  function loadViewSubjects(no) {
+  function loadViewSubjects(no, col) {
     var box = document.getElementById('viewSubjects');
     if (!box) return;
+    col = col || COLLEGE;
     box.innerHTML = '<p class="text-xs text-slate-500">Loading subjects…</p>';
     Promise.all([
-      fetch('/api/registrar/enroll-context?year_level=1&college=' + encodeURIComponent(COLLEGE), { credentials: 'same-origin' }).then(function (r) { return r.json(); }),
-      fetch('/api/registrar/enrollments?student_no=' + encodeURIComponent(no) + '&college=' + encodeURIComponent(COLLEGE), { credentials: 'same-origin' }).then(function (r) { return r.json(); })
+      fetch('/api/registrar/enroll-context?year_level=1&college=' + encodeURIComponent(col), { credentials: 'same-origin' }).then(function (r) { return r.json(); }),
+      fetch('/api/registrar/enrollments?student_no=' + encodeURIComponent(no) + '&college=' + encodeURIComponent(col), { credentials: 'same-origin' }).then(function (r) { return r.json(); })
     ]).then(function (out) {
       if (document.getElementById('viewRecord').hidden) return;
       viewCtx = out[0] || {};
@@ -561,7 +562,7 @@ window.cupYr = function (p, y) { var m = /\(([^)]+)\)\s*$/.exec(p || ''); return
       '</div>' +
       '<div id="viewSubjects" class="pt-2"></div>' +
       '<div id="viewImm" class="pt-2"></div>';
-    loadViewSubjects(no);
+    loadViewSubjects(no, s.college);
     loadImm(no, 'viewImm', false);
     $('viewListView').hidden = true;
     $('viewRecord').hidden = false;
