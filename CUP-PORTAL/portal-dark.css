@@ -7,3 +7,12 @@
   body { filter: invert(1) hue-rotate(180deg); min-height: 100vh; }
   img, video, canvas, picture, svg image { filter: invert(1) hue-rotate(180deg); }
 }
+
+/* Brand bars and buttons keep their original green and gold colors: a second inversion cancels the first. */
+@media (prefers-color-scheme: dark) {
+  .nav, .pm-bar, .pm-drawer, .logout, #logout, .acct-name, .panel-head, .sub-head, .box > h2 {
+    filter: invert(1) hue-rotate(180deg);
+  }
+  /* Buttons inside a brand bar are already restored by the bar, so they are not inverted again. */
+  .nav .logout, .nav #logout, .pm-bar .logout, .pm-drawer .logout, .nav .acct-name, .pm-drawer .acct-name { filter: none; }
+}
