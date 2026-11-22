@@ -684,6 +684,9 @@
       return r.json();
     }).then(function (j) {
       if (!j) return;
+      // This page is for college registrar and records-in-charge accounts only. Any other signed-in account
+      // (for example the University Registrar session shared by the same browser) goes to the college login.
+      if (j.role !== 'registrar' && j.role !== 'records') { window.location.href = '/CUP-PORTAL/college-registrar/'; return; }
       me = j;
       if (j.collegeName) document.getElementById("collegeName").textContent = j.collegeName;
       if (j.fullName) document.getElementById("acctName").textContent = j.fullName;
