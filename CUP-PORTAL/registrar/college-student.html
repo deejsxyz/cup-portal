@@ -669,6 +669,9 @@ window.cupYr = function (p, y) { var m = /\(([^)]+)\)\s*$/.exec(p || ''); return
       // Heading from the filters used, e.g. BSN1–A (program abbreviation, year level, section).
       var abbr = wantedProg ? progAbbrOf(wantedProg.program) : '';
       var yr = $('viewYearFilter').value, sec = $('viewSecFilter').value;
+      // Year level alone is written out, e.g. First Year; with a program it is BSN1, and a section adds –A.
+      var ORD = ['', 'First Year', 'Second Year', 'Third Year', 'Fourth Year'];
+      if (!abbr && !sec && yr) return '<h3>' + esc(ORD[Number(yr)] || ('Year ' + yr)) + '</h3>';
       var code = abbr + yr + (sec ? '\u2013' + sec : '');
       return code ? '<h3>' + esc(code) + '</h3>' : '';
     })() + '<p>' + rows.length + ' student(s)</p><table><thead><tr><th>Student ID</th><th>Last Name</th><th>First Name</th><th>Middle Name</th><th>Year Level</th><th>Section</th><th>Contact Number</th></tr></thead><tbody>' +
