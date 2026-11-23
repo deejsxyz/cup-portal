@@ -1,0 +1,152 @@
+/* Shared Copy of Grades builder: the student's printed copy and the /verify-document page use this same code,
+   so the verification page is laid out exactly like the printout. */
+(function () {
+  var profile = null, retentionLabel = '';
+  var esc = function (v) { return String(v == null ? '' : v).replace(/[&<>"']/g, function (c) { return { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]; }); };
+  var PROG_ABBR = function (p) { var m = /\(([^)]+)\)\s*$/.exec(p || ''); return m ? m[1] : (p || ''); };
+  function termLabel(t) { return String(t || '').replace(/^1st\b/, 'First').replace(/^2nd\b/, 'Second'); }
+  var COLLEGE_NAMES = {
+    COACS: 'College of Office Administration and Computer Studies', CAS: 'College of Arts and Sciences', CONM: 'College of Nursing and Midwifery',
+    COED: 'College of Education', COBM: 'College of Business and Management', LAW: 'School of Law', GS: 'Graduate School', 'TESDA-TVI': 'TESDA-TVI'
+  };
+  var COLLEGE_LOGO_PATHS = {
+    COACS: '/images/college-oact.png', CAS: '/images/college-arts.png', CONM: '/images/college-nursing.png',
+    COED: '/images/college-education.png', COBM: '/images/college-business.png', LAW: '/images/college-law.png',
+    GS: '/images/college-graduate.png', 'TESDA-TVI': '/images/tesda-logo.png'
+  };
+  var DOC_CSS = {
+    copy: '@page{size:A5 landscape;margin:0.25in}body{margin:0;font-family:Arial,Helvetica,sans-serif;color:#000}' +
+      '.sheet{position:relative;width:calc(210mm - 0.5in);height:calc(148mm - 0.5in);box-sizing:border-box;padding:5mm 9mm 4mm;font-size:8pt;line-height:1.2;overflow:hidden;page-break-after:always;break-after:page}' +
+      '.sheet:last-child{page-break-after:auto;break-after:auto}' +
+      '.hdr{display:flex;align-items:center;justify-content:center;gap:2mm;text-align:center}.hdr img{width:13mm;height:13mm;object-fit:contain}' +
+      '@font-face{font-family:"CUP Courier";src:url(/CUP-PORTAL/fonts/courier-new.ttf) format("truetype")}@font-face{font-family:"CUP Algerian";src:url(/CUP-PORTAL/fonts/algerian.ttf) format("truetype")}@font-face{font-family:"CUP Script";src:url(/CUP-PORTAL/fonts/script-mt-bold.ttf) format("truetype")}.u1{font-family:"CUP Algerian",Algerian,serif;font-size:10pt;font-weight:bold;color:#000}.u2{font-size:6.5pt;color:#000}.c1{font-family:"CUP Script","Script MT Bold",cursive;font-size:14pt;font-weight:normal;font-style:normal;color:#000;margin-top:0.5mm}.addr{font-size:6pt;color:#000}' +
+      '.title{text-align:center;font-weight:bold;font-size:10pt;text-decoration:underline;margin:2.5mm 0 5mm}' +
+      '.info{display:grid;grid-template-columns:1fr 1fr;column-gap:10mm;row-gap:0.8mm;font-size:7pt;line-height:1.25;grid-auto-flow:column;grid-template-rows:repeat(5,auto);margin-bottom:2mm;font-family:"CUP Courier","Courier New",monospace}.info div{white-space:nowrap;overflow:hidden}.info .k{display:inline-block;width:24mm}.info .kl{display:inline-block;width:16mm}' +
+      '.gw{position:relative;overflow:hidden;width:100%}' +
+      'table{width:100%;border-collapse:collapse;font-size:7pt;line-height:1;table-layout:fixed}' +
+      'th{border-top:0.5pt solid #000;border-bottom:0.5pt solid #000}td{border:0}' +
+      'th,td{padding:0 1mm;height:4.4mm;line-height:1;overflow:hidden;white-space:nowrap}th{font-family:Arial,Helvetica,sans-serif;font-size:6pt;font-weight:bold;text-align:center;height:auto;padding:0.8mm 1mm;line-height:1}td{font-family:"CUP Courier","Courier New",monospace}td.c{text-align:center}td.l{text-align:left}' +
+      '.wm{position:absolute;inset:0;z-index:10;pointer-events:none;overflow:hidden}.wm-img{position:absolute;inset:0;width:100%;height:100%}' +
+      '.wm span{flex:1 1 0;min-height:0;overflow:hidden;display:block;white-space:nowrap;font:bold 6.5pt Arial,Helvetica,sans-serif;line-height:1;color:rgba(0,0,0,.05)}' +
+      '.foot{position:absolute;left:9mm;right:9mm;bottom:15mm;display:flex;justify-content:space-between;align-items:flex-end;gap:4mm;font-size:7pt}' +
+      '.qr{display:flex;align-items:center;gap:2mm;line-height:1;font-size:7pt;font-family:Arial,Helvetica,sans-serif}.qr img{width:14mm;height:14mm}.vc{font-size:7pt;font-weight:normal;margin-top:0.8mm}' +
+      '.tot{min-width:70mm;font-size:6pt;line-height:1;font-family:"CUP Courier","Courier New",monospace}.tot div{font-weight:bold;white-space:nowrap}.tot .tl{display:inline-block;width:42mm}.tot .gpa{margin-top:1.5em}.tot .subj{margin-top:2.5em}' +
+      '.disc{position:absolute;left:9mm;right:9mm;bottom:9mm;font-family:Arial,Helvetica,sans-serif;font-size:6pt;line-height:1;border-top:0.5pt solid #000;padding-top:0.8mm}' +
+      '.pf{position:absolute;left:9mm;right:9mm;bottom:4mm;display:flex;justify-content:space-between;font-family:"CUP Courier","Courier New",monospace;font-size:6pt;font-weight:bold;line-height:1}.tot-in{position:absolute;right:9mm;bottom:15mm;width:max-content}',
+  };
+  // Text and the watermark are drawn as images, so the student number is not text a viewer can turn into a link.
+  function textImg(text, px, color, weight) {
+    var w = Math.ceil(String(text).length * px * 0.62) + 4, h = Math.ceil(px * 1.3);
+    var svg = '<svg xmlns="http://www.w3.org/2000/svg" width="' + w + '" height="' + h + '" viewBox="0 0 ' + w + ' ' + h + '"><text x="0" y="' + Math.round(px * 0.95) +
+      '" font-family="Arial, Helvetica, sans-serif" font-size="' + px + '" font-weight="' + (weight || 'bold') + '" fill="' + (color || '#000') + '">' + esc(text) + '</text></svg>';
+    return '<img alt="" style="height:' + h + 'px;width:' + w + 'px;vertical-align:middle" src="data:image/svg+xml;charset=utf-8,' + encodeURIComponent(svg) + '">';
+  }
+  // Courier New, as an image, so the browser cannot turn the number into a blue phone/number link.
+  function courierImg(text, px) {
+    var w = Math.ceil(String(text).length * px * 0.6) + 4, h = Math.ceil(px * 1.3);
+    var svg = '<svg xmlns="http://www.w3.org/2000/svg" width="' + w + '" height="' + h + '" viewBox="0 0 ' + w + ' ' + h + '"><text x="0" y="' + Math.round(px * 0.95) +
+      '" font-family="Courier New, Courier, monospace" font-size="' + px + '" font-weight="normal" fill="#000">' + esc(text) + '</text></svg>';
+    return '<img alt="" style="height:' + h + 'px;width:' + w + 'px;vertical-align:middle" src="data:image/svg+xml;charset=utf-8,' + encodeURIComponent(svg) + '">';
+  }
+  function wmImg(strip, rows) {
+    var H = rows * 20, W = 1000, lines = '';
+    for (var i = 0; i < rows; i++) {
+      // Each line starts at a random point, so no line lines up with the one above it.
+      lines += '<text x="' + (-Math.round(Math.random() * W * 0.8)) + '" y="' + (i * 20 + 15) + '" font-family="Arial, Helvetica, sans-serif" font-size="14" font-weight="bold" fill="#000" fill-opacity="0.05">' + esc(strip.repeat(3)) + '</text>';
+    }
+    var svg = '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 ' + W + ' ' + H + '" preserveAspectRatio="none" width="100%" height="100%">' + lines + '</svg>';
+    return '<img class="wm-img" alt="" src="data:image/svg+xml;charset=utf-8,' + encodeURIComponent(svg) + '">';
+  }
+  // Non-breaking hyphens stop Word/Safari turning the student number into a blue link.
+  function noLink(v) { return String(v == null ? '' : v).replace(/-/g, '\u2011'); }
+  function gradeDocContext() {
+    var origin = window.location.origin;
+    var college = (profile && profile.college) || '';
+    var collegeName = COLLEGE_NAMES[college] || college;
+    var stamp = new Date().toLocaleString('en-PH', { year: 'numeric', month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit' });
+    var wmLine = 'NOT AN OFFICIAL DOCUMENT • ' + profile.student_no + ' • ' + stamp + ' • ' + collegeName.toUpperCase() + ' • CITY UNIVERSITY OF PASAY';
+    var prog = PROG_ABBR(profile.program);
+    return {
+      sid: noLink(profile.student_no), origin: origin, collegeName: collegeName, wmStrip: wmLine + '          ',
+      logo: origin + (COLLEGE_LOGO_PATHS[college] || '/images/cup-logo-seal.png'),
+      seal: origin + '/images/logo-1994.png',
+      sName: (profile.last_name + ', ' + profile.first_name + (profile.middle_name ? ' ' + String(profile.middle_name).trim().charAt(0).toUpperCase() + '.' : '')).toUpperCase(),
+      yrSec: prog + '-' + (profile.year_level || '') + (profile.section || '')
+    };
+  }
+  function gradeHeader(c) {
+    return '<div class="hdr"><img src="' + c.seal + '" alt="City University of Pasay seal"><div>' +
+      '<div class="u1">CITY UNIVERSITY OF PASAY</div><div class="u2">(PAMANTASAN NG LUNGSOD NG PASAY)</div><div class="u2">Pasadeña St., Pasay City</div>' +
+      '<div class="c1">' + esc(c.collegeName) + '</div><div class="addr">' + esc(collegeAddr((profile && profile.college) || '')) + '</div></div>' +
+      '<img src="' + c.logo + '" alt="College crest"></div>';
+  }
+  var COLLEGE_ADDR = { CONM: '4th Floor Tramo Wing, Pasay City General Hospital, P. Burgos St, Pasay City' };
+  function collegeAddr(code) { return COLLEGE_ADDR[code] || 'City University of Pasay, Pasadeña St, Pasay City'; }
+  // Verification block: QR code linking to /verify-document, with the code in words.
+  function qrBlock(g, c) {
+    if (!g || !g.code) return '';
+    return '<div class="qr">' + (g.qr ? '<img src="' + g.qr + '" alt="Verification QR code">' : '') +
+      '<div><b>SCAN THE QR CODE TO VERIFY THE AUTHENTICITY<br>OF THIS DOCUMENT.</b><div class="vc" style="font-weight:normal">THIS IS A SYSTEM GENERATED REPORT<br>NO SIGNATURE IS NECESSARY</div></div></div>';
+  }
+  function copyDocHtml(list) {
+    var c = gradeDocContext(), sheets = '', ROWS = 10;
+    var pv = {};
+    new Intl.DateTimeFormat('en-US', { timeZone: 'Asia/Manila', day: 'numeric', month: 'long', year: 'numeric', hour: 'numeric', minute: '2-digit', hour12: true }).formatToParts(new Date()).forEach(function (x) { pv[x.type] = x.value; });
+    var printedAt = pv.day + '-' + pv.month + '-' + pv.year + ' ' + pv.hour + ':' + pv.minute + ' ' + pv.dayPeriod;
+    var ORD = ['1st', '2nd', '3rd', '4th'];
+    var collegeName = COLLEGE_NAMES[(profile && profile.college) || ''] || (profile && profile.college) || '';
+    list.forEach(function (g) {
+      var items = g.items || [];
+      var chunks = [];
+      for (var i = 0; i < Math.max(1, items.length); i += ROWS) chunks.push(items.slice(i, i + ROWS));
+      var enrolled = 0, earned = 0;
+      items.forEach(function (r) {
+        var u = r.units == null ? 0 : Number(r.units);
+        enrolled += u;
+        if (String(r.remarks || '').toLowerCase() === 'passed') earned += u;
+      });
+      chunks.forEach(function (chunk, ci) {
+        var isLast = ci === chunks.length - 1, rows = '';
+        // Only real subject rows are drawn, so the footer never sits on top of empty table rows.
+        chunk.forEach(function (r) {
+          rows += '<tr><td class="l">' + esc(r.course_code || '') + '</td><td class="l">' + esc(r.descriptive_title || '') + '</td>' +
+            '<td class="c">' + esc(c.yrSec) + '</td><td class="c">' + esc(r.final_grade || '') + '</td><td class="c"></td>' +
+            '<td class="c">' + esc(r.units == null ? '' : Number(r.units)) + '</td><td class="c">' + esc(r.remarks || '') + '</td></tr>';
+        });
+        if (isLast && chunk.length < ROWS) rows += '<tr><td colspan="7" class="c"><b>*** Nothing Follows ***</b></td></tr>';
+        var totals = isLast ? '<div><span class="tl">Total Credit Units Enrolled</span>: ' + enrolled + '</div>' +
+          '<div><span class="tl">Total Credit Units Earned</span>: ' + earned + '</div>' +
+          '<div class="gpa"><span class="tl">Grade Point Average</span>: ' + esc(g.gpa || '\u2014') + '</div>' +
+          '<div class="subj"><span class="tl">Total Subjects Enrolled</span>: ' + items.length + '</div>' : '';
+        var yearText = profile.year_level ? (ORD[Number(profile.year_level) - 1] || profile.year_level) + ' Year' : '';
+        sheets += '<div class="sheet">' + gradeHeader(c) + '<div class="title">REPORT OF GRADES</div>' +
+          '<div class="info">' +
+            '<div><span class="kl">Fullname</span>: ' + esc(c.sName) + '</div>' +
+            '<div><span class="kl">Gender</span>: ' + esc(profile.gender || '') + '</div>' +
+            '<div><span class="kl">College</span>: ' + esc(collegeName) + '</div>' +
+            '<div><span class="kl">Program</span>: ' + esc(profile.program || '') + '</div>' +
+            '<div><span class="kl">Major</span>: ' + esc(profile.major || '') + '</div>' +
+            '<div><span class="k">Student No</span>: ' + courierImg(profile.student_no || '', 9.33) + '</div>' +
+            '<div><span class="k">Academic Year</span>: ' + esc(termLabel(g.term) + ' ' + g.ay) + '</div>' +
+            '<div><span class="k">Year Level</span>: ' + esc(yearText) + '</div>' +
+            '<div><span class="k">Section</span>: ' + esc(profile.section || '') + '</div>' +
+            '<div><span class="k">Retention Status</span>: ' + esc(retentionLabel) + '</div>' +
+          '</div>' +
+          '<div class="gw"><table><colgroup><col style="width:12%"><col style="width:38%"><col style="width:12%"><col style="width:10%"><col style="width:8%"><col style="width:10%"><col style="width:10%"></colgroup>' +
+          '<thead><tr><th>CODE</th><th>SUBJECT TITLE</th><th>CLASS<br>SECTION</th><th>FINAL<br>GRADE</th><th>RE-<br>EXAM</th><th>CREDIT<br>UNITS</th><th>REMARKS</th></tr></thead><tbody>' + rows + '</tbody></table>' +
+          '<div class="wm" aria-hidden="true">' + wmImg(c.wmStrip, 40) + '</div></div>' +
+          (totals ? '<div class="tot tot-in">' + totals + '</div>' : '') +
+          '<div class="foot">' + qrBlock(g, c) + '</div>' +
+          '<div class="disc">DISCLAIMER: The student bears the responsibility for the proper disposal of the documents printed using the student portal. Any mishandling of printed records is solely the student\'s liability, and the University cannot be held accountable for such incidents.</div>' +
+          '<div class="pf"><span>Printed from City University of Pasay - Student Portal</span><span style="font-weight:normal">' + esc(printedAt) + '</span></div>' +
+          '</div>';
+      });
+    });
+    return '<!doctype html><html><head><meta charset="utf-8"><meta name="format-detection" content="telephone=no,date=no,address=no,email=no"><title>Report of Grades</title><style>' + DOC_CSS.copy + '</style></head><body>' + sheets + '</body></html>';
+  }
+  function build(opts) {
+    profile = opts.profile; retentionLabel = opts.retentionLabel || '';
+    return copyDocHtml(opts.list);
+  }
+  window.CupCopyDoc = { build: build };
+})();

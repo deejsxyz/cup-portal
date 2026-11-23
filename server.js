@@ -1423,36 +1423,21 @@ app.get('/verify-document', async (req, res) => {
     const want = data && data.rows.length ? printCopyCode(sid, ay, term, data) : '';
     const a = Buffer.from(want || 'x'), b = Buffer.from(code);
     if (want && a.length === b.length && crypto.timingSafeEqual(a, b)) {
-      // The scanned page shows the same Copy of Grades as the printout: student details, every subject, totals.
-      const who = await pool.query('SELECT first_name, middle_name, last_name, gender, program, major, college, year_level, section, email FROM reg_students WHERE student_no = $1', [sid]);
-      const w = who.rows[0] || {};
-      const holder = [w.last_name, w.first_name, w.middle_name].filter(Boolean).join(', ');
-      const ORD = ['1st', '2nd', '3rd', '4th'];
-      const yearText = w.year_level ? (ORD[Number(w.year_level) - 1] || w.year_level) + ' Year' : '';
-      const termText = term === '1st' || term === '2nd' ? (term === '1st' ? '1st Semester' : '2nd Semester') : term;
-      let enrolled = 0, earned = 0;
-      data.rows.forEach((r) => {
-        const u = Number(r.units) || 0;
-        enrolled += u;
-        if (String(r.remarks || '').toLowerCase() === 'passed') earned += u;
-      });
-      const abbrP = (w.program || '').match(/\(([^)]+)\)\s*$/);
-      const classSection = (abbrP ? abbrP[1] : (w.program || '')) + (w.year_level ? '-' + w.year_level : '') + (w.section || '');
-      const lines = data.rows.map((r) => `<tr><td>${esc(r.course_code)}</td><td>${esc(r.descriptive_title || '')}</td><td>${esc(classSection)}</td><td>${esc(r.final_grade ?? '')}</td><td></td><td>${esc(r.units ?? '')}</td><td>${esc(r.remarks ?? '')}</td></tr>`).join('');
-      const info = (k, v) => `<div><b>${esc(k)}:</b> ${esc(v ?? '')}</div>`;
-      return page(`<div style="text-align:center"><div style="font-weight:bold;font-size:18px">CITY UNIVERSITY OF PASAY</div><div style="font-size:13px">(PAMANTASAN NG LUNGSOD NG PASAY)</div><div style="font-size:13px">Pasadeña St., Pasay City</div></div>
-        <h2 style="text-align:center;text-decoration:underline;margin:14px 0 8px">REPORT OF GRADES</h2>
-        <h3 style="color:#047857;margin:0 0 8px">Valid</h3>
-        <div style="display:grid;grid-template-columns:1fr 1fr;gap:4px 16px;font-size:14px;margin-bottom:10px">
-          ${info('Fullname', holder.toUpperCase())}${info('Student No', sid)}${info('Gender', w.gender)}${info('Academic Year', termText + ' ' + ay)}
-          ${info('College', w.college)}${info('Year Level', yearText)}${info('Program', w.program)}${info('Section', w.section)}${info('Major', w.major)}
-        </div>
-        <table style="width:100%;border-collapse:collapse;font-size:13px" border="1" cellpadding="3"><thead><tr><th>CODE</th><th>SUBJECT TITLE</th><th>CLASS SECTION</th><th>FINAL GRADE</th><th>RE-EXAM</th><th>CREDIT UNITS</th><th>REMARKS</th></tr></thead><tbody>${lines}</tbody></table>
-        <div style="margin-top:10px;font-size:14px;line-height:1.6">
-          <div><b>Total Credit Units Enrolled:</b> ${enrolled}</div><div><b>Total Credit Units Earned:</b> ${earned}</div>
-          <div><b>Grade Point Average:</b> ${esc(data.gpa)}</div><div><b>Total Subjects Enrolled:</b> ${data.rows.length}</div>
-        </div>
-        <p style="font-size:13px;margin-top:12px"><b>This copy is issued to the student above only.</b> Check the person presenting it against the student ID. Compare every line with the printed copy; if any grade, unit, remark or GPA differs, the printed copy has been altered.</p>`);
+      // The scanned page uses the same Copy of Grades builder as the printout (CUP-PORTAL/shared/copy-doc.js),
+      // so its layout, figures and verification QR match the printed copy.
+      const who = await pool.query('SELECT student_no, first_name, middle_name, last_name, gender, program, major, college, year_level, section FROM reg_students WHERE student_no = $1', [sid]);
+      const profile = who.rows[0] || { student_no: sid };
+      const ret = await studentRetentionStatus(sid).catch(() => null);
+      const retLabel = { 'REGULAR': 'Regular', 'WARNING': 'Warning', 'PROBATION': 'Probation', 'PERMANENT DISQUALIFICATION': 'Permanent Disqualification', 'IRREGULAR': 'Irregular' }[ret && ret.status] || (ret && ret.status) || '';
+      const base = `${req.protocol}://${req.get('host')}`;
+      let qr = '';
+      if (QRCodeLib) {
+        try { qr = await QRCodeLib.toDataURL(base + '/verify-document?' + new URLSearchParams({ sid, ay, term, code }).toString(), { margin: 1, width: 150, errorCorrectionLevel: 'M' }); }
+        catch (err) { console.error('QR generation failed:', err); }
+      }
+      const list = [{ ay, term, gpa: data.gpa, code, qr, items: data.rows.map((r) => ({ course_code: r.course_code, descriptive_title: r.descriptive_title || '', units: r.units, final_grade: r.final_grade ?? '', remarks: r.remarks ?? '' })) }];
+      const payload = JSON.stringify({ profile, retentionLabel: retLabel, list }).replace(/</g, '\\u003c');
+      return res.send(`<!doctype html><html><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><meta name="format-detection" content="telephone=no,date=no,address=no,email=no"><title>Report of Grades</title></head><body style="margin:0"><script src="/CUP-PORTAL/shared/copy-doc.js"></script><script>(function(){var d=CupCopyDoc.build(${payload});document.open();document.write(d);document.close();})();</script><noscript>Enable JavaScript to view this report.</noscript></body></html>`);
     }
     return page(`<h2 style="color:#b91c1c">Does not match</h2><p>This code does not match the current records for student number <b>${esc(sid)}</b>, A.Y. ${esc(ay)}, ${esc(term)} term. The certificate may have been changed or the grades may have changed since it was issued.</p>`);
   } catch (err) {
