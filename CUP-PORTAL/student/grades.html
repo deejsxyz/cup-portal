@@ -261,7 +261,7 @@
   var $ = function (id) { return document.getElementById(id); };
   var esc = function (v) { return String(v == null ? '' : v).replace(/[&<>"']/g, function (c) { return { '&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;' }[c]; }); };
   var PROG_ABBR = function (p) { var m = /\(([^)]+)\)\s*$/.exec(p || ''); return m ? m[1] : (p || ''); };
-  var profile = null, groups = [], curriculum = [], pwFilled = { old: '', new: '' };
+  var profile = null, groups = [], curriculum = [], pwFilled = { old: '', new: '' }, retentionLabel = '';
 
   function api(path, opts) {
     return fetch(path, Object.assign({ credentials: 'same-origin' }, opts || {})).then(function (r) {
@@ -355,16 +355,17 @@
       '.hdr{display:flex;align-items:center;justify-content:center;gap:2mm;text-align:center}.hdr img{width:13mm;height:13mm;object-fit:contain}' +
       '@font-face{font-family:"CUP Courier";src:url(/CUP-PORTAL/fonts/courier-new.ttf) format("truetype")}@font-face{font-family:"CUP Algerian";src:url(/CUP-PORTAL/fonts/algerian.ttf) format("truetype")}@font-face{font-family:"CUP Script";src:url(/CUP-PORTAL/fonts/script-mt-bold.ttf) format("truetype")}.u1{font-family:"CUP Algerian",Algerian,serif;font-size:10pt;font-weight:bold;color:#000}.u2{font-size:6.5pt;color:#000}.c1{font-family:"CUP Script","Script MT Bold",cursive;font-size:13pt;font-weight:normal;font-style:normal;color:#000;margin-top:0.5mm}.addr{font-size:6pt;color:#000}' +
       '.title{text-align:center;font-weight:bold;font-size:10pt;text-decoration:underline;margin:2.5mm 0 2mm}' +
-      '.info{display:grid;grid-template-columns:1fr 1fr;column-gap:10mm;row-gap:0.8mm;font-size:8pt;margin-bottom:2mm;font-family:"CUP Courier","Courier New",monospace}.info div{white-space:nowrap;overflow:hidden}.info .k{display:inline-block;width:24mm}' +
+      '.info{display:grid;grid-template-columns:1fr 1fr;column-gap:10mm;row-gap:0.8mm;font-size:7pt;line-height:1.25;grid-auto-flow:column;grid-template-rows:repeat(5,auto);margin-bottom:2mm;font-family:"CUP Courier","Courier New",monospace}.info div{white-space:nowrap;overflow:hidden}.info .k{display:inline-block;width:24mm}' +
       '.gw{position:relative;overflow:hidden;width:100%}' +
-      'table{width:100%;border-collapse:collapse;font-size:7.5pt;table-layout:fixed}' +
-      'th,td{border:0;border-top:0.5pt solid #000;border-bottom:0.5pt solid #000;padding:0 1mm;height:4.4mm;line-height:1;overflow:hidden;white-space:nowrap}th{font-family:Arial,Helvetica,sans-serif;font-weight:bold;text-align:center;height:auto;padding:0.8mm 1mm;line-height:1.1}td{font-family:"CUP Courier","Courier New",monospace}td.c{text-align:center}td.l{text-align:left}' +
+      'table{width:100%;border-collapse:collapse;font-size:7pt;line-height:1;table-layout:fixed}' +
+      'th,td{border:0;border-top:0.5pt solid #000;border-bottom:0.5pt solid #000;padding:0 1mm;height:4.4mm;line-height:1;overflow:hidden;white-space:nowrap}th{font-family:Arial,Helvetica,sans-serif;font-weight:bold;text-align:center;height:auto;padding:0.8mm 1mm;line-height:1}td{font-family:"CUP Courier","Courier New",monospace}td.c{text-align:center}td.l{text-align:left}' +
       '.wm{position:absolute;inset:0;z-index:10;pointer-events:none;overflow:hidden}.wm-img{position:absolute;inset:0;width:100%;height:100%}' +
       '.wm span{flex:1 1 0;min-height:0;overflow:hidden;display:block;white-space:nowrap;font:bold 6.5pt Arial,Helvetica,sans-serif;line-height:1;color:rgba(90,90,90,.16)}' +
-      '.foot{position:absolute;left:9mm;right:9mm;bottom:12mm;display:flex;justify-content:space-between;align-items:flex-end;gap:4mm;font-size:7pt}' +
-      '.qr{display:flex;align-items:center;gap:2mm;line-height:1.3;font-family:Arial,Helvetica,sans-serif}.qr img{width:14mm;height:14mm}.vc{font-size:6.5pt;margin-top:0.5mm}' +
-      '.tot{min-width:70mm;font-size:7pt;font-family:"CUP Courier","Courier New",monospace}.tot div{display:flex;justify-content:space-between;gap:4mm;font-weight:bold}' +
-      '.disc{position:absolute;left:9mm;right:9mm;bottom:4mm;font-family:Arial,Helvetica,sans-serif;font-size:5.5pt;border-top:0.5pt solid #000;padding-top:0.8mm}',
+      '.foot{position:absolute;left:9mm;right:9mm;bottom:15mm;display:flex;justify-content:space-between;align-items:flex-end;gap:4mm;font-size:7pt}' +
+      '.qr{display:flex;align-items:center;gap:2mm;line-height:1;font-size:7pt;font-family:Arial,Helvetica,sans-serif}.qr img{width:14mm;height:14mm}.vc{font-size:7pt;font-weight:normal;margin-top:0.8mm}' +
+      '.tot{min-width:70mm;font-size:6pt;line-height:1;font-family:"CUP Courier","Courier New",monospace}.tot div{display:flex;justify-content:space-between;gap:4mm;font-weight:bold}' +
+      '.disc{position:absolute;left:9mm;right:9mm;bottom:9mm;font-family:Arial,Helvetica,sans-serif;font-size:6pt;line-height:1;border-top:0.5pt solid #000;padding-top:0.8mm}' +
+      '.pf{position:absolute;left:9mm;right:9mm;bottom:4mm;display:flex;justify-content:space-between;font-family:"CUP Courier","Courier New",monospace;font-size:6pt;line-height:1}',
   };
   // Text and the watermark are drawn as images, so the student number is not text a viewer can turn into a link.
   function textImg(text, px, color, weight) {
@@ -411,10 +412,11 @@
   function qrBlock(g, c) {
     if (!g || !g.code) return '';
     return '<div class="qr">' + (g.qr ? '<img src="' + g.qr + '" alt="Verification QR code">' : '') +
-      '<div><b>Scan the QR code to verify</b><div class="vc">Verification code: ' + textImg(g.code, 9, '#000', 'normal') + '</div></div></div>';
+      '<div><b>SCAN THE QR CODE TO VERIFY THE AUTHENTICITY OF THIS DOCUMENT.</b><div class="vc">SCAN THE QR CODE TO VERIFY THE AUTHENTICITY OF THIS DOCUMENT.</div></div></div>';
   }
   function copyDocHtml(list) {
     var c = gradeDocContext(), sheets = '', ROWS = 12;
+    var printedAt = new Date().toLocaleString('en-US', { timeZone: 'Asia/Manila', month: 'short', day: 'numeric', year: 'numeric', hour: 'numeric', minute: '2-digit' });
     var ORD = ['1st', '2nd', '3rd', '4th'];
     var collegeName = COLLEGE_NAMES[(profile && profile.college) || ''] || (profile && profile.college) || '';
     list.forEach(function (g) {
@@ -448,20 +450,22 @@
         sheets += '<div class="sheet">' + gradeHeader(c) + '<div class="title">COPY OF GRADES</div>' +
           '<div class="info">' +
             '<div><span class="k">Fullname</span>: ' + esc(c.sName) + '</div>' +
-            '<div><span class="k">Student No</span>: ' + textImg(profile.student_no, 11, '#000', 'bold') + '</div>' +
             '<div><span class="k">Gender</span>: ' + esc(profile.gender || '') + '</div>' +
-            '<div><span class="k">Academic Year</span>: ' + esc(termLabel(g.term) + ' ' + g.ay) + '</div>' +
             '<div><span class="k">College</span>: ' + esc(collegeName) + '</div>' +
-            '<div><span class="k">Year Level</span>: ' + esc(yearText) + '</div>' +
             '<div><span class="k">Program</span>: ' + esc(profile.program || '') + '</div>' +
-            '<div><span class="k">Section</span>: ' + esc(profile.section || '') + '</div>' +
             '<div><span class="k">Major</span>: ' + esc(profile.major || '') + '</div>' +
+            '<div><span class="k">Student No</span>: ' + textImg(profile.student_no, 11, '#000', 'bold') + '</div>' +
+            '<div><span class="k">Academic Year</span>: ' + esc(termLabel(g.term) + ' ' + g.ay) + '</div>' +
+            '<div><span class="k">Year Level</span>: ' + esc(yearText) + '</div>' +
+            '<div><span class="k">Retention Status</span>: ' + esc(retentionLabel) + '</div>' +
+            '<div><span class="k">Section</span>: ' + esc(profile.section || '') + '</div>' +
           '</div>' +
           '<div class="gw"><table><colgroup><col style="width:12%"><col style="width:38%"><col style="width:12%"><col style="width:10%"><col style="width:8%"><col style="width:10%"><col style="width:10%"></colgroup>' +
           '<thead><tr><th>CODE</th><th>SUBJECT TITLE</th><th>CLASS<br>SECTION</th><th>FINAL<br>GRADE</th><th>RE-<br>EXAM</th><th>CREDIT<br>UNITS</th><th>REMARKS</th></tr></thead><tbody>' + rows + '</tbody></table>' +
           '<div class="wm" aria-hidden="true">' + wmImg(c.wmStrip, 40) + '</div></div>' +
           '<div class="foot">' + qrBlock(g, c) + '<div class="tot">' + totals + '</div></div>' +
           '<div class="disc">DISCLAIMER: The student bears the responsibility for the proper disposal of the documents printed using the student portal. Any mishandling of printed records is solely the student\'s liability, and the University cannot be held accountable for such incidents.</div>' +
+          '<div class="pf"><span>Printed from City University of Pasay - Student Portal</span><span>' + esc(printedAt) + '</span></div>' +
           '</div>';
       });
     });
@@ -541,6 +545,7 @@
       if (!res.ok) return;
       var r = res.j;
       var label = { 'REGULAR': 'Regular', 'WARNING': 'Warning', 'PROBATION': 'Probation', 'PERMANENT DISQUALIFICATION': 'Permanent Disqualification', 'IRREGULAR': 'Irregular' }[r.status] || r.status;
+      retentionLabel = label;
       $('gRetention').innerHTML = 'Status: ' + esc(label);
     });
   }
