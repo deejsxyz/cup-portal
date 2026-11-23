@@ -3329,7 +3329,15 @@ async function sendCoe(res, no, college) {
       ws.getCell('A' + row).alignment = { horizontal: 'center', vertical: 'middle' };
       // Instructors are left-aligned.
       ws.getCell('AA' + row).alignment = Object.assign({}, ws.getCell('AA' + row).alignment, { horizontal: 'left', vertical: 'middle', wrapText: true });
+      // Units are centered.
+      ws.getCell('X' + row).alignment = { horizontal: 'center', vertical: 'middle' };
     });
+    // Column titles get the same vertical lines as the subject rows.
+    for (let c = 1; c <= 33; c++) {
+      const cell = ws.getCell(14, c);
+      const line = { style: 'thin', color: { argb: 'FF000000' } };
+      cell.border = Object.assign({}, cell.border, { left: line, right: line });
+    }
     // Fit text in the template's merged cells: header fields shrink to one line; subject cells wrap inside their own cell.
     const colNo = (letters) => letters.split('').reduce((n, ch) => n * 26 + (ch.charCodeAt(0) - 64), 0);
     const spanWidth = (from, to) => { let w = 0; for (let i = colNo(from); i <= colNo(to); i++) { w += (ws.getColumn(i).width || 8.43); } return w; };
