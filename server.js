@@ -2318,8 +2318,6 @@ function reportGrade(g) {
 // Printed-record workbooks are locked; corrections go through the registrar, not the file.
 const XLSX_PROTECT_PASSWORD = process.env.XLSX_PROTECT_PASSWORD || '22262730';
 // ----- Certificate of Grades (registrar) -----
-const COG_TEMPLATE = path.join(__dirname, 'CUP-PORTAL', 'forms', 'Certificate_of_Grades_Template.xlsx');
-const COG_MAX_SUBJECTS = 14; // rows 12-25 of the template; row 26 holds the GPA line
 const COG_SPECIAL = new Set(['W', 'X', 'INC', 'NG', '-']);
 function cogTermLabel(t) { return ({ '1st Semester': 'First Semester', '2nd Semester': 'Second Semester' })[t] || t; }
 function cogStatus(failPct, enrolledUnits, flags) {
@@ -2387,7 +2385,9 @@ function cogCompute(rows, flags) {
   const outOfTermShare = enrolled > 0 ? outUnits / enrolled : 0;
   return { gpa, status: cogStatus(failPct, enrolled, Object.assign({ outOfTermShare }, flags)) };
 }
-app.get('/api/registrar/certificate-of-grades.xlsx', requireRegistrar, async (req, res) => {
+// Report of Grades for the registrar's print: the same figures and layout as the student's copy, but no QR code,
+// verification text, disclaimer or footer, with space for the registrar's signature and dry seal.
+app.get('/api/registrar/report-of-grades', requireRegistrar, async (req, res) => {
   const college = await regCollegeFor(req, req.query.college, studentNoOf(req));
   const no = String(req.query.student_no || '').trim();
   const ay = String(req.query.academic_year || '').trim();
@@ -2395,90 +2395,20 @@ app.get('/api/registrar/certificate-of-grades.xlsx', requireRegistrar, async (re
   if (!college) return res.status(403).json({ error: 'Choose a college.' });
   if (!/^\d{4}-\d-\d{7}-\d{2}$/.test(no) || !ay || !term) return res.status(400).json({ error: 'Open a student and choose the academic year and semester first.' });
   try {
-    const st = await pool.query('SELECT student_no, last_name, first_name, middle_name, program, major FROM reg_students WHERE student_no = $1', [no]);
+    const st = await pool.query('SELECT student_no, first_name, middle_name, last_name, gender, program, major, college FROM reg_students WHERE student_no = $1', [no]);
     if (!st.rows.length) return res.status(404).json({ error: 'Student not found.' });
-    const s = st.rows[0];
-    const en = await pool.query('SELECT year_level, section, subjects FROM reg_enrollments WHERE student_no = $1 AND college = $2 AND academic_year = $3 AND term = $4', [no, college, ay, term]);
+    const en = await pool.query('SELECT year_level, section FROM reg_enrollments WHERE student_no = $1 AND college = $2 AND academic_year = $3 AND term = $4', [no, college, ay, term]);
     if (!en.rows.length) return res.status(404).json({ error: 'This student has no enrollment for the selected academic year and semester.' });
-    const e = en.rows[0];
-    const subjects = Array.isArray(e.subjects) ? e.subjects : [];
-    if (subjects.length > COG_MAX_SUBJECTS) return res.status(400).json({ error: 'This term has more than ' + COG_MAX_SUBJECTS + ' subjects, which the certificate cannot hold.' });
-    const codes = subjects.map((x) => x.course_code);
-    const cs = await pool.query('SELECT course_code, descriptive_title, units, year_level, semester FROM reg_courses WHERE course_code = ANY($1) ORDER BY (college = $2) DESC', [codes, college]);
-    const course = new Map();
-    cs.rows.forEach((c) => { if (!course.has(c.course_code)) course.set(c.course_code, c); });
-    // Only approved grades appear on the COG.
-    const gr = await pool.query("SELECT course_code, final_grade FROM reg_grades WHERE student_no = $1 AND college = $2 AND term = $3 AND academic_year = $4 AND status = 'approved'", [no, college, term, ay]);
-    const grade = new Map(gr.rows.map((g) => [g.course_code, g.final_grade]));
-    const rows = combineLabLecture(subjects.map((x) => {
-      const c = course.get(x.course_code) || {};
-      const g = grade.has(x.course_code) ? grade.get(x.course_code) : '';
-      const outOfTerm = !!c.course_code && !(Number(c.year_level) === Number(e.year_level) && c.semester === term);
-      return { code: x.course_code, title: c.descriptive_title || '', units: Number(c.units) || 0, grade: g == null ? '' : String(g), outOfTerm };
-    }));
-    // Year-level alignment: the first enrollment's year level should advance one per academic year.
-    const startYr = (v) => parseInt(String(v).split('-')[0], 10);
-    const first = await pool.query('SELECT academic_year, year_level FROM reg_enrollments WHERE student_no = $1 ORDER BY academic_year ASC LIMIT 1', [no]);
-    const flags = { misaligned: await irregularByBand(no, college, e.year_level) };
-    const { gpa, status } = cogCompute(rows, flags);
-
-    const wb = new ExcelJS.Workbook();
-    await wb.xlsx.readFile(COG_TEMPLATE);
-    const ws = wb.getWorksheet('COG') || wb.worksheets[0];
-    const bold = (cell) => { cell.style = Object.assign({}, cell.style, { font: Object.assign({}, cell.font, { bold: true }) }); };
-    const mi = (n) => (n && n.trim() ? ' ' + n.trim()[0].toUpperCase() + '.' : '');
-    const program = (s.program || '').match(/\(([^)]+)\)/); // "Bachelor of Science in Nursing (BSN)" -> BSN
-    const progCode = program ? program[1] : String(s.program || '');
-    ws.getCell('H7').value = s.last_name + ', ' + s.first_name + mi(s.middle_name);
-    ws.getCell('K8').value = s.student_no;
-    ws.getCell('W8').value = s.major ? progCode + '-' + String(s.major).trim() : progCode;
-    ws.getCell('O9').value = ay + ', ' + cogTermLabel(term);
-
-    rows.forEach((r, i) => {
-      const row = 12 + i;
-      ws.getCell('B' + row).value = i + 1;
-      ws.getCell('D' + row).value = r.dash ? '—' : r.code;
-      { const dc = ws.getCell('D' + row); dc.alignment = Object.assign({}, dc.alignment, { horizontal: 'left' }); }
-      { const uc = ws.getCell('N' + row); uc.value = r.dash ? '—' : r.units; uc.alignment = Object.assign({}, uc.alignment, { horizontal: 'center', vertical: 'middle' }); }
-      // A subject with no grade yet shows a dash on the COG (not NG, which means failed).
-      ws.getCell('Q' + row).value = r.dash || r.grade === '' ? '—' : (Number.isFinite(Number(r.grade)) ? Number(r.grade).toFixed(2) : r.grade);
-      ws.getCell('T' + row).value = r.dash || r.grade === '' ? '' : reportRemark(r.grade);
-    });
-    for (let row = 12 + rows.length; row <= 25; row++) {
-      ['B', 'D', 'N', 'Q', 'T'].forEach((c) => { ws.getCell(c + row).value = null; });
-    }
-    ws.getCell('B26').value = rows.length >= 15 ? 15 : null; // row 26 numbers only when used; the marker/GPA row stays clear
-    const markRow = 12 + rows.length;
-    const mark = ws.getCell('D' + markRow);
-    mark.value = '***NOTHING FOLLOWS***';
-    mark.style = Object.assign({}, mark.style, { font: Object.assign({}, mark.font, { bold: true, italic: true }) });
-
-    const gpaCell = ws.getCell('Q26');
-    gpaCell.value = gpa;
-    if (gpa === '-') bold(gpaCell);
-    ws.getCell('B27').value = status;
-    bold(ws.getCell('B27'));
-
-    const reg = { name: 'UNIVERSITY REGISTRAR' };
-    if (req.reg.id) {
-      const u = await pool.query('SELECT first_name, middle_name, last_name, name FROM reg_users WHERE id = $1', [req.reg.id]);
-      if (u.rows.length) {
-        const x = u.rows[0];
-        reg.name = x.first_name && x.last_name ? x.first_name + mi(x.middle_name) + ' ' + x.last_name : (x.name || reg.name);
-      }
-    }
-    ws.getCell('A32').value = reg.name.toUpperCase();
-    bold(ws.getCell('A32'));
-
-    wb.eachSheet((sh) => sh.protect(XLSX_PROTECT_PASSWORD, { selectLockedCells: true, selectUnlockedCells: true }));
-    const file = ('COG_' + no + '_' + ay + '_' + term).replace(/[^A-Za-z0-9_-]+/g, '_') + '.xlsx';
-    res.setHeader('Content-Type', 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet');
-    res.setHeader('Content-Disposition', 'attachment; filename="' + file + '"');
-    await wb.xlsx.write(res);
-    res.end();
+    const data = await termCopyData(no, ay, term);
+    if (!data || !data.rows.length) return res.status(404).json({ error: 'No approved grades for this academic year and semester yet.' });
+    const ret = await studentRetentionStatus(no).catch(() => null);
+    const retLabel = { 'REGULAR': 'Regular', 'WARNING': 'Warning', 'PROBATION': 'Probation', 'PERMANENT DISQUALIFICATION': 'Permanent Disqualification', 'IRREGULAR': 'Irregular' }[ret && ret.status] || (ret && ret.status) || '';
+    const profile = Object.assign({}, st.rows[0], { year_level: en.rows[0].year_level, section: en.rows[0].section });
+    const items = data.rows.map((r) => ({ course_code: r.course_code, descriptive_title: r.descriptive_title || '', units: r.units, final_grade: r.final_grade ?? '', remarks: r.remarks ?? '' }));
+    res.json({ profile, retentionLabel: retLabel, list: [{ ay, term, gpa: data.gpa, items }] });
   } catch (err) {
-    console.error('certificate of grades', err);
-    if (!res.headersSent) res.status(500).json({ error: 'Could not build the certificate of grades.' });
+    console.error('report of grades', err);
+    if (!res.headersSent) res.status(500).json({ error: 'Could not build the report of grades.' });
   }
 });
 // Sheets hold 30 students. Group headers (MALE, FEMALE, ...) sit on a row of their own but are not counted,

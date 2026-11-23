@@ -1251,52 +1251,44 @@ function progAbbrOf(p) { var m = /\(([^)]+)\)\s*$/.exec(p || ''); return m ? m[1
         gradeRender();
       });
   }
-  // Generates the Certificate of Grades for one student and term. Used by View Student (the term
-  // chosen in its A.Y. and semester filter) and by Manage Grade. Progress elements are optional.
+  // Opens the print dialog for the Report of Grades (registrar copy) for one student and term.
+  // Used by View Student (the term chosen in its A.Y. and semester filter) and by Manage Grade.
+  var lastReportFrame = null;
   function downloadCog(src) {
-    var msg = src.msg, box = src.box || null, bar = src.bar || null, pct = src.pct || null, btn = src.btn || null;
+    var msg = src.msg, btn = src.btn || null;
     if (msg) msg.textContent = '';
     if (!src.no || !src.ay || !src.term) { if (msg) msg.textContent = 'Choose the academic year and semester first.'; return; }
     var q = new URLSearchParams({ college: COLLEGE, student_no: src.no, academic_year: src.ay, term: src.term });
-    if (box) { box.hidden = false; bar.style.width = '100%'; bar.style.opacity = '0.35'; pct.textContent = 'Generating…'; }
     if (btn) btn.disabled = true;
-    function fail(text) { if (box) { box.hidden = true; bar.style.opacity = '1'; } if (btn) btn.disabled = false; if (msg) msg.textContent = text; }
-    var xhr = new XMLHttpRequest();
-    xhr.open('GET', '/api/registrar/certificate-of-grades.xlsx?' + q.toString());
-    xhr.responseType = 'blob';
-    xhr.withCredentials = true;
-    xhr.onprogress = function (e) {
-      if (!box) return;
-      bar.style.opacity = '1';
-      if (e.lengthComputable && e.total > 0) {
-        var p = Math.min(100, Math.round(e.loaded / e.total * 100));
-        bar.style.width = p + '%'; pct.textContent = 'Downloading… ' + p + '%';
-      } else {
-        pct.textContent = 'Downloading…';
-      }
+    function done(text) { if (btn) btn.disabled = false; if (msg) msg.textContent = text || ''; }
+    fetch('/api/registrar/report-of-grades?' + q.toString(), { credentials: 'same-origin' })
+      .then(function (res) {
+        return res.json().then(function (j) { return { ok: res.ok, j: j }; }, function () { return { ok: res.ok, j: {} }; });
+      })
+      .then(function (r) {
+        if (!r.ok) { done(r.j.error || 'Could not generate the report of grades.'); return; }
+        var html = CupCopyDoc.build({ profile: r.j.profile, retentionLabel: r.j.retentionLabel, list: r.j.list, registrar: true });
+        printReportHtml(html);
+        done('');
+      })
+      .catch(function () { done('Connection lost. Please try again.'); });
+  }
+  // Prints in a hidden frame (no new tab), after the seals have loaded.
+  function printReportHtml(html) {
+    if (lastReportFrame) lastReportFrame.remove();
+    var frame = document.createElement('iframe');
+    lastReportFrame = frame;
+    frame.style.cssText = 'position:fixed;left:-10000px;top:0;width:210mm;height:297mm;border:0';
+    document.body.appendChild(frame);
+    var d = frame.contentDocument;
+    d.open(); d.write(html); d.close();
+    var go = function () {
+      setTimeout(function () { frame.contentWindow.focus(); frame.contentWindow.print(); }, 150);
     };
-    xhr.onerror = function () { fail('Connection lost. Please try again.'); };
-    xhr.onload = function () {
-      if (xhr.status !== 200) {
-        return xhr.response.text().then(function (t) {
-          var m = 'Could not generate the COG.';
-          try { m = JSON.parse(t).error || m; } catch (err) {}
-          fail(m);
-        }, function () { fail('Could not generate the COG.'); });
-      }
-      var cd = /filename="([^"]+)"/.exec(xhr.getResponseHeader('Content-Disposition') || '');
-      var name = cd ? cd[1] : 'COG.xlsx';
-      var url = URL.createObjectURL(xhr.response);
-      var a = document.createElement('a');
-      a.href = url; a.download = name;
-      document.body.appendChild(a); a.click(); a.remove();
-      setTimeout(function () { URL.revokeObjectURL(url); }, 1000);
-      if (btn) btn.disabled = false;
-      if (box) { bar.style.width = '100%'; bar.style.opacity = '1'; pct.textContent = '100%'; }
-      if (msg) msg.textContent = 'Download complete: ' + name;
-      setTimeout(function () { if (box) { box.hidden = true; bar.style.width = '0%'; pct.textContent = ''; } if (msg) msg.textContent = ''; }, 2000);
-    };
-    xhr.send();
+    var pending = Array.prototype.slice.call(d.images || []).filter(function (im) { return !im.complete; });
+    if (!pending.length) return go();
+    var left = pending.length;
+    pending.forEach(function (im) { var one = function () { if (--left <= 0) go(); }; im.addEventListener('load', one); im.addEventListener('error', one); });
   }
   function gradeRender() {
     var rows = grade.rows;
@@ -1456,6 +1448,7 @@ function progAbbrOf(p) { var m = /\(([^)]+)\)\s*$/.exec(p || ''); return m ? m[1
 })();
 </script>
 <script src="/CUP-PORTAL/portal-search.js"></script>
+<script src="/CUP-PORTAL/shared/copy-doc.js"></script>
 <script>
   // ESC: closes the warning if open; otherwise presses the visible Cancel button.
   // If the form has unsaved work, a warning asks to Confirm (discard) or Close (keep editing).

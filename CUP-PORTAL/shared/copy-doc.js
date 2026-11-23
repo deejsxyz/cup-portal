@@ -32,7 +32,7 @@
       '.qr{display:flex;align-items:center;gap:2mm;line-height:1;font-size:7pt;font-family:Arial,Helvetica,sans-serif}.qr img{width:14mm;height:14mm}.vc{font-size:7pt;font-weight:normal;margin-top:0.8mm}' +
       '.tot{min-width:70mm;font-size:6pt;line-height:1;font-family:"CUP Courier","Courier New",monospace}.tot div{font-weight:bold;white-space:nowrap}.tot .tl{display:inline-block;width:42mm}.tot .gpa{margin-top:1.5em}.tot .subj{margin-top:2.5em}' +
       '.disc{margin-top:3mm;font-family:Arial,Helvetica,sans-serif;font-size:6pt;line-height:1;border-top:0.5pt solid #000;padding-top:0.8mm}' +
-      '.pf{margin-top:2mm;display:flex;justify-content:space-between;font-family:"CUP Courier","Courier New",monospace;font-size:6pt;font-weight:bold;line-height:1}.bot{margin-top:3mm;overflow:hidden}.botq{float:left}.tot-flow{float:right;width:max-content;margin:0}',
+      '.pf{margin-top:2mm;display:flex;justify-content:space-between;font-family:"CUP Courier","Courier New",monospace;font-size:6pt;font-weight:bold;line-height:1}.bot{margin-top:3mm;overflow:hidden}.botq{float:left}.sig{overflow:hidden;width:100mm;height:26mm}.dry{float:left;width:24mm;height:24mm;border:0.5pt dashed #000;border-radius:50%;margin-top:4mm}.sigl{float:left;width:58mm;margin:14mm 0 0 8mm;font-family:Arial,Helvetica,sans-serif}.sigl .ln{border-top:0.5pt solid #000;height:0;margin-bottom:1mm}.sigl .lb{font-size:6.5pt;font-weight:bold;text-align:center}.tot-flow{float:right;width:max-content;margin:0}',
   };
   // Text and the watermark are drawn as images, so the student number is not text a viewer can turn into a link.
   function textImg(text, px, color, weight) {
@@ -88,7 +88,10 @@
     return '<div class="qr">' + (g.qr ? '<img src="' + g.qr + '" alt="Verification QR code">' : '') +
       '<div><b>SCAN THE QR CODE TO VERIFY THE AUTHENTICITY<br>OF THIS DOCUMENT.</b><div class="vc" style="font-weight:normal">THIS IS A SYSTEM GENERATED REPORT<br>NO SIGNATURE IS NECESSARY</div></div></div>';
   }
-  function copyDocHtml(list) {
+  function sigBlock() {
+    return '<div class="sig"><div class="dry"></div><div class="sigl"><div class="ln"></div><div class="lb">REGISTRAR</div></div></div>';
+  }
+  function copyDocHtml(list, reg) {
     var c = gradeDocContext(), sheets = '', ROWS = 20;
     var pv = {};
     new Intl.DateTimeFormat('en-US', { timeZone: 'Asia/Manila', day: 'numeric', month: 'long', year: 'numeric', hour: 'numeric', minute: '2-digit', hour12: true }).formatToParts(new Date()).forEach(function (x) { pv[x.type] = x.value; });
@@ -135,9 +138,9 @@
           '<div class="gw"><table><colgroup><col style="width:12%"><col style="width:38%"><col style="width:12%"><col style="width:10%"><col style="width:8%"><col style="width:10%"><col style="width:10%"></colgroup>' +
           '<thead><tr><th>CODE</th><th>SUBJECT TITLE</th><th>CLASS<br>SECTION</th><th>FINAL<br>GRADE</th><th>RE-<br>EXAM</th><th>CREDIT<br>UNITS</th><th>REMARKS</th></tr></thead><tbody>' + rows + '</tbody></table>' +
           '<div class="wm" aria-hidden="true">' + wmImg(c.wmStrip, 40) + '</div></div>' +
-                    '<div class="bot"><div class="botq">' + qrBlock(g, c) + '</div>' + (totals ? '<div class="tot tot-flow">' + totals + '</div>' : '') + '</div>' +
-          '<div class="disc">DISCLAIMER: The student bears the responsibility for the proper disposal of the documents printed using the student portal. Any mishandling of printed records is solely the student\'s liability, and the University cannot be held accountable for such incidents.</div>' +
-          '<div class="pf"><span>Printed from City University of Pasay - Student Portal</span><span style="font-weight:normal">' + esc(printedAt) + '</span></div>' +
+                    '<div class="bot"><div class="botq">' + (reg ? sigBlock() : qrBlock(g, c)) + '</div>' + (totals ? '<div class="tot tot-flow">' + totals + '</div>' : '') + '</div>' +
+          (reg ? '' : '<div class="disc">DISCLAIMER: The student bears the responsibility for the proper disposal of the documents printed using the student portal. Any mishandling of printed records is solely the student\'s liability, and the University cannot be held accountable for such incidents.</div>') +
+          (reg ? '' : '<div class="pf"><span>Printed from City University of Pasay - Student Portal</span><span style="font-weight:normal">' + esc(printedAt) + '</span></div>') +
           '</div>';
       });
     });
@@ -145,7 +148,7 @@
   }
   function build(opts) {
     profile = opts.profile; retentionLabel = opts.retentionLabel || '';
-    return copyDocHtml(opts.list);
+    return copyDocHtml(opts.list, !!opts.registrar);
   }
   window.CupCopyDoc = { build: build };
 })();
