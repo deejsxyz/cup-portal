@@ -3326,6 +3326,8 @@ async function sendCoe(res, no, college) {
         cell.alignment = Object.assign({}, cell.alignment, { vertical: 'middle' });
       }
       ws.getCell('A' + row).alignment = { horizontal: 'center', vertical: 'middle' };
+      // Instructors are left-aligned.
+      ws.getCell('AA' + row).alignment = Object.assign({}, ws.getCell('AA' + row).alignment, { horizontal: 'left', vertical: 'middle', wrapText: true });
     });
     // Fit text in the template's merged cells: header fields shrink to one line; subject cells wrap inside their own cell.
     const colNo = (letters) => letters.split('').reduce((n, ch) => n * 26 + (ch.charCodeAt(0) - 64), 0);
