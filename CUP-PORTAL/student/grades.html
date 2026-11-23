@@ -463,7 +463,6 @@
         body.push('<tr><td class="l">' + esc(x.course_code) + '</td><td class="l">' + esc(x.descriptive_title || '') + '</td>' +
           '<td>' + esc(x.units == null ? '' : Number(x.units)) + '</td><td>' + esc(x.final_grade || '') + '</td><td>' + esc(x.remarks || '') + '</td></tr>');
       });
-      body.push('<tr><td></td><td class="l"><b>GPA</b></td><td></td><td><b>' + esc(g.gpa || '\u2014') + '</b></td><td></td></tr>');
     });
     // Every subject of every term is printed; a new page starts when a page is full.
     // Legal paper: the first page carries the header, later pages only the table (with its column titles).
