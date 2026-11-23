@@ -1423,16 +1423,36 @@ app.get('/verify-document', async (req, res) => {
     const want = data && data.rows.length ? printCopyCode(sid, ay, term, data) : '';
     const a = Buffer.from(want || 'x'), b = Buffer.from(code);
     if (want && a.length === b.length && crypto.timingSafeEqual(a, b)) {
-      const lines = data.rows.map((r) => `<tr><td>${esc(r.course_code)}</td><td>${esc(r.descriptive_title || '')}</td><td>${esc(r.units ?? '')}</td><td>${esc(r.final_grade ?? '')}</td><td>${esc(r.remarks ?? '')}</td></tr>`).join('');
-      const who = await pool.query('SELECT first_name, middle_name, last_name FROM reg_students WHERE student_no = $1', [sid]);
+      // The scanned page shows the same Copy of Grades as the printout: student details, every subject, totals.
+      const who = await pool.query('SELECT first_name, middle_name, last_name, gender, program, major, college, year_level, section, email FROM reg_students WHERE student_no = $1', [sid]);
       const w = who.rows[0] || {};
       const holder = [w.last_name, w.first_name, w.middle_name].filter(Boolean).join(', ');
-
-      return page(`<h2 style="color:#047857">Valid</h2><p style="margin:0"><b>${esc(holder)}</b></p><p style="margin:4px 0 0">Student number <b>${esc(sid)}</b>, A.Y. ${esc(ay)}, ${esc(term)}.</p>
-        <p><b>This copy is issued to the student above only.</b> Check the person presenting it against the student ID.</p>
-        <p><b>Compare every line below with the printed copy.</b> If any grade, unit, remark or GPA differs, the printed copy has been altered.</p>
-        <table style="width:100%;border-collapse:collapse;font-size:14px" border="1" cellpadding="4"><thead><tr><th>Code</th><th>Subject</th><th>Units</th><th>Grade</th><th>Remarks</th></tr></thead><tbody>${lines}</tbody></table>
-        <p><b>GPA:</b> ${esc(data.gpa)}</p>`);
+      const ORD = ['1st', '2nd', '3rd', '4th'];
+      const yearText = w.year_level ? (ORD[Number(w.year_level) - 1] || w.year_level) + ' Year' : '';
+      const termText = term === '1st' || term === '2nd' ? (term === '1st' ? '1st Semester' : '2nd Semester') : term;
+      let enrolled = 0, earned = 0;
+      data.rows.forEach((r) => {
+        const u = Number(r.units) || 0;
+        enrolled += u;
+        if (String(r.remarks || '').toLowerCase() === 'passed') earned += u;
+      });
+      const lines = data.rows.map((r) => `<tr><td>${esc(r.course_code)}</td><td>${esc(r.descriptive_title || '')}</td><td>${esc(classSection)}</td><td>${esc(r.final_grade ?? '')}</td><td></td><td>${esc(r.units ?? '')}</td><td>${esc(r.remarks ?? '')}</td></tr>`).join('');
+      const abbrP = (w.program || '').match(/\(([^)]+)\)\s*$/);
+      const classSection = (abbrP ? abbrP[1] : (w.program || '')) + (w.year_level ? '-' + w.year_level : '') + (w.section || '');
+      const info = (k, v) => `<div><b>${esc(k)}:</b> ${esc(v ?? '')}</div>`;
+      return page(`<div style="text-align:center"><div style="font-weight:bold;font-size:18px">CITY UNIVERSITY OF PASAY</div><div style="font-size:13px">(PAMANTASAN NG LUNGSOD NG PASAY)</div><div style="font-size:13px">Pasadeña St., Pasay City</div></div>
+        <h2 style="text-align:center;text-decoration:underline;margin:14px 0 8px">COPY OF GRADES</h2>
+        <h3 style="color:#047857;margin:0 0 8px">Valid</h3>
+        <div style="display:grid;grid-template-columns:1fr 1fr;gap:4px 16px;font-size:14px;margin-bottom:10px">
+          ${info('Fullname', holder.toUpperCase())}${info('Student No', sid)}${info('Gender', w.gender)}${info('Academic Year', termText + ' ' + ay)}
+          ${info('College', w.college)}${info('Year Level', yearText)}${info('Program', w.program)}${info('Section', w.section)}${info('Major', w.major)}
+        </div>
+        <table style="width:100%;border-collapse:collapse;font-size:13px" border="1" cellpadding="3"><thead><tr><th>CODE</th><th>SUBJECT TITLE</th><th>CLASS SECTION</th><th>FINAL GRADE</th><th>RE-EXAM</th><th>CREDIT UNITS</th><th>REMARKS</th></tr></thead><tbody>${lines}</tbody></table>
+        <div style="margin-top:10px;font-size:14px;line-height:1.6">
+          <div><b>Total Credit Units Enrolled:</b> ${enrolled}</div><div><b>Total Credit Units Earned:</b> ${earned}</div>
+          <div><b>Grade Point Average:</b> ${esc(data.gpa)}</div><div><b>Total Subjects Enrolled:</b> ${data.rows.length}</div>
+        </div>
+        <p style="font-size:13px;margin-top:12px"><b>This copy is issued to the student above only.</b> Check the person presenting it against the student ID. Compare every line with the printed copy; if any grade, unit, remark or GPA differs, the printed copy has been altered.</p>`);
     }
     return page(`<h2 style="color:#b91c1c">Does not match</h2><p>This code does not match the current records for student number <b>${esc(sid)}</b>, A.Y. ${esc(ay)}, ${esc(term)} term. The certificate may have been changed or the grades may have changed since it was issued.</p>`);
   } catch (err) {
