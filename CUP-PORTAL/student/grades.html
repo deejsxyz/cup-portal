@@ -458,18 +458,18 @@
     // Every subject of the curriculum, year 1 to 4, is printed; grades are filled in when approved.
     list.forEach(function (g) {
       var YR = ['First Year', 'Second Year', 'Third Year', 'Fourth Year'];
-      body.push('<tr class="sec"><td colspan="5">' + esc(YR[g.year_level - 1] + ', ' + termLabel(g.term)) + '</td></tr>');
+      body.push('<tr class="sec"><td colspan="4">' + esc(YR[g.year_level - 1] + ', ' + termLabel(g.term)) + '</td></tr>');
       g.items.forEach(function (x) {
         body.push('<tr><td class="l">' + esc(x.course_code) + '</td><td class="l">' + esc(x.descriptive_title || '') + '</td>' +
-          '<td>' + esc(x.units == null ? '' : Number(x.units)) + '</td><td>' + esc(x.final_grade || '') + '</td><td>' + esc(x.remarks || '') + '</td></tr>');
+          '<td>' + esc(x.units == null ? '' : Number(x.units)) + '</td><td>' + esc(x.final_grade || '') + '</td></tr>');
       });
     });
     var idsHtml = '<div class="ids"><span class="il">Name:</span><span class="iv">' + esc(c.sName) + '</span><span class="il">Student No.:</span><span class="iv">' + textImg(profile.student_no, 13, '#000', 'bold') + '</span>' +
       '<span class="il">Program:</span><span class="iv">' + esc(profile.program || '') + '</span><span class="il">Year &amp; Section:</span><span class="iv">' + esc(c.yrSec) + '</span></div>';
     var pageHead = gradeHeader(c) + '<div class="title">REPORT OF GRADES</div>' + idsHtml;
     return '<!doctype html><html><head><meta charset="utf-8"><meta name="format-detection" content="telephone=no,date=no,address=no,email=no"><title>Report of Grades</title><style>' + DOC_CSS.report + '</style></head><body>' +
-      pageHead + '<table><colgroup><col style="width:14%"><col style="width:48%"><col style="width:10%"><col style="width:10%"><col style="width:18%"></colgroup>' +
-      '<thead><tr><th>SUBJECT CODE</th><th>DESCRIPTIVE TITLE</th><th>UNITS</th><th>GRADES</th><th>REMARKS</th></tr></thead><tbody>' + body.join('') + '</tbody></table></body></html>';
+      pageHead + '<table><colgroup><col style="width:15%"><col style="width:65%"><col style="width:10%"><col style="width:10%"></colgroup>' +
+      '<thead><tr><th>SUBJECT CODE</th><th>DESCRIPTIVE TITLE</th><th>UNITS</th><th>GRADES</th></tr></thead><tbody>' + body.join('') + '</tbody></table></body></html>';
   }
   // Prints in a hidden frame (no new tab), after the seals have loaded.
   // Small progress bar beside the buttons while the document is built and its images load.
