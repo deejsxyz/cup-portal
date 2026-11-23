@@ -3242,11 +3242,9 @@ app.get('/api/registrar/enroll-context', requireRegistrar, async (req, res) => {
 // Certificate of Enrollment (Excel), filled from the COE template for an officially enrolled student.
 const COE_TEMPLATE = path.join(__dirname, 'CUP-PORTAL', 'forms', 'COE_Template.xlsx');
 const COE_STANDING_ABBR = { 'REGULAR': 'REG', 'IRREGULAR': 'IRREG', 'WARNING': 'WARN', 'PROBATION': 'PROB', 'PERMANENT DISQUALIFICATION': 'DISQ' };
-app.get('/api/registrar/coe/:no', requireRegistrar, async (req, res) => {
-  const college = await regCollegeFor(req, req.query.college, studentNoOf(req));
-  if (!college) return res.status(403).json({ error: 'Choose a college.' });
+// Builds the Certificate of Enrollment (.xlsx) for an officially enrolled student. Used by the registrar and the student's own download.
+async function sendCoe(res, no, college) {
   try {
-    const no = String(req.params.no || '').trim();
     const st = await pool.query('SELECT * FROM reg_students WHERE student_no = $1 AND college = $2', [no, college]);
     if (!st.rows.length) return res.status(404).json({ error: 'Student not found.' });
     const s = st.rows[0];
@@ -3370,6 +3368,23 @@ app.get('/api/registrar/coe/:no', requireRegistrar, async (req, res) => {
   } catch (err) {
     console.error('certificate of enrollment', err);
     if (!res.headersSent) res.status(500).json({ error: 'Could not build the certificate of enrollment.' });
+  }
+}
+app.get('/api/registrar/coe/:no', requireRegistrar, async (req, res) => {
+  const college = await regCollegeFor(req, req.query.college, studentNoOf(req));
+  if (!college) return res.status(403).json({ error: 'Choose a college.' });
+  return sendCoe(res, String(req.params.no || '').trim(), college);
+});
+// Student's own Certificate of Enrollment: only once the Registrar has officially enrolled them.
+app.get('/api/student/coe', requirePortal('student'), async (req, res) => {
+  try {
+    const no = String(req.portal.student_no || '').trim();
+    const r = no ? await pool.query('SELECT college, status FROM reg_students WHERE student_no = $1', [no]) : { rows: [] };
+    if (!r.rows.length || r.rows[0].status !== 'enrolled') return res.status(400).json({ error: 'You are not officially enrolled yet.' });
+    return sendCoe(res, no, r.rows[0].college);
+  } catch (err) {
+    console.error('student certificate of enrollment', err);
+    if (!res.headersSent) res.status(500).json({ error: 'Could not build your certificate of enrollment.' });
   }
 });
 
