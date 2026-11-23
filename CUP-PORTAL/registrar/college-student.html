@@ -674,8 +674,8 @@ window.cupYr = function (p, y) { var m = /\(([^)]+)\)\s*$/.exec(p || ''); return
       if (!abbr && !sec && yr) return '<h3>' + esc(ORD[Number(yr)] || ('Year ' + yr)) + '</h3>';
       var code = abbr + yr + (sec ? '\u2013' + sec : '');
       return code ? '<h3>' + esc(code) + '</h3>' : '';
-    })() + '<p>' + rows.length + ' student(s)</p><table><thead><tr><th>Student ID</th><th>Last Name</th><th>First Name</th><th>Middle Name</th><th>Year Level</th><th>Section</th><th>Contact Number</th></tr></thead><tbody>' +
-      rows.map(function (s) { return '<tr><td>' + esc(s.student_no) + '</td><td>' + esc(s.last_name) + '</td><td>' + esc(s.first_name) + '</td><td>' + esc(s.middle_name) + '</td><td>' + esc(progAbbrOf(s.program)) + esc(s.year_level) + '</td><td>' + esc(s.section) + '</td><td>' + esc(s.contact_number) + '</td></tr>'; }).join('') +
+    })() + '<p>' + rows.length + ' student(s)</p><table><thead><tr><th>Student ID</th><th>Name</th><th>Year &amp; Section</th><th>Program</th></tr></thead><tbody>' +
+      rows.map(function (s) { var mi = s.middle_name ? ' ' + String(s.middle_name).trim().charAt(0).toUpperCase() + '.' : ''; var prog = String(s.program || '').replace(/\s*\([^)]*\)\s*$/, ''); return '<tr><td>' + esc(s.student_no) + '</td><td>' + esc(s.last_name) + ', ' + esc(s.first_name) + esc(mi) + '</td><td>' + esc(s.year_level) + '-' + esc(s.section || '') + '</td><td>' + esc(prog) + '</td></tr>'; }).join('') +
       '</tbody></table><scr' + 'ipt src="/protect-logo.js"></scr' + 'ipt></body></html>');
     w.document.close(); w.focus(); w.print();
   });
