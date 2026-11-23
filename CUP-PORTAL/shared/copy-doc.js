@@ -32,7 +32,7 @@
       '.qr{display:flex;align-items:center;gap:2mm;line-height:1;font-size:7pt;font-family:Arial,Helvetica,sans-serif}.qr img{width:14mm;height:14mm}.vc{font-size:7pt;font-weight:normal;margin-top:0.8mm}' +
       '.tot{min-width:70mm;font-size:6pt;line-height:1;font-family:"CUP Courier","Courier New",monospace}.tot div{font-weight:bold;white-space:nowrap}.tot .tl{display:inline-block;width:42mm}.tot .gpa{margin-top:1.5em}.tot .subj{margin-top:2.5em}' +
       '.disc{margin-top:3mm;font-family:Arial,Helvetica,sans-serif;font-size:6pt;line-height:1;border-top:0.5pt solid #000;padding-top:0.8mm}' +
-      '.pf{margin-top:2mm;display:flex;justify-content:space-between;font-family:"CUP Courier","Courier New",monospace;font-size:6pt;font-weight:bold;line-height:1}.bot{margin-top:3mm;overflow:hidden}.botq{float:left}.sig{overflow:hidden;width:100mm;height:26mm}.dry{float:left;width:24mm;height:24mm;border:0.5pt dashed #000;border-radius:50%;margin-top:4mm}.sigl{float:left;width:58mm;margin:14mm 0 0 8mm;font-family:Arial,Helvetica,sans-serif}.sigl .ln{border-top:0.5pt solid #000;height:0;margin-bottom:1mm}.sigl .lb{font-size:6.5pt;font-weight:bold;text-align:center}.cert{font-family:Arial,Helvetica,sans-serif;font-size:8pt;line-height:2.1;margin:3mm 0 4mm;text-align:justify}.fl{display:inline-block;border-bottom:0.5pt solid #000;padding:0 1mm;font-weight:bold;line-height:1.1}.ret{font-family:"CUP Courier","Courier New",monospace;font-size:7pt;margin-top:1mm}.sigs{overflow:hidden;margin-top:8mm;font-family:Arial,Helvetica,sans-serif;font-size:7.5pt}.sgL{width:88mm;overflow:hidden;float:left}.sgR{width:100mm;overflow:hidden}.sgR{float:right}.pb{margin-bottom:9mm}.sgl{width:70mm}.sgl .ln{border-top:0.5pt solid #000;height:0;margin-bottom:1mm}.sgl .lb{text-align:center;font-weight:bold}.sgR .dry{float:left;width:24mm;height:24mm;border:0.5pt dashed #000;border-radius:50%;margin:-6mm 6mm 0 0}.sgR .sgl{float:left}.tot-flow{float:right;width:max-content;margin:0}',
+      '.pf{margin-top:2mm;display:flex;justify-content:space-between;font-family:"CUP Courier","Courier New",monospace;font-size:6pt;font-weight:bold;line-height:1}.bot{margin-top:3mm;overflow:hidden}.botq{float:left}.sig{overflow:hidden;width:100mm;height:26mm}.dry{float:left;width:24mm;height:24mm;border:0.5pt dashed #000;border-radius:50%;margin-top:4mm}.sigl{float:left;width:58mm;margin:14mm 0 0 8mm;font-family:Arial,Helvetica,sans-serif}.sigl .ln{border-top:0.5pt solid #000;height:0;margin-bottom:1mm}.sigl .lb{font-size:6.5pt;font-weight:bold;text-align:center}.cert{font-family:Arial,Helvetica,sans-serif;font-size:8pt;line-height:2.1;margin:3mm 0 4mm;text-align:justify}.fl{display:inline-block;border-bottom:0.5pt solid #000;padding:0 1mm;font-weight:bold;line-height:1.1}.ret{font-family:"CUP Courier","Courier New",monospace;font-size:7pt;margin-top:1mm}.sigs{overflow:hidden;margin-top:8mm;font-family:Arial,Helvetica,sans-serif;font-size:7.5pt}.sgL{width:88mm;overflow:hidden;float:left}.sgR{width:100mm;overflow:hidden}.sgR{float:right}.pb{margin-bottom:9mm}.sgl{width:70mm}.sgl .ln{border-top:0.5pt solid #000;height:0;margin-bottom:1mm}.sgl .lb{text-align:center;font-weight:bold}.sgR .dry{float:left;width:24mm;height:24mm;border:0.5pt dashed #000;border-radius:50%;margin:-6mm 6mm 0 0}.sgR .sgl{float:left}.cert{font-size:9pt;line-height:2.2}.sigs{font-size:9pt}.sgL,.sgR{width:88mm}.pb{font-weight:bold;font-style:italic;margin-bottom:12mm}.sgn{text-align:center;font-weight:bold;margin-bottom:0.5mm}.ln{border-top:0.5pt solid #000;height:0;margin-bottom:1mm}.lb{text-align:center}.note{font-style:italic;font-size:8pt;margin-top:12mm}.tot-flow{float:right;width:max-content;margin:0}',
   };
   // Text and the watermark are drawn as images, so the student number is not text a viewer can turn into a link.
   function textImg(text, px, color, weight) {
@@ -93,17 +93,20 @@
   function sigBlock() {
     return '<div class="sig"><div class="dry"></div><div class="sigl"><div class="ln"></div><div class="lb">REGISTRAR</div></div></div>';
   }
+  function titleCase(s) { return String(s || '').toLowerCase().replace(/(^|[\s\-])(\S)/g, function (m, p, ch) { return p + ch.toUpperCase(); }); }
   function certHtml(g, c) {
+    var mid = profile.middle_name ? ' ' + String(profile.middle_name).trim().charAt(0).toUpperCase() + '.' : '';
+    var name = titleCase(profile.last_name) + ', ' + titleCase(profile.first_name) + mid;
     var fl = function (v) { return '<span class="fl">' + esc(v) + '</span>'; };
-    return '<div class="cert">This is to certify that ' + fl(c.sName) + ', a student of this University with student number ' + fl(profile.student_no) +
-      ' enrolled in ' + fl(profile.program || '') + ' and obtained the following grades during the ' + fl(termLabel(g.term) + ' ' + g.ay) + '.</div>';
+    return '<div class="cert">This is to certify that ' + fl(name) + ', a student of this University with student number ' + fl(profile.student_no) +
+      ' enrolled in ' + fl(PROG_ABBR(profile.program)) + ' and obtained the following grades during the ' + fl(g.ay + ', ' + termLabel(g.term)) + '.</div>';
   }
   function retHtml() {
     return '<div class="ret"><b>Retention Status</b>: ' + esc(retentionLabel) + '</div>';
   }
   function sigsHtml() {
-    return '<div class="sigs"><div class="sgL"><div class="pb">Prepared by:</div><div class="sgl"><div class="ln"></div><div class="lb">Record-in-charge</div></div></div>' +
-      '<div class="sgR"><div class="pb">Verified and noted by:</div><div class="dry"></div><div class="sgl"><div class="ln"></div><div class="lb">Registrar</div></div></div></div>';
+    return '<div class="sigs"><div class="sgL"><div class="pb">Prepared by:</div><div class="sgn">UNIVERSITY REGISTRAR</div><div class="ln"></div><div class="lb">Records-in-Charge</div></div>' +
+      '<div class="sgR"><div class="pb">Verified and Noted by:</div><div class="ln"></div><div class="lb">University Registrar</div><div class="note">Not valid without seal and iteration</div></div></div>';
   }
   function copyDocHtml(list, reg) {
     var c = gradeDocContext(), sheets = '', ROWS = 20;
