@@ -675,16 +675,16 @@ window.cupYr = function (p, y) { var m = /\(([^)]+)\)\s*$/.exec(p || ''); return
   };
   function printHeader() {
     var base = window.location.origin;
-    var wrap = '<div style="position:relative;text-align:center;min-height:90px;font-family:Arial,sans-serif;color:#000;line-height:1">';
-    var txt = '<div style="padding:0 110px">';
+    var wrap = '<div style="display:flex;align-items:center;justify-content:center;gap:18px;font-family:Arial,sans-serif;color:#000;line-height:1">';
+    var txt = '<div style="text-align:center">';
     if (window.regRole === 'superadmin') {
-      return wrap + '<img src="' + base + '/images/logo-1994.png" style="position:absolute;left:0;top:0;height:90px">' + txt +
+      return wrap + '<img src="' + base + '/images/logo-1994.png" style="height:90px">' + txt +
         '<div style="font-weight:bold;text-transform:uppercase;font-size:15pt;color:#15803d">City University of Pasay</div>' +
         '<div style="font-size:11pt;margin-top:4px">(Pamantasan ng Lungsod ng Pasay)</div>' +
         '<div style="font-size:10pt;margin-top:4px">' + UNI_ADDR + '</div></div></div>';
     }
     var c = PRINT_COLLEGES[COLLEGE] || { name: COLLEGE, logo: '/images/cup-logo-seal.png' };
-    return wrap + '<img src="' + base + c.logo + '" style="position:absolute;left:0;top:0;height:90px">' + txt +
+    return wrap + '<img src="' + base + c.logo + '" style="height:90px">' + txt +
       '<div style="font-weight:bold;text-transform:uppercase;font-size:14pt;color:#15803d">City University of Pasay</div>' +
       '<div style="font-size:9pt;margin-top:4px">(Pamantasan ng Lungsod ng Pasay)</div>' +
       '<div style="font-size:9pt;margin-top:4px">' + UNI_ADDR + '</div>' +
