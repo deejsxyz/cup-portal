@@ -327,24 +327,148 @@
   $('aySelect').addEventListener('change', function () { fillSemesters(this.value); renderGrades(); });
   $('semSelect').addEventListener('change', renderGrades);
 
-  /* Printing: the original Report of Grades layout, grouped by term */
-  function printGroups(list, title) {
-    var who = profile ? fullName(profile) + ' · ' + profile.student_no : '';
-    var html = '<h2>' + esc(title) + '</h2><p>' + esc(who) + '</p>';
-    html += list.map(function (g) {
-      return '<h3>' + esc(termLabel(g.term)) + ' · A.Y. ' + esc(g.ay) + '</h3>' +
-        '<table><thead><tr><th>Course</th><th>Final grade</th></tr></thead><tbody>' +
-        g.items.map(function (x) { return '<tr><td>' + esc(x.course_code) + '</td><td>' + esc(x.final_grade || '') + '</td></tr>'; }).join('') +
-        '</tbody></table>';
-    }).join('');
-    $('printArea').innerHTML = html;
-    window.print();
+  /* Printing: the watermarked Copy of Grades (A5) and Report of Grades, same design as the CONM portal. */
+  var COLLEGE_NAMES = {
+    COACS: 'College of Office Administration and Computer Studies', CAS: 'College of Arts and Sciences', CONM: 'College of Nursing and Midwifery',
+    COED: 'College of Education', COBM: 'College of Business and Management', LAW: 'School of Law', GS: 'Graduate School', 'TESDA-TVI': 'TESDA-TVI'
+  };
+  var COLLEGE_LOGO_PATHS = {
+    COACS: '/images/college-oact.png', CAS: '/images/college-arts.png', CONM: '/images/college-nursing.png',
+    COED: '/images/college-education.png', COBM: '/images/college-business.png', LAW: '/images/college-law.png',
+    GS: '/images/college-graduate.png', 'TESDA-TVI': '/images/tesda-logo.png'
+  };
+  var DOC_CSS = {
+    copy: '@page{size:A5 portrait;margin:0}body{margin:0;font-family:Arial,Helvetica,sans-serif;color:#000}' +
+      '.sheet{position:relative;width:148mm;height:210mm;box-sizing:border-box;padding:8mm 10mm 7mm;font-size:9pt;line-height:1.25;display:flex;flex-direction:column;overflow:hidden;page-break-after:always;break-after:page}' +
+      '.sheet:last-child{page-break-after:auto;break-after:auto}' +
+      '.hdr{display:flex;align-items:center;justify-content:center;gap:2mm;text-align:center}.hdr img{width:15mm;height:15mm;object-fit:contain}' +
+      '.u1{font-size:11pt;font-weight:bold;color:#15803d}.u2{font-size:7.5pt;color:#15803d}.c1{font-size:10pt;font-weight:bold;font-style:italic;color:#15803d;margin-top:1mm}.addr{font-size:6.5pt;color:#15803d}' +
+      '.title{text-align:center;font-weight:bold;font-size:13pt;margin:6mm 0 5mm}' +
+      '.frow{display:flex;align-items:flex-end;gap:2mm;margin-bottom:2.5mm}.fl{white-space:nowrap}' +
+      '.fv{flex:1;border-bottom:1px solid #000;font-weight:bold;padding:0 1mm;min-width:0;white-space:nowrap;overflow:hidden}' +
+      '.gw{position:relative;overflow:hidden;width:100%;margin-top:5mm}' +
+      'table{width:100%;border-collapse:collapse;font-size:9pt;table-layout:fixed}' +
+      'th,td{border:1px solid #000;padding:0 1.2mm;height:5.3mm;line-height:1;overflow:hidden;white-space:nowrap}th{font-weight:bold;text-align:center}td.c{text-align:center}td.l{text-align:left}' +
+      '.wm{position:absolute;inset:0;z-index:10;pointer-events:none;display:flex;flex-direction:column;overflow:hidden}' +
+      '.wm span{flex:1 1 0;min-height:0;overflow:hidden;display:block;white-space:nowrap;font:bold 6.5pt Arial,Helvetica,sans-serif;line-height:1;color:rgba(90,90,90,.16)}' +
+      '.note{margin-top:auto;border-top:1px dashed #000;padding-top:2mm;font-size:8pt;font-style:italic;line-height:1.3}.note b{font-style:normal}',
+    report: '@page{size:8.5in 13in;margin:0}body{margin:0;font-family:Arial,Helvetica,sans-serif;color:#000}' +
+      '.page{position:relative;width:8.5in;box-sizing:border-box;min-height:13in;padding:12mm 12mm 10mm;font-size:9pt;line-height:1.15;display:flex;flex-direction:column;overflow:hidden}' +
+      '.hdr{display:flex;align-items:center;justify-content:center;gap:3mm;text-align:center}.hdr img{width:17mm;height:17mm;object-fit:contain}' +
+      '.u1{font-size:12pt;font-weight:bold;color:#15803d}.u2{font-size:8pt;color:#15803d}.c1{font-size:11pt;font-weight:bold;font-style:italic;color:#15803d;margin-top:1mm}.addr{font-size:7pt;color:#15803d}' +
+      '.title{text-align:center;font-weight:bold;font-size:13pt;margin:6mm 0 4mm}' +
+      '.ids{display:grid;grid-template-columns:22mm 1fr 28mm 34mm;column-gap:3mm;row-gap:4mm;margin-top:3mm;align-items:end}' +
+      '.il{white-space:nowrap}.iv{border-bottom:1px solid #000;font-weight:bold;padding:0 1mm;white-space:nowrap;overflow:hidden}' +
+      '.gw{position:relative;overflow:hidden;width:100%;margin-top:4mm}' +
+      'table{width:100%;border-collapse:collapse;table-layout:fixed}th,td{border:1px solid #000;padding:0 1mm;height:5mm;line-height:1.15;text-align:center;font-size:8.5pt;overflow:hidden}' +
+      'th{font-weight:bold}td.l{text-align:left}tr.sec td{font-weight:bold;height:5.5mm;text-align:left}' +
+      '.wm{position:absolute;inset:0;z-index:10;pointer-events:none;display:flex;flex-direction:column;overflow:hidden}' +
+      '.wm span{flex:1 1 0;min-height:0;overflow:hidden;display:block;white-space:nowrap;font:bold 5pt Arial,Helvetica,sans-serif;line-height:1;color:rgba(90,90,90,.16)}' +
+      '.note{margin-top:auto;border-top:1px dashed #000;padding-top:2mm;font-size:8.5pt;font-style:italic;line-height:1.3}.note b{font-style:normal}'
+  };
+  function gradeGpa(items) {
+    var num = items.filter(function (x) { return /^\d(\.\d+)?$/.test(String(x.final_grade || '').trim()) && Number(x.units) > 0; });
+    var u = num.reduce(function (a, x) { return a + Number(x.units); }, 0);
+    if (!u) return '—';
+    var w = num.reduce(function (a, x) { return a + Number(x.units) * parseFloat(x.final_grade); }, 0);
+    return (w / u).toFixed(2);
+  }
+  function gradeDocContext() {
+    var origin = window.location.origin;
+    var college = (profile && profile.college) || '';
+    var collegeName = COLLEGE_NAMES[college] || college;
+    var stamp = new Date().toLocaleString('en-PH', { year: 'numeric', month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit' });
+    var wmLine = 'NOT AN OFFICIAL DOCUMENT • ' + profile.student_no + ' • ' + stamp + ' • ' + collegeName.toUpperCase() + ' • CITY UNIVERSITY OF PASAY';
+    var prog = PROG_ABBR(profile.program);
+    return {
+      origin: origin, collegeName: collegeName, wmStrip: wmLine + '          ',
+      logo: origin + (COLLEGE_LOGO_PATHS[college] || '/images/cup-logo-seal.png'),
+      seal: origin + '/images/logo-1994.png',
+      sName: (profile.last_name + ', ' + profile.first_name + (profile.middle_name ? ' ' + String(profile.middle_name).trim().charAt(0).toUpperCase() + '.' : '')).toUpperCase(),
+      yrSec: prog + '-' + (profile.year_level || '') + (profile.section || '')
+    };
+  }
+  function gradeHeader(c) {
+    return '<div class="hdr"><img src="' + c.seal + '" alt="City University of Pasay seal"><div>' +
+      '<div class="u1">CITY UNIVERSITY OF PASAY</div><div class="u2">(PAMANTASAN NG LUNGSOD NG PASAY)</div><div class="u2">Pasadeña St., Pasay City</div>' +
+      '<div class="c1">' + esc(c.collegeName) + '</div><div class="addr">' + esc(UNI_ADDR_TEXT) + '</div></div>' +
+      '<img src="' + c.logo + '" alt="College crest"></div>';
+  }
+  var UNI_ADDR_TEXT = 'Pasadeña St, F.B Harrison, Pasay City';
+  function copyDocHtml(list) {
+    var c = gradeDocContext(), sheets = '';
+    list.forEach(function (g) {
+      var chunks = [];
+      for (var i = 0; i < Math.max(1, g.items.length); i += 14) chunks.push(g.items.slice(i, i + 14));
+      chunks.forEach(function (chunk, ci) {
+        var isLast = ci === chunks.length - 1, rows = '';
+        for (var n = 0; n < 14; n++) {
+          var r = chunk[n];
+          var nothing = !r && isLast && n === chunk.length;
+          rows += '<tr><td class="c">' + (n + 1) + '</td><td class="' + (nothing ? 'c' : 'l') + '">' +
+            esc(r ? r.course_code : (nothing ? '—— Nothing Follows ——' : '')) + '</td>' +
+            '<td class="c">' + esc(r && r.units != null ? Number(r.units) : '') + '</td>' +
+            '<td class="c">' + esc(r ? (r.final_grade || '') : '') + '</td><td class="c">' + esc(r ? (r.remarks || '') : '') + '</td></tr>';
+        }
+        var wm = ''; for (var k = 0; k < 40; k++) wm += '<span>' + esc(c.wmStrip.repeat(3)) + '</span>';
+        sheets += '<div class="sheet">' + gradeHeader(c) + '<div class="title">COPY OF GRADES</div>' +
+          '<div class="frow"><span class="fl">Name:</span><span class="fv">' + esc(c.sName) + '</span></div>' +
+          '<div class="frow"><span class="fl">Student No.:</span><span class="fv" style="flex:1.3">' + esc(profile.student_no) + '</span>' +
+          '<span class="fl">Year &amp; Section:</span><span class="fv">' + esc(c.yrSec) + '</span></div>' +
+          '<div class="frow"><span class="fl">Academic Year:</span><span class="fv">' + esc(g.ay) + '</span>' +
+          '<span class="fl">Semester:</span><span class="fv">' + esc(termLabel(g.term)) + '</span></div>' +
+          '<div class="gw"><table><colgroup><col style="width:9%"><col style="width:47%"><col style="width:12%"><col style="width:14%"><col style="width:18%"></colgroup>' +
+          '<thead><tr><th>NO</th><th>SUBJECTS</th><th>UNITS</th><th>GRADES</th><th>REMARKS</th></tr></thead><tbody>' + rows +
+          '<tr><td class="c">15</td><td></td><td class="c"><b>GPA</b></td><td class="c"><b>' + (isLast ? esc(gradeGpa(g.items)) : '') + '</b></td><td></td></tr>' +
+          '</tbody></table><div class="wm" aria-hidden="true">' + wm + '</div></div>' +
+          '<div class="note"><b>NOTICE:</b> This is not an official document. This document does not require signatures. It is provided solely to verify the grades available in the ' + esc(c.collegeName) + ' database. To request an official Certificate of Grades, apply through the Office of the University Registrar at the City University of Pasay.</div></div>';
+      });
+    });
+    return '<!doctype html><html><head><meta charset="utf-8"><title>Copy of Grades</title><style>' + DOC_CSS.copy + '</style></head><body>' + sheets + '</body></html>';
+  }
+  function reportDocHtml(list) {
+    var c = gradeDocContext(), rows = '';
+    list.forEach(function (g) {
+      rows += '<tr class="sec"><td colspan="5">' + esc(termLabel(g.term)) + ', A.Y. ' + esc(g.ay) + '</td></tr>';
+      g.items.forEach(function (x) {
+        rows += '<tr><td class="l">' + esc(x.course_code) + '</td><td class="l">' + esc(x.descriptive_title || '') + '</td>' +
+          '<td>' + esc(x.units == null ? '' : Number(x.units)) + '</td><td>' + esc(x.final_grade || '') + '</td><td>' + esc(x.remarks || '') + '</td></tr>';
+      });
+      rows += '<tr><td></td><td class="l"><b>GPA</b></td><td></td><td><b>' + esc(gradeGpa(g.items)) + '</b></td><td></td></tr>';
+    });
+    var wm = ''; for (var k = 0; k < 130; k++) wm += '<span>' + esc(c.wmStrip.repeat(4)) + '</span>';
+    return '<!doctype html><html><head><meta charset="utf-8"><title>Report of Grades</title><style>' + DOC_CSS.report + '</style></head><body><div class="page">' +
+      gradeHeader(c) + '<div class="title">REPORT OF GRADES</div>' +
+      '<div class="ids"><span class="il">Name:</span><span class="iv">' + esc(c.sName) + '</span><span class="il">Student No.:</span><span class="iv">' + esc(profile.student_no) + '</span>' +
+      '<span class="il">Program:</span><span class="iv">' + esc(profile.program || '') + '</span><span class="il">Year &amp; Section:</span><span class="iv">' + esc(c.yrSec) + '</span></div>' +
+      '<div class="gw"><table><colgroup><col style="width:14%"><col style="width:40%"><col style="width:10%"><col style="width:17%"><col style="width:19%"></colgroup>' +
+      '<thead><tr><th>SUBJECT CODE</th><th>DESCRIPTIVE TITLE</th><th>UNITS</th><th>GRADES</th><th>REMARKS</th></tr></thead><tbody>' + rows + '</tbody></table>' +
+      '<div class="wm" aria-hidden="true">' + wm + '</div></div>' +
+      '<div class="note"><b>NOTICE:</b> This is not an official document. This document does not require signatures. It is provided solely to verify the grades available in the ' + esc(c.collegeName) + ' database. To request an official Report of Grades, apply through the Office of the University Registrar at the City University of Pasay.</div></div></body></html>';
+  }
+  // Prints in a hidden frame (no new tab), after the seals have loaded.
+  function printGradeDoc(html) {
+    var frame = document.createElement('iframe');
+    frame.style.cssText = 'position:fixed;width:0;height:0;border:0;visibility:hidden';
+    document.body.appendChild(frame);
+    var d = frame.contentDocument;
+    d.open(); d.write(html); d.close();
+    var go = function () {
+      setTimeout(function () {
+        frame.contentWindow.focus(); frame.contentWindow.print();
+        setTimeout(function () { if (frame.parentNode) frame.parentNode.removeChild(frame); }, 60000);
+      }, 150);
+    };
+    var pending = Array.prototype.slice.call(d.images || []).filter(function (im) { return !im.complete; });
+    if (!pending.length) return go();
+    var left = pending.length;
+    pending.forEach(function (im) { var one = function () { if (--left <= 0) go(); }; im.addEventListener('load', one); im.addEventListener('error', one); });
   }
   $('copyBtn').addEventListener('click', function () {
     var g = groups.filter(function (x) { return x.ay === $('aySelect').value && x.term === $('semSelect').value; });
-    if (g.length) printGroups(g, 'Copy of Grades');
+    if (g.length && profile) printGradeDoc(copyDocHtml(g));
   });
-  $('reportBtn').addEventListener('click', function () { printGroups(groups, 'Report of Grades'); });
+  $('reportBtn').addEventListener('click', function () { if (groups.length && profile) printGradeDoc(reportDocHtml(groups)); });
 
   /* Student status (retention policy 4.17) */
   function loadStatus() {
