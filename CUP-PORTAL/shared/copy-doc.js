@@ -90,6 +90,7 @@
     return '<div class="qr">' + (g.qr ? '<img src="' + g.qr + '" alt="Verification QR code">' : '') +
       '<div><b>SCAN THE QR CODE TO VERIFY THE AUTHENTICITY<br>OF THIS DOCUMENT.</b><div class="vc" style="font-weight:normal">THIS IS A SYSTEM GENERATED REPORT<br>NO SIGNATURE IS NECESSARY</div></div></div>';
   }
+  function titleCase(s) { return String(s || '').toLowerCase().replace(/(^|[\s\-])(\S)/g, function (m, p, ch) { return p + ch.toUpperCase(); }); }
   function certHtml(g, c) {
     var mid = profile.middle_name ? ' ' + String(profile.middle_name).trim().charAt(0).toUpperCase() + '.' : '';
     var name = titleCase(profile.last_name) + ', ' + titleCase(profile.first_name) + mid;
