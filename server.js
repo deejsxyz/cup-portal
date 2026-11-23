@@ -1083,6 +1083,66 @@ app.post('/api/registrar/accounts', requireSuperAdmin, async (req, res) => {
 });
 
 // Student list: a college registrar sees only their own college's enrolled students.
+// Student list: filled into the attached Univ_registrar_Student_List.docx (templates/student-list-docx), returned as a Word file.
+const STUDENT_LIST_DIR = path.join(__dirname, 'templates', 'student-list-docx');
+function studentListEsc(v) { return String(v == null ? '' : v).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;'); }
+app.post('/api/registrar/student-list.docx', requireRegistrar, async (req, res) => {
+  try {
+    const body = req.body || {};
+    const list = Array.isArray(body.rows) ? body.rows.slice(0, 3000) : [];
+    const lastHeader = body.lastHeader === 'Contact Number' ? 'Contact Number' : 'Program';
+    const heading = String(body.heading || '').slice(0, 80);
+    const esc = studentListEsc;
+    const fsx = require('fs');
+    let doc = fsx.readFileSync(path.join(STUDENT_LIST_DIR, 'word', 'document.xml'), 'utf8');
+    if (heading) {
+      doc = doc.replace(/<w:r(?: [^>]*)?>(<w:rPr>[\s\S]*?<\/w:rPr>)<w:t>STUDENT LIST<\/w:t><\/w:r>/, (m, rPr) =>
+        m + '<w:r>' + rPr + '<w:br/><w:t xml:space="preserve">' + esc(heading) + '</w:t></w:r>');
+    }
+    const tbl = doc.match(/<w:tbl>[\s\S]*?<\/w:tbl>/)[0];
+    const trs = tbl.match(/<w:tr[ >][\s\S]*?<\/w:tr>/g);
+    // Fill the text of each cell in a template row; the first text run gets the value, extra runs are emptied.
+    const fillRow = (tr, values) => {
+      let i = 0;
+      return tr.replace(/<w:tc>[\s\S]*?<\/w:tc>/g, (tc) => {
+        const v = values[i++];
+        let first = true;
+        return tc.replace(/<w:t(?: [^>]*)?>[^<]*<\/w:t>/g, () => {
+          if (first) { first = false; return '<w:t xml:space="preserve">' + esc(v) + '</w:t>'; }
+          return '<w:t></w:t>';
+        });
+      });
+    };
+    const headerRow = fillRow(trs[0], ['Student ID', 'Name', 'Year/Section', lastHeader]);
+    const dataRows = list.map((r) => fillRow(trs[1], [r.id, r.name, r.ys, r.last])).join('');
+    const newTbl = tbl.replace(trs[0], () => headerRow).replace(trs[1], () => dataRows);
+    doc = doc.replace(tbl, () => newTbl);
+
+    const archive = archiver('zip', { zlib: { level: 6 } });
+    const chunks = [];
+    archive.on('data', (c) => chunks.push(c));
+    const finished = new Promise((resolve, reject) => { archive.on('end', resolve); archive.on('error', reject); });
+    const files = [];
+    const walk = (dir, rel) => fsx.readdirSync(dir, { withFileTypes: true }).forEach((e) => {
+      const full = path.join(dir, e.name), name = rel ? rel + '/' + e.name : e.name;
+      if (e.isDirectory()) walk(full, name); else files.push(name);
+    });
+    walk(STUDENT_LIST_DIR, '');
+    files.sort((a, b) => (a === '[Content_Types].xml' ? -1 : b === '[Content_Types].xml' ? 1 : 0));
+    for (const name of files) {
+      if (name === 'word/document.xml') archive.append(Buffer.from(doc, 'utf8'), { name });
+      else archive.append(fsx.readFileSync(path.join(STUDENT_LIST_DIR, name)), { name });
+    }
+    await archive.finalize();
+    await finished;
+    res.setHeader('Content-Type', 'application/vnd.openxmlformats-officedocument.wordprocessingml.document');
+    res.setHeader('Content-Disposition', 'attachment; filename="Student List.docx"');
+    res.send(Buffer.concat(chunks));
+  } catch (e) {
+    console.error('student-list.docx failed:', e);
+    res.status(500).json({ error: 'Could not build the student list.' });
+  }
+});
 app.get('/api/registrar/students', requireRegistrar, async (req, res) => {
   // University Registrar (superadmin) may ask for ALL colleges at once.
   const wantAll = String(req.query.college || '').toUpperCase() === 'ALL' && req.reg.role === 'superadmin';

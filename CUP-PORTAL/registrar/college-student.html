@@ -674,66 +674,52 @@ window.cupYr = function (p, y) { var m = /\(([^)]+)\)\s*$/.exec(p || ''); return
     GS: { name: 'Graduate School', logo: '/images/college-graduate.png' },
     'TESDA-TVI': { name: 'TESDA-TVI', logo: '/images/tesda-logo.png' }
   };
-  function printHeader() {
-    // Same layout as the attached Univ_registrar_Student_List.docx: seal at the left, text centered across the page.
-    var base = window.location.origin;
-    var seal = 'position:absolute;left:0;top:-4pt;width:2.5cm;height:2.5cm;object-fit:contain';
-    var line = function (t, css) { return '<div style="' + css + '">' + t + '</div>'; };
-    var lines = line('Republic of the Philippines', 'font-weight:bold;font-size:10pt') +
-      line('CITY UNIVERSITY OF PASAY', 'font-weight:bold;font-size:14pt;color:#15803d;margin-top:2pt') +
-      line('(Pamantasan ng Lungsod ng Pasay)', 'font-size:10pt;margin-top:2pt') +
-      line(UNI_ADDR, 'font-size:9pt;margin-top:2pt');
-    var logo = window.regRole === 'superadmin' ? '/images/logo-1994.png' : ((PRINT_COLLEGES[COLLEGE] || {}).logo || '/images/cup-logo-seal.png');
-    var collegeLine = window.regRole === 'superadmin' ? '' : line(esc((PRINT_COLLEGES[COLLEGE] || { name: COLLEGE }).name), 'font-weight:bold;font-size:14pt;color:#15803d;margin-top:8pt');
-    return '<div style="position:relative;text-align:center;font-family:Arial,sans-serif;line-height:1.15;padding-left:2.7cm">' +
-      '<img src="' + base + logo + '" style="' + seal + '">' + lines + collegeLine + '</div>';
-  }
-  $('viewPrintListBtn').addEventListener('click', function () {
+  // Print Student List: the server fills the attached Univ_registrar_Student_List.docx template with the filtered rows.
+  $('viewPrintListBtn').addEventListener('click', async function () {
     var rows = filtered();
-    var html = ('<!doctype html><html><head><meta charset="utf-8"><title>' + COLLEGE + ' Student List</title><style>@page{size:A4;margin:0.5in}body{font-family:Arial,sans-serif;margin:0;color:#000}table{width:100%;border-collapse:collapse;table-layout:fixed;font-size:9pt}th,td{border:0.5pt solid #000;padding:2pt 5pt;text-align:center;vertical-align:middle}</style></head><body>' + printHeader() + '<p style="text-align:center;font-weight:bold;font-size:12pt;margin:12pt 0 8pt">STUDENT LIST</p>' + (function () {
-      // Heading from the filters used, e.g. BSN1–A (program abbreviation, year level, section).
-      var abbr = wantedProg ? progAbbrOf(wantedProg.program) : '';
-      var yr = $('viewYearFilter').value, sec = $('viewSecFilter').value;
-      // Year level alone is written out, e.g. First Year; with a program it is BSN1, and a section adds –A.
-      var ORD = ['', 'First Year', 'Second Year', 'Third Year', 'Fourth Year'];
-      if (!abbr && !sec && yr) return '<h3>' + esc(ORD[Number(yr)] || ('Year ' + yr)) + '</h3>';
-      var code = abbr + yr + (sec ? '\u2013' + sec : '');
-      return code ? '<h3>' + esc(code) + '</h3>' : '';
-    })() + '<table><colgroup><col style="width:18.9%"><col style="width:29.7%"><col style="width:12.4%"><col style="width:39%"></colgroup><thead><tr>' + (window.regRole === 'superadmin' ? '<th>Student ID</th><th>Name</th><th>Year &amp; Section</th><th>Program</th>' : '<th>Student ID</th><th>Name</th><th>Year &amp; Section</th><th>Contact Number</th>') + '</tr></thead><tbody>' +
-      rows.map(function (s) { var mi = s.middle_name ? ' ' + String(s.middle_name).trim().charAt(0).toUpperCase() + '.' : ''; var uni = window.regRole === 'superadmin'; var prog = String(s.program || '').replace(/\s*\([^)]*\)\s*$/, ''); return '<tr><td>' + esc(s.student_no) + '</td><td>' + esc(s.last_name) + ', ' + esc(s.first_name) + esc(mi) + '</td><td>' + (uni ? esc(s.year_level) + '-' + esc(s.section || '') : esc(progAbbrOf(s.program)) + esc(s.year_level) + '-' + esc(s.section || '')) + '</td><td>' + (uni ? esc(prog) : esc(s.contact_number || '')) + '</td></tr>'; }).join('') +
-      '</tbody></table><scr' + 'ipt src="/protect-logo.js"></scr' + 'ipt></body></html>');
-    // Build the list in a hidden frame (no new tab), show progress while the logos load, then open the print dialog.
+    var uni = window.regRole === 'superadmin';
+    // Heading from the filters used, e.g. BSN1–A (program abbreviation, year level, section).
+    var abbr = wantedProg ? progAbbrOf(wantedProg.program) : '';
+    var yr = $('viewYearFilter').value, sec = $('viewSecFilter').value;
+    var ORD = ['', 'First Year', 'Second Year', 'Third Year', 'Fourth Year'];
+    var heading = '';
+    if (!abbr && !sec && yr) heading = ORD[Number(yr)] || ('Year ' + yr);
+    else heading = abbr + yr + (sec ? '–' + sec : '');
+    var list = rows.map(function (s) {
+      var mi = s.middle_name ? ' ' + String(s.middle_name).trim().charAt(0).toUpperCase() + '.' : '';
+      var prog = String(s.program || '').replace(/\s*\([^)]*\)\s*$/, '');
+      return {
+        id: s.student_no,
+        name: s.last_name + ', ' + s.first_name + mi,
+        ys: (uni ? s.year_level : progAbbrOf(s.program) + s.year_level) + '-' + (s.section || ''),
+        last: uni ? prog : (s.contact_number || '')
+      };
+    });
     var bar = $('viewPrintProg'), fill = $('viewPrintBar'), btn = $('viewPrintListBtn');
-    bar.hidden = false; btn.disabled = true; fill.style.width = '20%';
-    var frame = document.createElement('iframe');
-    frame.style.cssText = 'position:fixed;width:0;height:0;border:0;visibility:hidden';
-    document.body.appendChild(frame);
-    var done = false;
-    function finish() {
-      if (done) return; done = true;
-      fill.style.width = '100%';
-      setTimeout(function () {
-        var fw = frame.contentWindow;
-        fw.onafterprint = function () { cleanup(); };
-        fw.focus(); fw.print();
-        setTimeout(cleanup, 60000);
-      }, 150);
-    }
-    function cleanup() { bar.hidden = true; btn.disabled = false; fill.style.width = '0%'; if (frame.parentNode) frame.parentNode.removeChild(frame); }
-    frame.onload = function () {
-      var doc = frame.contentDocument;
-      var imgs = Array.prototype.slice.call(doc.images || []);
-      var pending = imgs.filter(function (im) { return !im.complete; });
-      if (!pending.length) { fill.style.width = '90%'; return finish(); }
-      var left = pending.length;
-      fill.style.width = '60%';
-      pending.forEach(function (im) {
-        var one = function () { left -= 1; fill.style.width = (60 + Math.round((1 - left / pending.length) * 30)) + '%'; if (left <= 0) finish(); };
-        im.addEventListener('load', one); im.addEventListener('error', one);
+    bar.hidden = false; btn.disabled = true; fill.style.width = '30%';
+    try {
+      var r = await fetch('/api/registrar/student-list.docx', {
+        method: 'POST', credentials: 'same-origin',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ rows: list, heading: heading, lastHeader: uni ? 'Program' : 'Contact Number' })
       });
-    };
-    setTimeout(function () { if (!done && frame.contentDocument && frame.contentDocument.readyState === 'complete') finish(); }, 5000);
-    frame.contentDocument.open(); frame.contentDocument.write(html); frame.contentDocument.close();
+      if (!r.ok) {
+        var err = await r.json().catch(function () { return {}; });
+        throw new Error(err.error || 'Could not build the student list.');
+      }
+      fill.style.width = '80%';
+      var blob = await r.blob();
+      var url = URL.createObjectURL(blob);
+      var a = document.createElement('a');
+      a.href = url; a.download = 'Student List.docx';
+      document.body.appendChild(a); a.click(); a.remove();
+      setTimeout(function () { URL.revokeObjectURL(url); }, 10000);
+    } catch (e) {
+      alert(e.message || 'Could not build the student list.');
+    } finally {
+      fill.style.width = '100%';
+      setTimeout(function () { bar.hidden = true; btn.disabled = false; fill.style.width = '0%'; }, 400);
+    }
   });
 
   /* ----- Existing Student ----- */
