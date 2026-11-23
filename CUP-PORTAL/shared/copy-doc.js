@@ -15,8 +15,8 @@
     GS: '/images/college-graduate.png', 'TESDA-TVI': '/images/tesda-logo.png'
   };
   var DOC_CSS = {
-    copy: '@page{size:A5 landscape;margin:0.25in}body{margin:0;font-family:Arial,Helvetica,sans-serif;color:#000}' +
-      '.sheet{position:relative;width:calc(210mm - 0.5in);height:calc(148mm - 0.5in);box-sizing:border-box;padding:5mm 9mm 4mm;font-size:8pt;line-height:1.2;overflow:hidden;page-break-after:always;break-after:page}' +
+    copy: '@page{size:A4 portrait;margin:0.25in}body{margin:0;font-family:Arial,Helvetica,sans-serif;color:#000}' +
+      '.sheet{position:relative;width:calc(210mm - 0.5in);height:calc(297mm - 0.5in);box-sizing:border-box;padding:5mm 9mm 4mm;font-size:8pt;line-height:1.2;overflow:hidden;page-break-after:always;break-after:page}' +
       '.sheet:last-child{page-break-after:auto;break-after:auto}' +
       '.hdr{display:flex;align-items:center;justify-content:center;gap:2mm;text-align:center}.hdr img{width:13mm;height:13mm;object-fit:contain}' +
       '@font-face{font-family:"CUP Courier";src:url(/CUP-PORTAL/fonts/courier-new.ttf) format("truetype")}@font-face{font-family:"CUP Algerian";src:url(/CUP-PORTAL/fonts/algerian.ttf) format("truetype")}@font-face{font-family:"CUP Script";src:url(/CUP-PORTAL/fonts/script-mt-bold.ttf) format("truetype")}.u1{font-family:"CUP Algerian",Algerian,serif;font-size:10pt;font-weight:bold;color:#000}.u2{font-size:6.5pt;color:#000}.c1{font-family:"CUP Script","Script MT Bold",cursive;font-size:14pt;font-weight:normal;font-style:normal;color:#000;margin-top:0.5mm}.addr{font-size:6pt;color:#000}' +
@@ -89,7 +89,7 @@
       '<div><b>SCAN THE QR CODE TO VERIFY THE AUTHENTICITY<br>OF THIS DOCUMENT.</b><div class="vc" style="font-weight:normal">THIS IS A SYSTEM GENERATED REPORT<br>NO SIGNATURE IS NECESSARY</div></div></div>';
   }
   function copyDocHtml(list) {
-    var c = gradeDocContext(), sheets = '', ROWS = 10;
+    var c = gradeDocContext(), sheets = '', ROWS = 20;
     var pv = {};
     new Intl.DateTimeFormat('en-US', { timeZone: 'Asia/Manila', day: 'numeric', month: 'long', year: 'numeric', hour: 'numeric', minute: '2-digit', hour12: true }).formatToParts(new Date()).forEach(function (x) { pv[x.type] = x.value; });
     var printedAt = pv.day + '-' + pv.month + '-' + pv.year + ' ' + pv.hour + ':' + pv.minute + ' ' + pv.dayPeriod;
