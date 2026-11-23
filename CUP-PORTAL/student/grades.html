@@ -26,6 +26,8 @@
   .btn.dark { background: var(--dg); color: #fff; }
   .btn.light { background: #fff; color: var(--g); border: 1px solid var(--line); }
   .btn:disabled { opacity: .55; cursor: not-allowed; }
+  .gprog { display: inline-block; vertical-align: middle; width: 140px; height: 6px; border-radius: 4px; background: #e2e8f0; overflow: hidden; align-self: center; }
+  .gprog > div { height: 100%; width: 0; background: #334155; transition: width .2s; }
   #coeBtn:disabled { background: #cbd5d1; color: #64748b; opacity: 1; }
   .btn.logout { background: var(--gold); color: var(--dg); }
   nav.tabs { background: #fff; border-bottom: 1px solid var(--line); display: flex; justify-content: center; gap: 4px; padding: 0 12px; flex-wrap: wrap; }
@@ -172,6 +174,7 @@
     <div class="actions">
       <button type="button" class="btn dark" id="copyBtn">Copy of Grades (Selected Term)</button>
       <button type="button" class="btn" id="reportBtn">Report of Grades (All Terms)</button>
+      <div class="gprog" id="gradeProg" hidden><div id="gradeBar"></div></div>
     </div>
     <div class="card">
       <div class="info">
@@ -455,22 +458,35 @@
       '</div></body></html>';
   }
   // Prints in a hidden frame (no new tab), after the seals have loaded.
+  // Small progress bar beside the buttons while the document is built and its images load.
+  function gradeProgress(pct) {
+    var box = $('gradeProg'), bar = $('gradeBar');
+    box.hidden = false; bar.style.width = pct + '%';
+  }
+  function gradeProgressDone() {
+    setTimeout(function () { $('gradeProg').hidden = true; $('gradeBar').style.width = '0%'; $('copyBtn').disabled = false; $('reportBtn').disabled = false; }, 400);
+  }
   function printGradeDoc(html) {
+    $('copyBtn').disabled = true; $('reportBtn').disabled = true;
+    gradeProgress(30);
     var frame = document.createElement('iframe');
     frame.style.cssText = 'position:fixed;width:0;height:0;border:0;visibility:hidden';
     document.body.appendChild(frame);
     var d = frame.contentDocument;
     d.open(); d.write(html); d.close();
+    gradeProgress(60);
     var go = function () {
+      gradeProgress(100);
       setTimeout(function () {
         frame.contentWindow.focus(); frame.contentWindow.print();
         setTimeout(function () { if (frame.parentNode) frame.parentNode.removeChild(frame); }, 60000);
+        gradeProgressDone();
       }, 150);
     };
     var pending = Array.prototype.slice.call(d.images || []).filter(function (im) { return !im.complete; });
     if (!pending.length) return go();
     var left = pending.length;
-    pending.forEach(function (im) { var one = function () { if (--left <= 0) go(); }; im.addEventListener('load', one); im.addEventListener('error', one); });
+    pending.forEach(function (im) { var one = function () { gradeProgress(60 + Math.round((1 - (left - 1) / pending.length) * 35)); if (--left <= 0) go(); }; im.addEventListener('load', one); im.addEventListener('error', one); });
   }
   $('copyBtn').addEventListener('click', function () {
     var g = groups.filter(function (x) { return x.ay === $('aySelect').value && x.term === $('semSelect').value; });
