@@ -675,7 +675,7 @@ window.cupYr = function (p, y) { var m = /\(([^)]+)\)\s*$/.exec(p || ''); return
   };
   function printHeader() {
     var base = window.location.origin;
-    var mid = '<div style="font-family:Arial,sans-serif;text-align:center;color:#000">';
+    var mid = '<div style="font-family:Arial,sans-serif;text-align:center;color:#000;line-height:1">';
     if (window.regRole === 'superadmin') {
       return mid + '<img src="' + base + '/images/cup-logo-seal.png" style="height:80px"><div style="font-weight:bold;text-transform:uppercase;font-size:14pt;color:#15803d;margin-top:6px">City University of Pasay</div>' +
         '<div style="font-size:11pt">(Pamantasan ng Lungsod ng Pasay)</div><div style="font-size:10pt">' + UNI_ADDR + '</div></div>';
