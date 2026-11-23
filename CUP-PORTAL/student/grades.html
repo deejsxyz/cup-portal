@@ -372,7 +372,7 @@
       '.il{white-space:nowrap}.iv{border-bottom:1px solid #000;font-weight:bold;padding:0 1mm;white-space:nowrap;overflow:hidden}' +
       'table{width:100%;border-collapse:collapse;table-layout:fixed;margin-top:4mm}thead{display:table-header-group}tr{page-break-inside:avoid;break-inside:avoid}' +
       'th,td{border:1px solid #000;padding:0 1mm;height:5mm;line-height:1.15;text-align:center;font-size:8pt;overflow:hidden}' +
-      'th{font-weight:bold;font-size:8pt}td.l{text-align:left}tr.sec td{font-weight:bold;font-size:8pt;height:5.5mm;text-align:center;page-break-after:avoid;break-after:avoid}' +
+      'th{font-weight:bold;font-size:8pt}td.l{text-align:left}tr.sec td{font-weight:normal;font-size:8pt;height:5.5mm;text-align:center;page-break-after:avoid;break-after:avoid}' +
       '.qr{margin-top:auto;border-top:1px dashed #000;padding-top:2mm;display:flex;align-items:center;gap:3mm;font-size:8.5pt;line-height:1.3}.qr img{width:20mm;height:20mm}.vc{font-size:7.5pt;margin-top:1mm}'
   };
   // Text and the watermark are drawn as images, so the student number is not text a viewer can turn into a link.
@@ -465,7 +465,7 @@
       });
     });
     var idsHtml = '<div class="ids"><span class="il">Name:</span><span class="iv">' + esc(c.sName) + '</span><span class="il">Student No.:</span><span class="iv">' + textImg(profile.student_no, 13, '#000', 'bold') + '</span>' +
-      '<span class="il">Program:</span><span class="iv">' + esc(profile.program || '') + '</span><span class="il">Year &amp; Section:</span><span class="iv">' + esc(c.yrSec) + '</span></div>';
+      '<span class="il">Program:</span><span class="iv">' + esc(profile.program || '') + '</span></div>';
     var pageHead = gradeHeader(c) + '<div class="title">REPORT OF GRADES</div>' + idsHtml;
     return '<!doctype html><html><head><meta charset="utf-8"><meta name="format-detection" content="telephone=no,date=no,address=no,email=no"><title>Report of Grades</title><style>' + DOC_CSS.report + '</style></head><body>' +
       pageHead + '<table><colgroup><col style="width:15%"><col style="width:65%"><col style="width:10%"><col style="width:10%"></colgroup>' +
