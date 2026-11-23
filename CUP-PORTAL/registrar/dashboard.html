@@ -234,6 +234,7 @@
       <div style="padding:12px 16px;border-bottom:1px solid #e2e8f0"><label style="font-size:11px;font-weight:700;text-transform:uppercase;color:#475569;margin-right:8px">College</label><select id="en-college" style="padding:6px 10px;border:1px solid #cbd5e1;border-radius:8px;font-size:12px;font-weight:700"><option value="COACS">COACS</option><option value="CAS">CAS</option><option value="CONM">CONM</option><option value="COED">COED</option><option value="COBM">COBM</option><option value="LAW">School of Law</option><option value="GS">Graduate School</option><option value="TESDA-TVI">TESDA-TVI</option></select></div>
       <div data-sub="evaluation"><iframe id="en-eval" src="/CUP-PORTAL/registrar/college-evaluation.html?college=COACS" title="Enrollment Evaluation" style="width:100%;min-height:900px;border:0;display:block"></iframe></div>
       <div data-sub="advising" hidden><iframe id="en-advising" src="/CUP-PORTAL/registrar/advising-slip.html?college=COACS" title="Enrollment Advising Slip" style="width:100%;min-height:900px;border:0;display:block"></iframe></div>
+      <div data-sub="progress" hidden><iframe id="en-progress" src="/CUP-PORTAL/registrar/enrollment-progress.html?college=COACS" title="Enrollment Progress" style="width:100%;min-height:900px;border:0;display:block"></iframe></div>
     </div></div></section>
     <section class="panel" id="settings"><div class="box"><h2>Settings</h2><div class="body">
         <div class="gss">
@@ -2715,7 +2716,7 @@ function cupYr(p, y) { var m = /\(([^)]+)\)\s*$/.exec(p || ''); return (m ? m[1]
   var KINDS = {
     student: [['view', 'View Student'], ['new', 'New Student'], ['existing', 'Manage Student'], ['grades', 'Manage Grade']],
     faculty: [['register', 'Register Faculty'], ['manage', 'Manage Faculty'], ['assign', 'Subject Assignments']],
-    step6: [['evaluation', 'Evaluation'], ['advising', 'Advising Slip']]
+    step6: [['evaluation', 'Evaluation'], ['advising', 'Advising Slip'], ['progress', 'Progress']]
   };
   var DEFAULT = { student: 'view', faculty: 'manage', step6: 'evaluation' };
   function paint(h, active) {
@@ -2770,6 +2771,7 @@ function cupYr(p, y) { var m = /\(([^)]+)\)\s*$/.exec(p || ''); return (m ? m[1]
     var c = encodeURIComponent(en.value);
     document.getElementById('en-eval').src = '/CUP-PORTAL/registrar/college-evaluation.html?college=' + c;
     document.getElementById('en-advising').src = '/CUP-PORTAL/registrar/advising-slip.html?college=' + c;
+    document.getElementById('en-progress').src = '/CUP-PORTAL/registrar/enrollment-progress.html?college=' + c;
   });
   window.addEventListener('message', function (e) {
     var t = e.data && e.data.conmStudentTab;
