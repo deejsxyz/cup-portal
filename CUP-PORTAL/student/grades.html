@@ -363,7 +363,7 @@
       '.wm span{flex:1 1 0;min-height:0;overflow:hidden;display:block;white-space:nowrap;font:bold 6.5pt Arial,Helvetica,sans-serif;line-height:1;color:rgba(90,90,90,.16)}' +
       '.qr{margin-top:auto;border-top:1px dashed #000;padding-top:2mm;display:flex;align-items:center;gap:3mm;font-size:8pt;line-height:1.3}.qr img{width:18mm;height:18mm}.vc{font-size:7pt;margin-top:1mm}',
     report: '@page{size:8.5in 13in;margin:0}body{margin:0;font-family:Arial,Helvetica,sans-serif;color:#000}' +
-      '.page{position:relative;width:8.5in;height:13in;box-sizing:border-box;padding:12mm 12mm 10mm;font-size:9pt;line-height:1.15;display:flex;flex-direction:column;overflow:hidden;page-break-after:always;break-after:page}.page:last-child{page-break-after:auto;break-after:auto}' +
+      '.page{position:relative;width:8.5in;height:13in;box-sizing:border-box;padding:12mm 12mm 10mm;font-size:9pt;line-height:1.15;display:flex;flex-direction:column;overflow:hidden;page-break-after:always;break-after:page}.page:last-child{page-break-after:auto;break-after:auto}.page.cont{padding-top:12mm}' +
       '.hdr{display:flex;align-items:center;justify-content:center;gap:3mm;text-align:center}.hdr img{width:17mm;height:17mm;object-fit:contain}' +
       '.u1{font-size:12pt;font-weight:bold;color:#000}.u2{font-size:8pt;color:#000}.c1{font-size:11pt;font-weight:bold;font-style:italic;color:#000;margin-top:1mm}.addr{font-size:7pt;color:#000}' +
       '.title{text-align:center;font-weight:bold;font-size:13pt;margin:6mm 0 4mm}' +
@@ -464,16 +464,20 @@
       body.push('<tr><td></td><td class="l"><b>GPA</b></td><td></td><td><b>' + esc(g.gpa || '\u2014') + '</b></td><td></td></tr>');
     });
     // Every subject of every term is printed; a new page starts when a page is full.
-    var PER_PAGE = 30, pages = [];
-    for (var i = 0; i < body.length; i += PER_PAGE) pages.push(body.slice(i, i + PER_PAGE));
-    if (!pages.length) pages.push([]);
+    // Legal paper: the first page carries the header, later pages only the table (with its column titles).
+    var FIRST = 34, NEXT = 46, pages = [], at = 0;
+    pages.push(body.slice(0, FIRST)); at = FIRST;
+    while (at < body.length) { pages.push(body.slice(at, at + NEXT)); at += NEXT; }
     var idsHtml = '<div class="ids"><span class="il">Name:</span><span class="iv">' + esc(c.sName) + '</span><span class="il">Student No.:</span><span class="iv">' + textImg(profile.student_no, 13, '#000', 'bold') + '</span>' +
       '<span class="il">Program:</span><span class="iv">' + esc(profile.program || '') + '</span><span class="il">Year &amp; Section:</span><span class="iv">' + esc(c.yrSec) + '</span></div>';
-    var out = pages.map(function (rowsHtml) {
-      return '<div class="page">' + gradeHeader(c) + '<div class="title">REPORT OF GRADES</div>' + idsHtml +
-        '<div class="gw"><table><colgroup><col style="width:14%"><col style="width:40%"><col style="width:10%"><col style="width:17%"><col style="width:19%"></colgroup>' +
+    var tbl = function (rowsHtml) {
+      return '<div class="gw"><table><colgroup><col style="width:14%"><col style="width:40%"><col style="width:10%"><col style="width:17%"><col style="width:19%"></colgroup>' +
         '<thead><tr><th>SUBJECT CODE</th><th>DESCRIPTIVE TITLE</th><th>UNITS</th><th>GRADES</th><th>REMARKS</th></tr></thead><tbody>' + rowsHtml.join('') + '</tbody></table>' +
-        '<div class="wm" aria-hidden="true">' + wmImg(c.wmStrip, 110) + '</div></div></div>';
+        '<div class="wm" aria-hidden="true">' + wmImg(c.wmStrip, 110) + '</div></div>';
+    };
+    var out = pages.map(function (rowsHtml, idx) {
+      if (idx === 0) return '<div class="page">' + gradeHeader(c) + '<div class="title">REPORT OF GRADES</div>' + idsHtml + tbl(rowsHtml) + '</div>';
+      return '<div class="page cont">' + tbl(rowsHtml) + '</div>';
     }).join('');
     return '<!doctype html><html><head><meta charset="utf-8"><meta name="format-detection" content="telephone=no,date=no,address=no,email=no"><title>Report of Grades</title><style>' + DOC_CSS.report + '</style></head><body>' + out + '</body></html>';
   }
