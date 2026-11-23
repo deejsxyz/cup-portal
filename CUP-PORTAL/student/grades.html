@@ -370,7 +370,7 @@
       '.title{text-align:center;font-weight:bold;font-size:13pt;margin:6mm 0 4mm}' +
       '.ids{display:grid;grid-template-columns:22mm 1fr 26mm 42mm;column-gap:3mm;row-gap:3mm;margin-top:3mm;margin-bottom:6mm;align-items:end;font-size:8pt}' +
       '.il{white-space:nowrap}.iv{border-bottom:1px solid #000;font-weight:bold;padding:0 1mm;white-space:nowrap;overflow:hidden}' +
-      'table{width:100%;border-collapse:collapse;table-layout:fixed;font-size:8pt;line-height:1.2}thead{display:table-header-group}tr{break-inside:avoid;page-break-inside:avoid}' +
+      'table{width:100%;border-collapse:collapse;table-layout:fixed;font-size:8pt;line-height:1.2}thead{display:table-header-group}tr,td,td>div{break-inside:avoid;page-break-inside:avoid;-webkit-column-break-inside:avoid}' +
       'th,td{border:0.25pt solid #000;padding:1mm;text-align:center;vertical-align:middle}th{font-weight:bold}td:nth-child(2),th:nth-child(2){text-align:left}' +
       'tr.sec td{font-weight:normal}'
   };
@@ -457,13 +457,13 @@
     // Every subject of the curriculum, year 1 to 4, is printed; grades are filled in when approved.
     var YR = ['First Year', 'Second Year', 'Third Year', 'Fourth Year'];
     list.forEach(function (g) {
-      body.push('<tr class="sec"><td colspan="4">' + esc(YR[g.year_level - 1] + ', ' + termLabel(g.term)) + '</td></tr>');
+      body.push('<tr class="sec"><td colspan="4"><div>' + esc(YR[g.year_level - 1] + ', ' + termLabel(g.term)) + '</div></td></tr>');
       g.items.forEach(function (x) {
-        body.push('<tr><td>' + esc(x.course_code) + '</td><td>' + esc(x.descriptive_title || '') + '</td>' +
-          '<td>' + esc(x.units == null ? '' : Number(x.units)) + '</td><td>' + esc(x.final_grade || '') + '</td></tr>');
+        body.push('<tr><td><div>' + esc(x.course_code) + '</div></td><td><div>' + esc(x.descriptive_title || '') + '</div></td>' +
+          '<td><div>' + esc(x.units == null ? '' : Number(x.units)) + '</div></td><td><div>' + esc(x.final_grade || '') + '</div></td></tr>');
       });
     });
-    var idsHtml = '<div class="ids"><span class="il">Name:</span><span class="iv">' + esc(c.sName) + '</span><span class="il">Student No.:</span><span class="iv">' + textImg(profile.student_no, 11, '#000', 'bold') + '</span>' +
+    var idsHtml = '<div class="ids"><span class="il">Name:</span><span class="iv">' + esc(c.sName) + '</span><span class="il" style="justify-self:end">Student No.:</span><span class="iv">' + textImg(profile.student_no, 11, '#000', 'bold') + '</span>' +
       '<span class="il">Program:</span><span class="iv" style="grid-column:2 / span 3;white-space:normal;overflow:visible">' + esc(profile.program || '') + '</span></div>';
     var head = gradeHeader(c) + '<div class="title">REPORT OF GRADES</div>' + idsHtml;
     var table = '<table><colgroup><col style="width:15%"><col style="width:65%"><col style="width:10%"><col style="width:10%"></colgroup>' +
