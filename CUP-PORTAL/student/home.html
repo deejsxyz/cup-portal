@@ -55,8 +55,6 @@
   .btn-s { background: #fff; color: var(--green); border: 1px solid var(--green); }
   .btn-p { background: var(--green); color: #fff; }
   .btn:disabled { opacity: .6; cursor: wait; }
-  #coeBtn:disabled { background: #cbd5d1; color: #64748b; opacity: 1; cursor: not-allowed; }
-  .coe-row { margin-top: 16px; }
   .msg { font-size: .95rem; margin-top: 12px; }
   .msg.bad { color: #b42318; }
   .msg.ok { color: var(--dg); }
@@ -105,10 +103,6 @@
     <h2>Enrollment Procedure</h2>
     <ol class="proc" id="proc"><li><p>Loading…</p></li></ol>
     <p class="msg" id="proc-note" hidden></p>
-    <div class="coe-row">
-      <button type="button" class="btn btn-p" id="coeBtn" disabled title="Available once the Registrar officially enrolls you">Download Certificate of Enrollment</button>
-      <p class="msg" id="coe-msg" hidden></p>
-    </div>
   </section>
 
   <section class="card">
@@ -197,27 +191,11 @@
             return '<li class="' + cls + '"><span class="num">' + s.n + '</span><div><h3>' + s.label + '</h3></div></li>';
           }).join('');
           var n = $('proc-note');
-          $('coeBtn').disabled = !res.j.officiallyEnrolled;
           if (res.j.officiallyEnrolled) { n.textContent = 'You are officially enrolled for this term.'; n.className = 'msg ok'; n.hidden = false; }
           else { n.textContent = ''; n.hidden = true; }
         }).catch(function () { $('proc').innerHTML = '<li><p>Could not load your enrollment steps.</p></li>'; });
     }
     loadProcedure();
-    $('coeBtn').addEventListener('click', function () {
-      var b = $('coeBtn'), m = $('coe-msg');
-      b.disabled = true; m.hidden = true;
-      fetch('/api/student/coe', { credentials: 'same-origin' }).then(function (r) {
-        if (!r.ok) return r.json().then(function (j) { throw new Error(j.error || 'Could not download your certificate.'); });
-        return r.blob().then(function (blob) {
-          var url = URL.createObjectURL(blob);
-          var a = document.createElement('a');
-          a.href = url; a.download = 'Certificate of Enrollment.xlsx';
-          document.body.appendChild(a); a.click(); a.remove();
-          setTimeout(function () { URL.revokeObjectURL(url); }, 10000);
-        });
-      }).catch(function (e) { m.textContent = e.message; m.className = 'msg bad'; m.hidden = false; })
-        .then(function () { b.disabled = false; });
-    });
     function say(t, ok) { var m = $('msg'); m.textContent = t; m.className = 'msg ' + (ok ? 'ok' : 'bad'); m.hidden = false; }
     function checked() {
       return Array.prototype.filter.call(document.querySelectorAll('#rows input[type=checkbox]'), function (c) { return c.checked; })

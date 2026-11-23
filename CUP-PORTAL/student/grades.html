@@ -26,6 +26,7 @@
   .btn.dark { background: var(--dg); color: #fff; }
   .btn.light { background: #fff; color: var(--g); border: 1px solid var(--line); }
   .btn:disabled { opacity: .55; cursor: not-allowed; }
+  #coeBtn:disabled { background: #cbd5d1; color: #64748b; opacity: 1; }
   .btn.logout { background: var(--gold); color: var(--dg); }
   nav.tabs { background: #fff; border-bottom: 1px solid var(--line); display: flex; justify-content: center; gap: 4px; padding: 0 12px; flex-wrap: wrap; }
   nav.tabs button { background: none; border: 0; padding: 14px 22px; font-weight: 700; cursor: pointer; color: #4b5b4b; border-bottom: 4px solid transparent; }
@@ -119,6 +120,10 @@
   <section class="card" id="proc-card">
     <ol class="proc" id="proc"><li><p>Loading…</p></li></ol>
     <p class="msg" id="proc-note" hidden></p>
+    <div class="coe-row" style="margin-top:14px">
+      <button type="button" class="btn dark" id="coeBtn" disabled title="Available once the Registrar officially enrolls you">Download Certificate of Enrollment</button>
+      <p class="msg" id="coe-msg" hidden></p>
+    </div>
   </section>
 
 
@@ -742,8 +747,24 @@
           }).join('');
           var n = $('proc-note');
           n.textContent = ''; n.hidden = true;
+          $('coeBtn').disabled = !res.j.officiallyEnrolled;
         }).catch(function () { $('proc').innerHTML = '<li><p>Could not load your enrollment steps.</p></li>'; });
     }
+    $('coeBtn').addEventListener('click', function () {
+      var b = $('coeBtn'), m = $('coe-msg');
+      b.disabled = true; m.hidden = true;
+      fetch('/api/student/coe', { credentials: 'same-origin' }).then(function (r) {
+        if (!r.ok) return r.json().then(function (j) { throw new Error(j.error || 'Could not download your certificate.'); });
+        return r.blob().then(function (blob) {
+          var url = URL.createObjectURL(blob);
+          var a = document.createElement('a');
+          a.href = url; a.download = 'Certificate of Enrollment.xlsx';
+          document.body.appendChild(a); a.click(); a.remove();
+          setTimeout(function () { URL.revokeObjectURL(url); }, 10000);
+        });
+      }).catch(function (e) { m.textContent = e.message; m.className = 'msg bad'; m.hidden = false; })
+        .then(function () { b.disabled = false; });
+    });
     loadProcedure();
   window.cupRefreshEnroll = function () { applyEnrollWindow(); loadPrereg(); loadProcedure(); loadEnrolled(); loadImmStudent(); };
   applyEnrollWindow();
