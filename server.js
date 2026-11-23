@@ -5419,34 +5419,6 @@ const ENROLL_CHECKS = [
   { label: 'Step 6 · Advising slip submitted', ok: (r) => !!r.advising_slip_at },
 ];
 function enrollMissing(r) { return ENROLL_CHECKS.filter((c) => !c.ok(r)).map((c) => c.label); }
-// Detailed enrollment steps of every student pre-registered for the active term (Progress tab).
-app.get('/api/registrar/enrollment-progress', requireRegistrar, async (req, res) => {
-  const college = step1College(req, req.query.college);
-  if (!college || !REG_COLLEGES.includes(college)) return res.status(400).json({ error: 'Choose a college.' });
-  try {
-    const pt = await gradingTerm();
-    const { rows } = await pool.query(
-      `SELECT s.student_no, s.last_name, s.first_name, s.middle_name, s.program, s.year_level, s.section, s.status, s.step1_status,
-              s.step2_evaluated_at, s.step2_advised_at, s.step2_sectioned_at, s.nstp_enrolled_at, s.csc_paid_at, s.advising_slip_at,
-              ${nstpPassedSql('s')} AS nstp_passed
-         FROM reg_students s
-        WHERE s.college = $1 AND s.status IN ('enrolled','pre-registered')
-          AND EXISTS (SELECT 1 FROM reg_preregistrations p WHERE p.student_no = s.student_no AND p.term = $2 AND p.academic_year = $3)
-        ORDER BY s.year_level, s.section, s.last_name, s.first_name`, [college, pt.term, pt.ay]);
-    const students = rows.map((x) => ({
-      student_no: x.student_no,
-      name: [x.last_name, x.first_name, x.middle_name].filter(Boolean).join(', '),
-      program: x.program || '', year_level: x.year_level, section: x.section || '',
-      officially_enrolled: x.status === 'enrolled',
-      steps: ENROLL_CHECKS.map((c) => ({ label: c.label, done: !!c.ok(x) })),
-      missing: enrollMissing(x),
-    }));
-    res.json({ term: pt.term, academic_year: pt.ay, students });
-  } catch (err) {
-    console.error(err);
-    res.status(500).json({ error: 'Could not load the enrollment progress.' });
-  }
-});
 // True when the student has an approved PASSED grade (3.00 or better) in NSTP 1 (NSTP 101, NSTP 1 or ROTC 1) and in NSTP 2 (NSTP 102).
 // Such a student skips NSTP enrollment and Step 3 is complete automatically.
 const nstpPassedSql = (t = 'reg_students') => `(EXISTS (SELECT 1 FROM reg_grades g WHERE g.student_no = ${t}.student_no AND g.course_code IN ('NSTP 101','NSTP 1','ROTC 1') AND g.status = 'approved' AND g.final_grade::text ~ '^[0-9]+(\\.[0-9]+)?$' AND g.final_grade::text::numeric <= 3) AND EXISTS (SELECT 1 FROM reg_grades g WHERE g.student_no = ${t}.student_no AND g.course_code = 'NSTP 102' AND g.status = 'approved' AND g.final_grade::text ~ '^[0-9]+(\\.[0-9]+)?$' AND g.final_grade::text::numeric <= 3))`;
