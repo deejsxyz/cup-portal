@@ -1436,9 +1436,9 @@ app.get('/verify-document', async (req, res) => {
         enrolled += u;
         if (String(r.remarks || '').toLowerCase() === 'passed') earned += u;
       });
-      const lines = data.rows.map((r) => `<tr><td>${esc(r.course_code)}</td><td>${esc(r.descriptive_title || '')}</td><td>${esc(classSection)}</td><td>${esc(r.final_grade ?? '')}</td><td></td><td>${esc(r.units ?? '')}</td><td>${esc(r.remarks ?? '')}</td></tr>`).join('');
       const abbrP = (w.program || '').match(/\(([^)]+)\)\s*$/);
       const classSection = (abbrP ? abbrP[1] : (w.program || '')) + (w.year_level ? '-' + w.year_level : '') + (w.section || '');
+      const lines = data.rows.map((r) => `<tr><td>${esc(r.course_code)}</td><td>${esc(r.descriptive_title || '')}</td><td>${esc(classSection)}</td><td>${esc(r.final_grade ?? '')}</td><td></td><td>${esc(r.units ?? '')}</td><td>${esc(r.remarks ?? '')}</td></tr>`).join('');
       const info = (k, v) => `<div><b>${esc(k)}:</b> ${esc(v ?? '')}</div>`;
       return page(`<div style="text-align:center"><div style="font-weight:bold;font-size:18px">CITY UNIVERSITY OF PASAY</div><div style="font-size:13px">(PAMANTASAN NG LUNGSOD NG PASAY)</div><div style="font-size:13px">Pasadeña St., Pasay City</div></div>
         <h2 style="text-align:center;text-decoration:underline;margin:14px 0 8px">REPORT OF GRADES</h2>
