@@ -3158,7 +3158,7 @@ function maskEmail(e) {
 }
 app.get('/api/student/profile', requirePortal('student'), async (req, res) => {
   const r = await pool.query(
-    `SELECT student_no, first_name, middle_name, last_name, college, program, year_level, section, status, birthday, birthday_changed, email, photo, photo_changed_at, COALESCE(step1_status, '') AS step1_status
+    `SELECT student_no, first_name, middle_name, last_name, gender, major, college, program, year_level, section, status, birthday, birthday_changed, email, photo, photo_changed_at, COALESCE(step1_status, '') AS step1_status
        FROM reg_students WHERE student_no = $1`, [req.portal.student_no]);
   if (!r.rows.length) return res.status(404).json({ error: 'Student record not found.' });
   const s = r.rows[0];
@@ -3174,7 +3174,7 @@ app.get('/api/student/profile', requirePortal('student'), async (req, res) => {
     term_status: termStatus,
     student_no: s.student_no, first_name: s.first_name, middle_name: s.middle_name || '', last_name: s.last_name,
     college: s.college, college_name: COLLEGE_FULL_NAMES[s.college] || s.college, college_logo: COLLEGE_LOGOS[s.college] || '/images/cup-logo-seal.png',
-    program: canonicalProgram(s.program) || s.program, year_level: s.year_level, section: s.section, status: s.status,
+    program: canonicalProgram(s.program) || s.program, major: s.major, gender: s.gender, year_level: s.year_level, section: s.section, status: s.status,
     birthday: s.birthday, birthday_changed: s.birthday_changed, email_hint: s.email ? maskEmail(s.email) : '',
     photo: s.photo || null,
     photo_next_change: null,
