@@ -482,7 +482,39 @@
   function gradeProgressDone() {
     setTimeout(function () { $('gradeProg').hidden = true; $('gradeBar').style.width = '0%'; $('copyBtn').disabled = false; $('reportBtn').disabled = false; }, 400);
   }
+  // Seals are converted to greyscale before printing, so the printout is greyscale.
+  var greyCache = {};
+  function greyDataUrl(url) {
+    if (greyCache[url]) return Promise.resolve(greyCache[url]);
+    return new Promise(function (resolve) {
+      var im = new Image();
+      im.onload = function () {
+        try {
+          var cv = document.createElement('canvas'); cv.width = im.naturalWidth; cv.height = im.naturalHeight;
+          var cx = cv.getContext('2d'); cx.drawImage(im, 0, 0);
+          var d = cx.getImageData(0, 0, cv.width, cv.height), px = d.data;
+          for (var i = 0; i < px.length; i += 4) { var y = 0.299 * px[i] + 0.587 * px[i + 1] + 0.114 * px[i + 2]; px[i] = px[i + 1] = px[i + 2] = y; }
+          cx.putImageData(d, 0, 0);
+          greyCache[url] = cv.toDataURL('image/png'); resolve(greyCache[url]);
+        } catch (e) { resolve(url); }
+      };
+      im.onerror = function () { resolve(url); };
+      im.src = url;
+    });
+  }
+  function greyscaleHtml(html) {
+    var found = html.match(/src="https?:\/\/[^"]+\/images\/[^"]+"/g) || [], uniq = {};
+    found.forEach(function (m) { uniq[m.slice(5, -1)] = true; });
+    return Promise.all(Object.keys(uniq).map(function (u) { return greyDataUrl(u).then(function (d) { return [u, d]; }); }))
+      .then(function (pairs) {
+        pairs.forEach(function (pr) { html = html.split('src="' + pr[0] + '"').join('src="' + pr[1] + '"'); });
+        return html;
+      });
+  }
   function printGradeDoc(html) {
+    greyscaleHtml(html).then(printGradeDocNow);
+  }
+  function printGradeDocNow(html) {
     $('copyBtn').disabled = true; $('reportBtn').disabled = true;
     gradeProgress(30);
     var frame = document.createElement('iframe');
