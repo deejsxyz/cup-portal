@@ -2948,7 +2948,21 @@ app.get('/api/student/grades', requirePortal('student'), async (req, res) => {
     const [ay, term] = k.split('|');
     gpa[k] = college ? await termGpaFor(req.portal.student_no, college, ay, term) : '-';
   }
-  res.json({ grades: rows, gpa });
+  // Lecture and skills lab are one subject here too, the same as on the registrar's Certificate of Grades.
+  const combinedRows = [];
+  const termKeys = [...new Set(rows.map((x) => x.academic_year + '|' + x.term))];
+  for (const k of termKeys) {
+    const items = rows.filter((x) => x.academic_year + '|' + x.term === k);
+    const input = items.map((r) => ({ code: r.course_code, title: r.descriptive_title || '', units: Number(r.units) || 0, grade: r.final_grade == null ? '' : String(r.final_grade), src: r }));
+    combineLabLecture(input).forEach((o) => {
+      if (o.src) { combinedRows.push(o.src); return; }
+      const parts = items.filter((r) => r.course_code === o.code || r.course_code === o.code + ' LECT' || r.course_code === o.code + ' SL');
+      combinedRows.push({ course_code: o.code, descriptive_title: o.title, units: o.units, final_grade: o.dash ? '\u2014' : o.grade,
+        remarks: parts.length && parts.every((r) => r.remarks === parts[0].remarks) ? (parts[0].remarks || '') : '',
+        term: items[0].term, academic_year: items[0].academic_year });
+    });
+  }
+  res.json({ grades: combinedRows, gpa });
 });
 
 // ---- Student status (Retention Policies, section 4.17) ----
