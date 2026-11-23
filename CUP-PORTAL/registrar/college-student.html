@@ -35,7 +35,6 @@
       <div class="flex flex-col lg:flex-row lg:items-center justify-between gap-3">
         <div class="flex flex-wrap items-center gap-2">
           <div class="relative w-full sm:w-64"><input id="viewStudentSearch" type="text" autocomplete="off" placeholder="Search student number or name" class="w-full pl-3 pr-8 py-2 rounded-lg border border-slate-300 text-xs"><button type="button" id="viewSearchClear" title="Close and clear search" aria-label="Close and clear search" class="absolute right-2 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-700 text-base leading-none px-1">&times;</button></div>
-          <button type="button" id="viewAllBtn" class="px-4 py-2 rounded-lg bg-indigo-600 hover:bg-indigo-700 text-white text-xs font-bold shadow-sm">View All Students</button>
           <button type="button" id="viewPrintListBtn" class="px-4 py-2 rounded-lg bg-slate-700 hover:bg-slate-800 text-white text-xs font-bold shadow-sm">🖨️ Print Student List</button>
           <select id="viewYearFilter" class="bg-white px-3 py-2 rounded-lg border border-slate-300 text-xs font-bold"><option value="">All Year Levels</option><option value="1">1st Year</option><option value="2">2nd Year</option><option value="3">3rd Year</option><option value="4">4th Year</option></select>
           <select id="viewSecFilter" class="bg-white px-3 py-2 rounded-lg border border-slate-300 text-xs font-bold">
@@ -282,7 +281,7 @@ window.cupYr = function (p, y) { var m = /\(([^)]+)\)\s*$/.exec(p || ''); return
 
   var PER_PAGE = 10;
   var all = [];
-  var page = 1, showAll = false, current = null;
+  var page = 1, showAll = true, current = null; // the full list is shown by default
   var $ = function (id) { return document.getElementById(id); };
   function esc(v) { return String(v == null ? '' : v).replace(/[&<>"']/g, function (c) { return { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]; }); }
   function fullName(s) { return [s.last_name + ',', s.first_name, s.middle_name || ''].join(' ').replace(/\s+/g, ' ').trim(); }
@@ -361,7 +360,7 @@ window.cupYr = function (p, y) { var m = /\(([^)]+)\)\s*$/.exec(p || ''); return
     });
   }
   /* ----- View Student ----- */
-  function listActive() { return showAll || $('viewEnrolledToggle').checked || $('viewStudentSearch').value.trim() !== '' || $('viewYearFilter').value !== '' || $('viewSecFilter').value !== '' || wantedProg !== null; }
+  function listActive() { return true || $('viewEnrolledToggle').checked || $('viewStudentSearch').value.trim() !== '' || $('viewYearFilter').value !== '' || $('viewSecFilter').value !== '' || wantedProg !== null; }
   function filtered() {
     if (!listActive()) return [];
     var q = $('viewStudentSearch').value.trim().toLowerCase();
@@ -403,7 +402,6 @@ window.cupYr = function (p, y) { var m = /\(([^)]+)\)\s*$/.exec(p || ''); return
     $('viewPageInfo').textContent = listActive() ? rows.length + ' student(s) · Page ' + page + ' of ' + pages : '';
     $('viewPrevBtn').disabled = page <= 1;
     $('viewNextBtn').disabled = page >= pages;
-    $('viewAllBtn').textContent = showAll ? 'Paged View' : 'View All Students';
   }
   // Enrolled subjects and grades, with A.Y. and semester filters to view other records.
   var viewHist = [], viewCtx = {}, viewNo = '';
@@ -661,7 +659,6 @@ window.cupYr = function (p, y) { var m = /\(([^)]+)\)\s*$/.exec(p || ''); return
   $('viewYearFilter').addEventListener('change', function () { page = 1; renderList(); });
   $('viewSecFilter').addEventListener('change', function () { page = 1; renderList(); });
   $('viewEnrolledToggle').addEventListener('change', function () { page = 1; renderList(); });
-  $('viewAllBtn').addEventListener('click', function () { showAll = !showAll; page = 1; renderList(); });
   $('viewPrevBtn').addEventListener('click', function () { page--; renderList(); });
   $('viewNextBtn').addEventListener('click', function () { page++; renderList(); });
   $('viewPrintListBtn').addEventListener('click', function () {
@@ -1483,11 +1480,10 @@ function progAbbrOf(p) { var m = /\(([^)]+)\)\s*$/.exec(p || ''); return m ? m[1
       } };
     }
     if (name === 'view') {
-      var vs = g('viewStudentSearch'), yf = g('viewYearFilter'), sf = g('viewSecFilter'), va = g('viewAllBtn');
-      var showingAll = !!va && va.textContent.trim() === 'Paged View';
+      var vs = g('viewStudentSearch'), yf = g('viewYearFilter'), sf = g('viewSecFilter');
+      var showingAll = false;
       if ((vs && vs.value) || wantedProg || (yf && yf.value) || (sf && sf.value) || showingAll) {
         return { discards: false, run: function () {
-          if (showingAll) va.click();
           if (vs && vs.value) { vs.value = ''; vs.dispatchEvent(new Event('input')); }
           if (yf && yf.value) { yf.value = ''; yf.dispatchEvent(new Event('change')); }
           if (sf && sf.value) { sf.value = ''; sf.dispatchEvent(new Event('change')); }
