@@ -173,7 +173,6 @@
     </div>
     <div class="actions">
       <button type="button" class="btn dark" id="copyBtn">Copy of Grades (Selected Term)</button>
-      <button type="button" class="btn" id="reportBtn">Report of Grades (All Terms)</button>
       <div class="gprog" id="gradeProg" hidden><div id="gradeBar"></div></div>
     </div>
     <div class="card">
@@ -350,29 +349,22 @@
     GS: '/images/college-graduate.png', 'TESDA-TVI': '/images/tesda-logo.png'
   };
   var DOC_CSS = {
-    copy: '@page{size:A5 portrait;margin:0}body{margin:0;font-family:Arial,Helvetica,sans-serif;color:#000}' +
-      '.sheet{position:relative;width:148mm;height:210mm;box-sizing:border-box;padding:8mm 10mm 7mm;font-size:9pt;line-height:1.25;display:flex;flex-direction:column;overflow:hidden;page-break-after:always;break-after:page}' +
+    copy: '@page{size:A5 landscape;margin:0}body{margin:0;font-family:Arial,Helvetica,sans-serif;color:#000}' +
+      '.sheet{position:relative;width:210mm;height:148mm;box-sizing:border-box;padding:5mm 9mm 4mm;font-size:8pt;line-height:1.2;display:flex;flex-direction:column;overflow:hidden;page-break-after:always;break-after:page}' +
       '.sheet:last-child{page-break-after:auto;break-after:auto}' +
-      '.hdr{display:flex;align-items:center;justify-content:center;gap:2mm;text-align:center}.hdr img{width:15mm;height:15mm;object-fit:contain}' +
-      '@font-face{font-family:"CUP Algerian";src:url(/CUP-PORTAL/fonts/algerian.ttf) format("truetype")}@font-face{font-family:"CUP Script";src:url(/CUP-PORTAL/fonts/script-mt-bold.ttf) format("truetype")}.u1{font-family:"CUP Algerian",Algerian,serif;font-size:11pt;font-weight:bold;color:#000}.u2{font-size:7.5pt;color:#000}.c1{font-family:"CUP Script","Script MT Bold",cursive;font-size:16pt;font-weight:normal;font-style:normal;color:#000;margin-top:1mm}.addr{font-size:6.5pt;color:#000}' +
-      '.title{text-align:center;font-weight:bold;font-size:13pt;margin:6mm 0 5mm}' +
-      '.frow{display:flex;align-items:flex-end;gap:2mm;margin-bottom:2.5mm}.fl{white-space:nowrap}' +
-      '.fv{flex:1;border-bottom:1px solid #000;font-weight:bold;padding:0 1mm;min-width:0;white-space:nowrap;overflow:hidden}' +
-      '.gw{position:relative;overflow:hidden;width:100%;margin-top:5mm}' +
-      'table{width:100%;border-collapse:collapse;font-size:9pt;table-layout:fixed}' +
-      'th,td{border:1px solid #000;padding:0 1.2mm;height:5.3mm;line-height:1;overflow:hidden;white-space:nowrap}th{font-weight:bold;text-align:center}td.c{text-align:center}td.l{text-align:left}' +
+      '.hdr{display:flex;align-items:center;justify-content:center;gap:2mm;text-align:center}.hdr img{width:13mm;height:13mm;object-fit:contain}' +
+      '@font-face{font-family:"CUP Algerian";src:url(/CUP-PORTAL/fonts/algerian.ttf) format("truetype")}@font-face{font-family:"CUP Script";src:url(/CUP-PORTAL/fonts/script-mt-bold.ttf) format("truetype")}.u1{font-family:"CUP Algerian",Algerian,serif;font-size:10pt;font-weight:bold;color:#000}.u2{font-size:6.5pt;color:#000}.c1{font-family:"CUP Script","Script MT Bold",cursive;font-size:13pt;font-weight:normal;font-style:normal;color:#000;margin-top:0.5mm}.addr{font-size:6pt;color:#000}' +
+      '.title{text-align:center;font-weight:bold;font-size:10pt;text-decoration:underline;margin:2.5mm 0 2mm}' +
+      '.info{display:grid;grid-template-columns:1fr 1fr;column-gap:10mm;row-gap:0.8mm;font-size:8pt;margin-bottom:2mm}.info div{white-space:nowrap;overflow:hidden}.info .k{display:inline-block;width:24mm}' +
+      '.gw{position:relative;overflow:hidden;width:100%}' +
+      'table{width:100%;border-collapse:collapse;font-size:7.5pt;table-layout:fixed}' +
+      'th,td{border:0.5pt solid #000;padding:0 1mm;height:4.4mm;line-height:1;overflow:hidden;white-space:nowrap}th{font-weight:bold;text-align:center;height:auto;padding:0.8mm 1mm;line-height:1.1}td.c{text-align:center}td.l{text-align:left}' +
       '.wm{position:absolute;inset:0;z-index:10;pointer-events:none;overflow:hidden}.wm-img{position:absolute;inset:0;width:100%;height:100%}' +
       '.wm span{flex:1 1 0;min-height:0;overflow:hidden;display:block;white-space:nowrap;font:bold 6.5pt Arial,Helvetica,sans-serif;line-height:1;color:rgba(90,90,90,.16)}' +
-      '.qr{margin-top:auto;border-top:1px dashed #000;padding-top:2mm;display:flex;align-items:center;gap:3mm;font-size:8pt;line-height:1.3}.qr img{width:18mm;height:18mm}.vc{font-size:7pt;margin-top:1mm}',
-    report: '@page{size:8.5in 13in;margin:0.5in}@font-face{font-family:"CUP Algerian";src:url(/CUP-PORTAL/fonts/algerian.ttf) format("truetype")}@font-face{font-family:"CUP Script";src:url(/CUP-PORTAL/fonts/script-mt-bold.ttf) format("truetype")}body{margin:0;font-family:Arial,Helvetica,sans-serif;color:#000}' +
-      '.hdr{display:flex;align-items:center;justify-content:center;gap:3mm;text-align:center}.hdr img{width:17mm;height:17mm;object-fit:contain}' +
-      '.u1{font-family:"CUP Algerian",Algerian,serif;font-size:13pt;font-weight:bold;color:#000}.u2{font-size:7pt;color:#000}.c1{font-family:"CUP Script","Script MT Bold",cursive;font-size:16pt;font-weight:normal;font-style:normal;color:#000;margin-top:1mm}.addr{font-size:6pt;color:#000}' +
-      '.title{text-align:center;font-weight:bold;font-size:13pt;margin:6mm 0 4mm}' +
-      '.ids{display:grid;grid-template-columns:22mm 1fr 26mm 42mm;column-gap:3mm;row-gap:3mm;margin-top:3mm;margin-bottom:6mm;align-items:end;font-size:8pt}' +
-      '.il{white-space:nowrap}.iv{border-bottom:1px solid #000;font-weight:bold;padding:0 1mm;white-space:nowrap;overflow:hidden}' +
-      'table{width:100%;border-collapse:collapse;table-layout:fixed;font-size:8pt;line-height:1.15}thead{display:table-header-group}tr,td,td>div{break-inside:avoid;page-break-inside:avoid;-webkit-column-break-inside:avoid}' +
-      'th,td{border:0.25pt solid #000;padding:0.4mm 1mm;text-align:center;vertical-align:middle;height:auto}td>div{line-height:1.15}th{font-weight:bold}td:nth-child(2){text-align:left}' +
-      'tr.sec td{font-weight:normal}'
+      '.foot{margin-top:auto;display:flex;justify-content:space-between;align-items:flex-end;gap:4mm;font-size:7pt}' +
+      '.qr{display:flex;align-items:center;gap:2mm;line-height:1.3}.qr img{width:14mm;height:14mm}.vc{font-size:6.5pt;margin-top:0.5mm}' +
+      '.tot{min-width:70mm;font-size:7pt}.tot div{display:flex;justify-content:space-between;gap:4mm;font-weight:bold}' +
+      '.disc{font-size:5.5pt;margin-top:1mm;border-top:0.5pt solid #000;padding-top:0.8mm}',
   };
   // Text and the watermark are drawn as images, so the student number is not text a viewer can turn into a link.
   function textImg(text, px, color, weight) {
@@ -422,98 +414,64 @@
       '<div><b>Scan the QR code to verify</b><div class="vc">Verification code: ' + textImg(g.code, 9, '#000', 'normal') + '</div></div></div>';
   }
   function copyDocHtml(list) {
-    var c = gradeDocContext(), sheets = '';
+    var c = gradeDocContext(), sheets = '', ROWS = 12;
+    var ORD = ['1st', '2nd', '3rd', '4th'];
+    var collegeName = COLLEGE_NAMES[(profile && profile.college) || ''] || (profile && profile.college) || '';
     list.forEach(function (g) {
+      var items = g.items || [];
       var chunks = [];
-      for (var i = 0; i < Math.max(1, g.items.length); i += 14) chunks.push(g.items.slice(i, i + 14));
+      for (var i = 0; i < Math.max(1, items.length); i += ROWS) chunks.push(items.slice(i, i + ROWS));
+      var enrolled = 0, earned = 0;
+      items.forEach(function (r) {
+        var u = r.units == null ? 0 : Number(r.units);
+        enrolled += u;
+        if (String(r.remarks || '').toLowerCase() === 'passed') earned += u;
+      });
       chunks.forEach(function (chunk, ci) {
         var isLast = ci === chunks.length - 1, rows = '';
-        for (var n = 0; n < 14; n++) {
+        for (var n = 0; n < ROWS; n++) {
           var r = chunk[n];
           var nothing = !r && isLast && n === chunk.length;
-          rows += '<tr><td class="c">' + (n + 1) + '</td><td class="' + (nothing ? 'c' : 'l') + '">' +
-            esc(r ? r.course_code : (nothing ? '—— Nothing Follows ——' : '')) + '</td>' +
+          rows += '<tr><td class="l">' + esc(r ? r.course_code : '') + '</td>' +
+            '<td class="l">' + esc(nothing ? '*** Nothing Follows ***' : (r ? (r.descriptive_title || '') : '')) + '</td>' +
+            '<td class="c">' + esc(r ? c.yrSec : '') + '</td>' +
+            '<td class="c">' + esc(r ? (r.final_grade || '') : '') + '</td>' +
+            '<td class="c"></td>' +
             '<td class="c">' + esc(r && r.units != null ? Number(r.units) : '') + '</td>' +
-            '<td class="c">' + esc(r ? (r.final_grade || '') : '') + '</td><td class="c">' + esc(r ? (r.remarks || '') : '') + '</td></tr>';
+            '<td class="c">' + esc(r ? (r.remarks || '') : '') + '</td></tr>';
         }
-        var wm = wmImg(c.wmStrip, 40);
+        var totals = isLast ? '<div><span>Total Credit Units Enrolled</span><span>: ' + enrolled + '</span></div>' +
+          '<div><span>Total Credit Units Earned</span><span>: ' + earned + '</span></div>' +
+          '<div><span>Grade Point Average</span><span>: ' + esc(g.gpa || '\u2014') + '</span></div>' +
+          '<div><span>Total Subjects Enrolled</span><span>: ' + items.length + '</span></div>' : '';
+        var yearText = profile.year_level ? (ORD[Number(profile.year_level) - 1] || profile.year_level) + ' Year' : '';
         sheets += '<div class="sheet">' + gradeHeader(c) + '<div class="title">COPY OF GRADES</div>' +
-          '<div class="frow"><span class="fl">Name:</span><span class="fv">' + esc(c.sName) + '</span></div>' +
-          '<div class="frow"><span class="fl">Student No.:</span><span class="fv" style="flex:1.3">' + textImg(profile.student_no, 14.67, '#000', 'bold') + '</span>' +
-          '<span class="fl">Year &amp; Section:</span><span class="fv">' + esc(c.yrSec) + '</span></div>' +
-          '<div class="frow"><span class="fl">Academic Year:</span><span class="fv">' + esc(g.ay) + '</span>' +
-          '<span class="fl">Semester:</span><span class="fv">' + esc(termLabel(g.term)) + '</span></div>' +
-          '<div class="gw"><table><colgroup><col style="width:9%"><col style="width:47%"><col style="width:12%"><col style="width:14%"><col style="width:18%"></colgroup>' +
-          '<thead><tr><th>NO</th><th>SUBJECTS</th><th>UNITS</th><th>GRADES</th><th>REMARKS</th></tr></thead><tbody>' + rows +
-          '<tr><td class="c">15</td><td></td><td class="c"><b>GPA</b></td><td class="c"><b>' + (isLast ? esc(g.gpa || '\u2014') : '') + '</b></td><td></td></tr>' +
-          '</tbody></table><div class="wm" aria-hidden="true">' + wm + '</div></div>' +
-          qrBlock(g, c) + '</div>';
+          '<div class="info">' +
+            '<div><span class="k">Fullname</span>: ' + esc(c.sName) + '</div>' +
+            '<div><span class="k">Student No</span>: ' + textImg(profile.student_no, 11, '#000', 'bold') + '</div>' +
+            '<div><span class="k">Gender</span>: ' + esc(profile.gender || '') + '</div>' +
+            '<div><span class="k">Academic Year</span>: ' + esc(termLabel(g.term) + ' ' + g.ay) + '</div>' +
+            '<div><span class="k">College</span>: ' + esc(collegeName) + '</div>' +
+            '<div><span class="k">Year Level</span>: ' + esc(yearText) + '</div>' +
+            '<div><span class="k">Program</span>: ' + esc(profile.program || '') + '</div>' +
+            '<div><span class="k">Section</span>: ' + esc(profile.section || '') + '</div>' +
+            '<div><span class="k">Major</span>: ' + esc(profile.major || '') + '</div>' +
+          '</div>' +
+          '<div class="gw"><table><colgroup><col style="width:12%"><col style="width:38%"><col style="width:12%"><col style="width:10%"><col style="width:8%"><col style="width:10%"><col style="width:10%"></colgroup>' +
+          '<thead><tr><th>CODE</th><th>SUBJECT TITLE</th><th>CLASS SECTION</th><th>FINAL GRADE</th><th>RE-EXAM</th><th>CREDIT UNITS</th><th>REMARKS</th></tr></thead><tbody>' + rows + '</tbody></table>' +
+          '<div class="wm" aria-hidden="true">' + wmImg(c.wmStrip, 40) + '</div></div>' +
+          '<div class="foot">' + qrBlock(g, c) + '<div class="tot">' + totals + '</div></div>' +
+          '<div class="disc">DISCLAIMER: The student bears the responsibility for the proper disposal of the documents printed using the student portal. Any mishandling of printed records is solely the student\'s liability, and the University cannot be held accountable for such incidents.</div>' +
+          '</div>';
       });
     });
     return '<!doctype html><html><head><meta charset="utf-8"><meta name="format-detection" content="telephone=no,date=no,address=no,email=no"><title>Copy of Grades</title><style>' + DOC_CSS.copy + '</style></head><body>' + sheets + '</body></html>';
-  }
-  function reportDocHtml(list) {
-    var c = gradeDocContext(), body = [];
-    // Every subject of the curriculum, year 1 to 4, is printed; grades are filled in when approved.
-    var YR = ['First Year', 'Second Year', 'Third Year', 'Fourth Year'];
-    list.forEach(function (g) {
-      body.push('<tr class="sec"><td colspan="4"><div>' + esc(YR[g.year_level - 1] + ', ' + termLabel(g.term)) + '</div></td></tr>');
-      g.items.forEach(function (x) {
-        body.push('<tr><td><div>' + esc(x.course_code) + '</div></td><td><div>' + esc(x.descriptive_title || '') + '</div></td>' +
-          '<td><div>' + esc(x.units == null ? '' : Number(x.units)) + '</div></td><td><div>' + esc(x.final_grade || '') + '</div></td></tr>');
-      });
-    });
-    var idsHtml = '<div class="ids"><span class="il">Name:</span><span class="iv">' + esc(c.sName) + '</span><span class="il" style="justify-self:end">Student No.:</span><span class="iv">' + textImg(profile.student_no, 11, '#000', 'bold') + '</span>' +
-      '<span class="il">Program:</span><span class="iv" style="grid-column:2 / span 3;white-space:normal;overflow:visible">' + esc(profile.program || '') + '</span></div>';
-    var head = gradeHeader(c) + '<div class="title">REPORT OF GRADES</div>' + idsHtml;
-    var table = '<table><colgroup><col style="width:17%"><col style="width:65%"><col style="width:8%"><col style="width:10%"></colgroup>' +
-      '<thead><tr><th>COURSE CODE</th><th>DESCRIPTIVE TITLE</th><th>UNITS</th><th>GRADES</th></tr></thead><tbody>' + body.join('') + '</tbody></table>';
-    return '<!doctype html><html><head><meta charset="utf-8"><meta name="format-detection" content="telephone=no,date=no,address=no,email=no"><title>Report of Grades</title><style>' + DOC_CSS.report + '</style></head><body>' +
-      head + table + '</body></html>';
-  }
-  // Prints in a hidden frame (no new tab), after the seals have loaded.
-  // Small progress bar beside the buttons while the document is built and its images load.
-  function gradeProgress(pct) {
-    var box = $('gradeProg'), bar = $('gradeBar');
-    box.hidden = false; bar.style.width = pct + '%';
-  }
-  function gradeProgressDone() {
-    setTimeout(function () { $('gradeProg').hidden = true; $('gradeBar').style.width = '0%'; $('copyBtn').disabled = false; $('reportBtn').disabled = false; }, 400);
-  }
-  // Seals are converted to greyscale before printing, so the printout is greyscale.
-  var greyCache = {};
-  function greyDataUrl(url) {
-    if (greyCache[url]) return Promise.resolve(greyCache[url]);
-    return new Promise(function (resolve) {
-      var im = new Image();
-      im.onload = function () {
-        try {
-          var cv = document.createElement('canvas'); cv.width = im.naturalWidth; cv.height = im.naturalHeight;
-          var cx = cv.getContext('2d'); cx.drawImage(im, 0, 0);
-          var d = cx.getImageData(0, 0, cv.width, cv.height), px = d.data;
-          for (var i = 0; i < px.length; i += 4) { var y = 0.299 * px[i] + 0.587 * px[i + 1] + 0.114 * px[i + 2]; px[i] = px[i + 1] = px[i + 2] = y; }
-          cx.putImageData(d, 0, 0);
-          greyCache[url] = cv.toDataURL('image/png'); resolve(greyCache[url]);
-        } catch (e) { resolve(url); }
-      };
-      im.onerror = function () { resolve(url); };
-      im.src = url;
-    });
-  }
-  function greyscaleHtml(html) {
-    var found = html.match(/src="https?:\/\/[^"]+\/images\/[^"]+"/g) || [], uniq = {};
-    found.forEach(function (m) { uniq[m.slice(5, -1)] = true; });
-    return Promise.all(Object.keys(uniq).map(function (u) { return greyDataUrl(u).then(function (d) { return [u, d]; }); }))
-      .then(function (pairs) {
-        pairs.forEach(function (pr) { html = html.split('src="' + pr[0] + '"').join('src="' + pr[1] + '"'); });
-        return html;
-      });
   }
   function printGradeDoc(html) {
     greyscaleHtml(html).then(printGradeDocNow);
   }
   function printGradeDocNow(html) {
-    $('copyBtn').disabled = true; $('reportBtn').disabled = true;
+    $('copyBtn').disabled = true;
     gradeProgress(30);
     var frame = document.createElement('iframe');
     frame.style.cssText = 'position:fixed;width:0;height:0;border:0;visibility:hidden';
@@ -538,7 +496,6 @@
     var g = groups.filter(function (x) { return x.ay === $('aySelect').value && x.term === $('semSelect').value; });
     if (g.length && profile) printGradeDoc(copyDocHtml(g));
   });
-  $('reportBtn').addEventListener('click', function () { if (curriculum.length && profile) printGradeDoc(reportDocHtml(curriculum)); });
 
   /* Student status (retention policy 4.17) */
   function loadStatus() {
