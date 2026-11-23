@@ -32,7 +32,7 @@
       '.qr{display:flex;align-items:center;gap:2mm;line-height:1;font-size:7pt;font-family:Arial,Helvetica,sans-serif}.qr img{width:14mm;height:14mm}.vc{font-size:7pt;font-weight:normal;margin-top:0.8mm}' +
       '.tot{min-width:70mm;font-size:6pt;line-height:1;font-family:"CUP Courier","Courier New",monospace}.tot div{font-weight:bold;white-space:nowrap}.tot .tl{display:inline-block;width:42mm}.tot .gpa{margin-top:1.5em}.tot .subj{margin-top:2.5em}' +
       '.disc{margin-top:3mm;font-family:Arial,Helvetica,sans-serif;font-size:6pt;line-height:1;border-top:0.5pt solid #000;padding-top:0.8mm}' +
-      '.pf{margin-top:2mm;display:flex;justify-content:space-between;font-family:"CUP Courier","Courier New",monospace;font-size:6pt;font-weight:bold;line-height:1}.bot{margin-top:3mm;overflow:hidden}.botq{float:left}.cert{font-family:Arial,Helvetica,sans-serif;font-size:8pt;line-height:2.1;margin:3mm 0 4mm;text-align:justify}.fl{display:inline-block;border-bottom:0.5pt solid #000;padding:0 1mm;font-weight:bold;line-height:1.1}.ret{font-family:"CUP Courier","Courier New",monospace;font-size:7pt;margin-top:1mm}.sigs{overflow:hidden;margin-top:8mm;font-family:Arial,Helvetica,sans-serif;font-size:7.5pt}.sgL{width:88mm;overflow:hidden;float:left}.sgR{width:100mm;overflow:hidden}.sgR{float:right}.pb{margin-bottom:9mm}.cert{font-size:9pt;line-height:2.2}.sigs{font-size:9pt}.sgL,.sgR{width:88mm}.pb{font-weight:bold;font-style:italic;margin-bottom:12mm}.sgn{text-align:center;font-weight:bold;margin-bottom:0.5mm}.ln{border-top:0.5pt solid #000;height:0;margin-bottom:1mm}.lb{text-align:center}.note{font-style:italic;font-size:8pt;margin-top:12mm}.tot-flow{float:right;width:max-content;margin:0}',
+      '.pf{margin-top:2mm;display:flex;justify-content:space-between;font-family:"CUP Courier","Courier New",monospace;font-size:6pt;font-weight:bold;line-height:1}.bot{margin-top:3mm;overflow:hidden}.botq{float:left}.cert{font-family:Arial,Helvetica,sans-serif;font-size:8pt;line-height:2.1;margin:3mm 0 4mm;text-align:justify}.fl{display:inline-block;border-bottom:0.5pt solid #000;padding:0 1mm;font-weight:bold;line-height:1.1}.ret{font-family:"CUP Courier","Courier New",monospace;font-size:7pt;margin-top:1mm}.sigs{overflow:hidden;margin-top:8mm;font-family:Arial,Helvetica,sans-serif;font-size:7.5pt}.sgL{width:88mm;overflow:hidden;float:left}.sgR{width:100mm;overflow:hidden}.sgR{float:right}.pb{margin-bottom:9mm}.cert{font-size:9pt;line-height:2.2}.sigs{font-size:9pt}.sgL,.sgR{width:88mm}.pb{font-weight:bold;font-style:italic;margin-bottom:12mm}.sgn{text-align:center;font-weight:bold;margin-bottom:0.5mm}.ln{border-top:0.5pt solid #000;height:0;margin-bottom:1mm}.lb{text-align:center}.note{font-style:italic;font-size:8pt;margin-top:12mm}.reg .u1{font-size:11pt}.reg .u2{font-size:7pt;font-family:Arial,Helvetica,sans-serif}.reg .hdr img:first-child{position:relative;left:-3mm}.reg .cert{font-family:"CUP Courier","Courier New",monospace;font-size:7.5pt;line-height:2.4}.reg .fl{padding:1.5mm 2mm 0.6mm}.reg .sigs{font-size:6pt}.reg .note{font-size:7pt;font-style:italic}.tot-flow{float:right;width:max-content;margin:0}',
   };
   // Text and the watermark are drawn as images, so the student number is not text a viewer can turn into a link.
   function textImg(text, px, color, weight) {
@@ -48,11 +48,11 @@
       '" font-family="Courier New, Courier, monospace" font-size="' + px + '" font-weight="normal" fill="#000">' + esc(text) + '</text></svg>';
     return '<img alt="" style="height:' + h + 'px;width:' + w + 'px;vertical-align:middle" src="data:image/svg+xml;charset=utf-8,' + encodeURIComponent(svg) + '">';
   }
-  function wmImg(strip, rows) {
+  function wmImg(strip, rows, small) {
     var H = rows * 20, W = 1000, lines = '';
     for (var i = 0; i < rows; i++) {
       // Each line starts at a random point, so no line lines up with the one above it.
-      lines += '<text x="' + (-Math.round(Math.random() * W * 0.8)) + '" y="' + (i * 20 + 15) + '" font-family="Arial, Helvetica, sans-serif" font-size="14" font-weight="bold" fill="#000" fill-opacity="0.05">' + esc(strip.repeat(3)) + '</text>';
+      lines += '<text x="' + (-Math.round(Math.random() * W * 0.8)) + '" y="' + (i * 20 + 15) + '" font-family="Arial, Helvetica, sans-serif" font-size="' + (small ? 10 : 14) + '" font-weight="bold" fill="#000" fill-opacity="0.05">' + esc(strip.repeat(3)) + '</text>';
     }
     var svg = '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 ' + W + ' ' + H + '" preserveAspectRatio="none" width="100%" height="100%">' + lines + '</svg>';
     return '<img class="wm-img" alt="" src="data:image/svg+xml;charset=utf-8,' + encodeURIComponent(svg) + '">';
@@ -136,7 +136,7 @@
           '<div class="gpa"><span class="tl">Grade Point Average</span>: ' + esc(g.gpa || '\u2014') + '</div>' +
           '<div class="subj"><span class="tl">Total Subjects Enrolled</span>: ' + items.length + '</div>' : '';
         var yearText = profile.year_level ? (ORD[Number(profile.year_level) - 1] || profile.year_level) + ' Year' : '';
-        sheets += '<div class="sheet">' + gradeHeader(c) + '<div class="title">' + (reg ? 'CERTIFICATE OF GRADES' : 'REPORT OF GRADES') + '</div>' +
+        sheets += '<div class="sheet' + (reg ? ' reg' : '') + '">' + gradeHeader(c) + '<div class="title">' + (reg ? 'CERTIFICATE OF GRADES' : 'REPORT OF GRADES') + '</div>' +
           (reg ? certHtml(g, c) : '<div class="info">' +
             '<div><span class="kl">Fullname</span>: ' + esc(c.sName) + '</div>' +
             '<div><span class="kl">Gender</span>: ' + esc(profile.gender || '') + '</div>' +
@@ -151,7 +151,7 @@
           '</div>') +
           '<div class="gw"><table><colgroup><col style="width:12%"><col style="width:38%"><col style="width:12%"><col style="width:10%"><col style="width:8%"><col style="width:10%"><col style="width:10%"></colgroup>' +
           '<thead><tr><th>CODE</th><th>SUBJECT TITLE</th><th>CLASS<br>SECTION</th><th>FINAL<br>GRADE</th><th>RE-<br>EXAM</th><th>CREDIT<br>UNITS</th><th>REMARKS</th></tr></thead><tbody>' + rows + '</tbody></table>' +
-          '<div class="wm" aria-hidden="true">' + wmImg(c.wmStrip, 40) + '</div></div>' +
+          '<div class="wm" aria-hidden="true">' + wmImg(c.wmStrip, 40, reg) + '</div></div>' +
                     '<div class="bot"><div class="botq">' + (reg ? retHtml() : qrBlock(g, c)) + '</div>' + (totals ? '<div class="tot tot-flow">' + totals + '</div>' : '') + '</div>' + (reg ? sigsHtml() : '') +
           (reg ? '' : '<div class="disc">DISCLAIMER: The student bears the responsibility for the proper disposal of the documents printed using the student portal. Any mishandling of printed records is solely the student\'s liability, and the University cannot be held accountable for such incidents.</div>') +
           (reg ? '' : '<div class="pf"><span>Printed from City University of Pasay - Student Portal</span><span style="font-weight:normal">' + esc(printedAt) + '</span></div>') +
