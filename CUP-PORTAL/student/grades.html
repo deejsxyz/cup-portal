@@ -359,7 +359,7 @@
       '.gw{position:relative;overflow:hidden;width:100%;margin-top:5mm}' +
       'table{width:100%;border-collapse:collapse;font-size:9pt;table-layout:fixed}' +
       'th,td{border:1px solid #000;padding:0 1.2mm;height:5.3mm;line-height:1;overflow:hidden;white-space:nowrap}th{font-weight:bold;text-align:center}td.c{text-align:center}td.l{text-align:left}' +
-      '.wm{position:absolute;inset:0;z-index:10;pointer-events:none;display:flex;flex-direction:column;overflow:hidden}' +
+      '.wm{position:absolute;inset:0;z-index:10;pointer-events:none;overflow:hidden}.wm-img{position:absolute;inset:0;width:100%;height:100%}' +
       '.wm span{flex:1 1 0;min-height:0;overflow:hidden;display:block;white-space:nowrap;font:bold 6.5pt Arial,Helvetica,sans-serif;line-height:1;color:rgba(90,90,90,.16)}' +
       '.qr{margin-top:auto;border-top:1px dashed #000;padding-top:2mm;display:flex;align-items:center;gap:3mm;font-size:8pt;line-height:1.3}.qr img{width:18mm;height:18mm}.vc{font-size:7pt;margin-top:1mm}',
     report: '@page{size:8.5in 13in;margin:0}body{margin:0;font-family:Arial,Helvetica,sans-serif;color:#000}' +
@@ -372,10 +372,25 @@
       '.gw{position:relative;overflow:hidden;width:100%;margin-top:4mm}' +
       'table{width:100%;border-collapse:collapse;table-layout:fixed}th,td{border:1px solid #000;padding:0 1mm;height:5mm;line-height:1.15;text-align:center;font-size:8.5pt;overflow:hidden}' +
       'th{font-weight:bold}td.l{text-align:left}tr.sec td{font-weight:bold;height:5.5mm;text-align:left}' +
-      '.wm{position:absolute;inset:0;z-index:10;pointer-events:none;display:flex;flex-direction:column;overflow:hidden}' +
+      '.wm{position:absolute;inset:0;z-index:10;pointer-events:none;overflow:hidden}.wm-img{position:absolute;inset:0;width:100%;height:100%}' +
       '.wm span{flex:1 1 0;min-height:0;overflow:hidden;display:block;white-space:nowrap;font:bold 5pt Arial,Helvetica,sans-serif;line-height:1;color:rgba(90,90,90,.16)}' +
       '.qr{margin-top:auto;border-top:1px dashed #000;padding-top:2mm;display:flex;align-items:center;gap:3mm;font-size:8.5pt;line-height:1.3}.qr img{width:20mm;height:20mm}.vc{font-size:7.5pt;margin-top:1mm}'
   };
+  // Text and the watermark are drawn as images, so the student number is not text a viewer can turn into a link.
+  function textImg(text, px, color, weight) {
+    var w = Math.ceil(String(text).length * px * 0.62) + 4, h = Math.ceil(px * 1.3);
+    var svg = '<svg xmlns="http://www.w3.org/2000/svg" width="' + w + '" height="' + h + '" viewBox="0 0 ' + w + ' ' + h + '"><text x="0" y="' + Math.round(px * 0.95) +
+      '" font-family="Arial, Helvetica, sans-serif" font-size="' + px + '" font-weight="' + (weight || 'bold') + '" fill="' + (color || '#000') + '">' + esc(text) + '</text></svg>';
+    return '<img alt="" style="height:' + h + 'px;width:' + w + 'px;vertical-align:middle" src="data:image/svg+xml;charset=utf-8,' + encodeURIComponent(svg) + '">';
+  }
+  function wmImg(strip, rows) {
+    var H = rows * 20, W = 1000, lines = '';
+    for (var i = 0; i < rows; i++) {
+      lines += '<text x="0" y="' + (i * 20 + 15) + '" font-family="Arial, Helvetica, sans-serif" font-size="11" font-weight="bold" fill="rgba(90,90,90,0.16)">' + esc(strip.repeat(3)) + '</text>';
+    }
+    var svg = '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 ' + W + ' ' + H + '" preserveAspectRatio="none" width="100%" height="100%">' + lines + '</svg>';
+    return '<img class="wm-img" alt="" src="data:image/svg+xml;charset=utf-8,' + encodeURIComponent(svg) + '">';
+  }
   // Non-breaking hyphens stop Word/Safari turning the student number into a blue link.
   function noLink(v) { return String(v == null ? '' : v).replace(/-/g, '\u2011'); }
   function gradeDocContext() {
@@ -404,7 +419,7 @@
   function qrBlock(g, c) {
     if (!g || !g.code) return '';
     return '<div class="qr">' + (g.qr ? '<img src="' + g.qr + '" alt="Verification QR code">' : '') +
-      '<div><b>Scan the QR code to verify</b><div class="vc">Verification code: ' + esc(noLink(g.code)) + '</div></div></div>';
+      '<div><b>Scan the QR code to verify</b><div class="vc">Verification code: ' + textImg(g.code, 9, '#000', 'normal') + '</div></div></div>';
   }
   function copyDocHtml(list) {
     var c = gradeDocContext(), sheets = '';
@@ -421,10 +436,10 @@
             '<td class="c">' + esc(r && r.units != null ? Number(r.units) : '') + '</td>' +
             '<td class="c">' + esc(r ? (r.final_grade || '') : '') + '</td><td class="c">' + esc(r ? (r.remarks || '') : '') + '</td></tr>';
         }
-        var wm = ''; for (var k = 0; k < 40; k++) wm += '<span>' + esc(c.wmStrip.repeat(3)) + '</span>';
+        var wm = wmImg(c.wmStrip, 40);
         sheets += '<div class="sheet">' + gradeHeader(c) + '<div class="title">COPY OF GRADES</div>' +
           '<div class="frow"><span class="fl">Name:</span><span class="fv">' + esc(c.sName) + '</span></div>' +
-          '<div class="frow"><span class="fl">Student No.:</span><span class="fv" style="flex:1.3">' + esc(profile.student_no) + '</span>' +
+          '<div class="frow"><span class="fl">Student No.:</span><span class="fv" style="flex:1.3">' + textImg(profile.student_no, 14.67, '#000', 'bold') + '</span>' +
           '<span class="fl">Year &amp; Section:</span><span class="fv">' + esc(c.yrSec) + '</span></div>' +
           '<div class="frow"><span class="fl">Academic Year:</span><span class="fv">' + esc(g.ay) + '</span>' +
           '<span class="fl">Semester:</span><span class="fv">' + esc(termLabel(g.term)) + '</span></div>' +
@@ -447,10 +462,10 @@
       });
       rows += '<tr><td></td><td class="l"><b>GPA</b></td><td></td><td><b>' + esc(g.gpa || '\u2014') + '</b></td><td></td></tr>';
     });
-    var wm = ''; for (var k = 0; k < 130; k++) wm += '<span>' + esc(c.wmStrip.repeat(4)) + '</span>';
+    var wm = wmImg(c.wmStrip, 130);
     return '<!doctype html><html><head><meta charset="utf-8"><meta name="format-detection" content="telephone=no,date=no,address=no,email=no"><title>Report of Grades</title><style>' + DOC_CSS.report + '</style></head><body><div class="page">' +
       gradeHeader(c) + '<div class="title">REPORT OF GRADES</div>' +
-      '<div class="ids"><span class="il">Name:</span><span class="iv">' + esc(c.sName) + '</span><span class="il">Student No.:</span><span class="iv">' + esc(profile.student_no) + '</span>' +
+      '<div class="ids"><span class="il">Name:</span><span class="iv">' + esc(c.sName) + '</span><span class="il">Student No.:</span><span class="iv">' + textImg(profile.student_no, 14.67, '#000', 'bold') + '</span>' +
       '<span class="il">Program:</span><span class="iv">' + esc(profile.program || '') + '</span><span class="il">Year &amp; Section:</span><span class="iv">' + esc(c.yrSec) + '</span></div>' +
       '<div class="gw"><table><colgroup><col style="width:14%"><col style="width:40%"><col style="width:10%"><col style="width:17%"><col style="width:19%"></colgroup>' +
       '<thead><tr><th>SUBJECT CODE</th><th>DESCRIPTIVE TITLE</th><th>UNITS</th><th>GRADES</th><th>REMARKS</th></tr></thead><tbody>' + rows + '</tbody></table>' +
