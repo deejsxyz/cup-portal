@@ -1118,20 +1118,34 @@ app.post('/api/registrar/student-list.docx', requireRegistrar, async (req, res) 
     const newTbl = tbl.replace(trs[0], () => headerRow).replace(trs[1], () => dataRows);
     doc = doc.replace(tbl, () => newTbl);
 
-    // College registrars: college seal in place of the University seal, and the college name and address under the CUP address.
+    // College registrars: keep the CUP seal on the left and add the college seal on the right; the college name and address go under the CUP address.
     let headerXml = fsx.readFileSync(path.join(STUDENT_LIST_DIR, 'word', 'header1.xml'), 'utf8');
-    let logoBuf = null;
+    let headerRels = null, collegeLogo = null;
     const college = req.reg && req.reg.college;
     if (req.reg && req.reg.role !== 'superadmin' && college && COLLEGE_LOGOS[college]) {
       const logoPath = path.join(__dirname, 'public', COLLEGE_LOGOS[college]);
-      if (fsx.existsSync(logoPath)) logoBuf = fsx.readFileSync(logoPath);
-      const paras = headerXml.match(/<w:p[ >][\s\S]*?<\/w:p>/g);
-      const cupP = paras.find((x) => x.includes('CITY UNIVERSITY OF PASAY'));
-      const addrP = paras.find((x) => x.includes('Pasade'));
-      const fillPara = (pxml, text) => { let first = true; return pxml.replace(/<w:t(?: [^>]*)?>[^<]*<\/w:t>/g, () => { if (first) { first = false; return '<w:t xml:space="preserve">' + esc(text) + '</w:t>'; } return '<w:t></w:t>'; }); };
-      const collegeNameP = fillPara(cupP, String(COLLEGE_FULL_NAMES[college] || college).toUpperCase());
-      const collegeAddrP = fillPara(addrP, 'Pasade\u00f1a St, F.B Harrison, Pasay City');
-      headerXml = headerXml.replace(addrP, () => addrP + collegeNameP + collegeAddrP);
+      if (fsx.existsSync(logoPath)) {
+        collegeLogo = fsx.readFileSync(logoPath);
+        const paras = headerXml.match(/<w:p[ >][\s\S]*?<\/w:p>/g);
+        const cupP = paras.find((x) => x.includes('CITY UNIVERSITY OF PASAY'));
+        const addrP = paras.find((x) => x.includes('Pasade'));
+        const fillPara = (pxml, text) => { let first = true; return pxml.replace(/<w:t(?: [^>]*)?>[^<]*<\/w:t>/g, () => { if (first) { first = false; return '<w:t xml:space="preserve">' + esc(text) + '</w:t>'; } return '<w:t></w:t>'; }); };
+        const gap = '<w:p><w:pPr><w:pStyle w:val="Header"/></w:pPr></w:p>';
+        const collegeNameP = fillPara(cupP, String(COLLEGE_FULL_NAMES[college] || college).toUpperCase());
+        const collegeAddrP = fillPara(addrP, 'Pasadeña St, F.B Harrison, Pasay City');
+        headerXml = headerXml.replace(addrP, () => addrP + gap + collegeNameP + collegeAddrP);
+        // Clone the CUP seal drawing to the right margin, pointing at the college logo.
+        const seal = headerXml.match(/<w:r(?: [^>]*)?>(?:(?!<\/w:r>)[\s\S])*?<w:drawing>[\s\S]*?<\/w:drawing><\/w:r>/)[0];
+        const right = seal
+          .replace(/r:embed="rId1"/, 'r:embed="rIdCollegeSeal"')
+          .replace(/<wp:positionH relativeFrom="column">[\s\S]*?<\/wp:positionH>/, '<wp:positionH relativeFrom="margin"><wp:align>right</wp:align></wp:positionH>')
+          .replace(/ wp14:anchorId="[^"]*"| wp14:editId="[^"]*"/g, '')
+          .replace(/<wp:docPr id="\d+"/, '<wp:docPr id="901"')
+          .replace(/<pic:cNvPr id="\d+"/, '<pic:cNvPr id="901"');
+        headerXml = headerXml.replace(seal, () => seal + right);
+        headerRels = fsx.readFileSync(path.join(STUDENT_LIST_DIR, 'word', '_rels', 'header1.xml.rels'), 'utf8')
+          .replace('</Relationships>', '<Relationship Id="rIdCollegeSeal" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/image" Target="media/college-seal.png"/></Relationships>');
+      }
     }
     const archive = archiver('zip', { zlib: { level: 6 } });
     const chunks = [];
@@ -1144,10 +1158,12 @@ app.post('/api/registrar/student-list.docx', requireRegistrar, async (req, res) 
     });
     walk(STUDENT_LIST_DIR, '');
     files.sort((a, b) => (a === '[Content_Types].xml' ? -1 : b === '[Content_Types].xml' ? 1 : 0));
+    if (collegeLogo) { files.push('word/media/college-seal.png'); }
     for (const name of files) {
       if (name === 'word/document.xml') archive.append(Buffer.from(doc, 'utf8'), { name });
       else if (name === 'word/header1.xml') archive.append(Buffer.from(headerXml, 'utf8'), { name });
-      else if (name === 'word/media/image1.png' && logoBuf) archive.append(logoBuf, { name });
+      else if (name === 'word/_rels/header1.xml.rels' && headerRels) archive.append(Buffer.from(headerRels, 'utf8'), { name });
+      else if (name === 'word/media/college-seal.png') archive.append(collegeLogo, { name });
       else archive.append(fsx.readFileSync(path.join(STUDENT_LIST_DIR, name)), { name });
     }
     await archive.finalize();
