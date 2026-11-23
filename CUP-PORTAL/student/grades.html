@@ -466,7 +466,7 @@
     var idsHtml = '<div class="ids"><span class="il">Name:</span><span class="iv">' + esc(c.sName) + '</span><span class="il" style="justify-self:end">Student No.:</span><span class="iv">' + textImg(profile.student_no, 11, '#000', 'bold') + '</span>' +
       '<span class="il">Program:</span><span class="iv" style="grid-column:2 / span 3;white-space:normal;overflow:visible">' + esc(profile.program || '') + '</span></div>';
     var head = gradeHeader(c) + '<div class="title">REPORT OF GRADES</div>' + idsHtml;
-    var table = '<table><colgroup><col style="width:15%"><col style="width:65%"><col style="width:10%"><col style="width:10%"></colgroup>' +
+    var table = '<table><colgroup><col style="width:17%"><col style="width:65%"><col style="width:8%"><col style="width:10%"></colgroup>' +
       '<thead><tr><th>SUBJECT CODE</th><th>DESCRIPTIVE TITLE</th><th>UNITS</th><th>GRADES</th></tr></thead><tbody>' + body.join('') + '</tbody></table>';
     return '<!doctype html><html><head><meta charset="utf-8"><meta name="format-detection" content="telephone=no,date=no,address=no,email=no"><title>Report of Grades</title><style>' + DOC_CSS.report + '</style></head><body>' +
       head + table + '</body></html>';
