@@ -2963,7 +2963,7 @@ async function termCopyData(no, ay, term) {
       term, academic_year: ay });
   });
   const gpa = await termGpaFor(no, college, ay, term);
-  return { rows: combined, gpa };
+  return { rows: combined, gpa, college };
 }
 // Verification code bound to the printed content: any change to a grade, unit, remark or GPA changes the code.
 function printCopyCode(no, ay, term, data) {
@@ -2974,14 +2974,33 @@ function printCopyCode(no, ay, term, data) {
 }
 app.get('/api/student/grades', requirePortal('student'), async (req, res) => {
   const no = req.portal.student_no;
+  // Every enrolled term is listed, so its subjects show even before grades are approved.
   const { rows } = await pool.query(
-    `SELECT DISTINCT academic_year, term FROM reg_grades WHERE student_no = $1 AND status = 'approved' ORDER BY academic_year, term`, [no]);
+    `SELECT academic_year, term FROM reg_enrollments WHERE student_no = $1
+     UNION SELECT DISTINCT academic_year, term FROM reg_grades WHERE student_no = $1 AND status = 'approved'
+     ORDER BY 1, 2`, [no]);
   const grades = [], gpa = {}, docs = {};
   const base = `${req.protocol}://${req.get('host')}`;
   for (const t of rows) {
     const ay = t.academic_year, term = t.term, key = ay + '|' + term;
     const data = await termCopyData(no, ay, term);
     if (!data) continue;
+    if (!data.rows.length) {
+      // No approved grades yet: list the enrolled subjects with blank grades (no grade is shown or verified).
+      const en = await pool.query('SELECT subjects FROM reg_enrollments WHERE student_no = $1 AND academic_year = $2 AND term = $3', [no, ay, term]);
+      const subs = en.rows.length && Array.isArray(en.rows[0].subjects) ? en.rows[0].subjects : [];
+      const codes = [...new Set(subs.map((x) => x.course_code).filter(Boolean))];
+      if (codes.length) {
+        const cs = await pool.query('SELECT course_code, descriptive_title, units FROM reg_courses WHERE course_code = ANY($1) ORDER BY (college = $2) DESC', [codes, data.college]);
+        const course = new Map();
+        cs.rows.forEach((c) => { if (!course.has(c.course_code)) course.set(c.course_code, c); });
+        codes.forEach((code) => {
+          const c = course.get(code) || {};
+          grades.push({ course_code: code, descriptive_title: c.descriptive_title || '', units: c.units == null ? null : Number(c.units), final_grade: '', remarks: '', term, academic_year: ay });
+        });
+      }
+      continue;
+    }
     gpa[key] = data.gpa;
     data.rows.forEach((r) => grades.push(r));
     const code = printCopyCode(no, ay, term, data);

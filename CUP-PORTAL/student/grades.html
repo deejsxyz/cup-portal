@@ -371,7 +371,7 @@
       '.ids{display:grid;grid-template-columns:22mm 1fr 26mm 42mm;column-gap:3mm;row-gap:4mm;margin-top:3mm;align-items:end}' +
       '.il{white-space:nowrap}.iv{border-bottom:1px solid #000;font-weight:bold;padding:0 1mm;white-space:nowrap;overflow:hidden}' +
       '.gw{position:relative;overflow:hidden;width:100%;margin-top:4mm;flex:1 1 auto;min-height:0}' +
-      'table{width:100%;height:100%;border-collapse:collapse;table-layout:fixed}th,td{border:1px solid #000;padding:0 1mm;height:5mm;line-height:1.15;text-align:center;font-size:10pt;overflow:hidden}' +
+      'table{width:100%;border-collapse:collapse;table-layout:fixed}th,td{border:1px solid #000;padding:0 1mm;height:5mm;line-height:1.15;text-align:center;font-size:10pt;overflow:hidden}.page.fill table{height:100%}' +
       'th{font-weight:bold;font-size:11pt}td.l{text-align:left}tr.sec td{font-weight:bold;height:5.5mm;text-align:center}' +
       '.wm{position:absolute;inset:0;z-index:10;pointer-events:none;overflow:hidden}.wm-img{position:absolute;inset:0;width:100%;height:100%}' +
       '.wm span{flex:1 1 0;min-height:0;overflow:hidden;display:block;white-space:nowrap;font:bold 5pt Arial,Helvetica,sans-serif;line-height:1;color:rgba(90,90,90,.16)}' +
@@ -477,9 +477,11 @@
         '</div>';
     };
     var wmPage = '<div class="wm" aria-hidden="true">' + wmImg(c.wmStrip, 110) + '</div>';
+    // Full pages stretch their table down to the bottom margin; the last page keeps normal row heights.
     var out = pages.map(function (rowsHtml, idx) {
-      if (idx === 0) return '<div class="page">' + gradeHeader(c) + '<div class="title">REPORT OF GRADES</div>' + idsHtml + tbl(rowsHtml) + wmPage + '</div>';
-      return '<div class="page cont">' + tbl(rowsHtml) + wmPage + '</div>';
+      var fill = idx < pages.length - 1 ? ' fill' : '';
+      if (idx === 0) return '<div class="page' + fill + '">' + gradeHeader(c) + '<div class="title">REPORT OF GRADES</div>' + idsHtml + tbl(rowsHtml) + wmPage + '</div>';
+      return '<div class="page cont' + fill + '">' + tbl(rowsHtml) + wmPage + '</div>';
     }).join('');
     return '<!doctype html><html><head><meta charset="utf-8"><meta name="format-detection" content="telephone=no,date=no,address=no,email=no"><title>Report of Grades</title><style>' + DOC_CSS.report + '</style></head><body>' + out + '</body></html>';
   }
