@@ -445,6 +445,8 @@ window.cupYr = function (p, y) { var m = /\(([^)]+)\)\s*$/.exec(p || ''); return
       var k = h.term + '|' + h.academic_year;
       return '<option value="' + esc(k) + '"' + (k === key ? ' selected' : '') + '>' + esc(h.term + ' · A.Y. ' + h.academic_year) + '</option>';
     }).join('');
+    // Only approved grades are shown; grades still pending approval show a dash.
+    if (cur && cur.subjects) cur.subjects.forEach(function (x) { if (!x.grade_approved) x.final_grade = ''; });
     var hasGrades = !!cur && (cur.subjects || []).some(function (x) { return x.final_grade; });
     // Each column has a label line above its control, so the dropdown and the button share the same top and height.
     var filters = '<div class="flex flex-wrap items-start gap-3 mb-3"><div><div class="text-[10px] uppercase font-bold text-slate-500 mb-1">A.Y. and semester</div>' +

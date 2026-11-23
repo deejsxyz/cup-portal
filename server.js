@@ -2293,7 +2293,8 @@ app.get('/api/registrar/certificate-of-grades.xlsx', requireRegistrar, async (re
     const cs = await pool.query('SELECT course_code, descriptive_title, units, year_level, semester FROM reg_courses WHERE course_code = ANY($1) ORDER BY (college = $2) DESC', [codes, college]);
     const course = new Map();
     cs.rows.forEach((c) => { if (!course.has(c.course_code)) course.set(c.course_code, c); });
-    const gr = await pool.query('SELECT course_code, final_grade FROM reg_grades WHERE student_no = $1 AND college = $2 AND term = $3 AND academic_year = $4', [no, college, term, ay]);
+    // Only approved grades appear on the COG.
+    const gr = await pool.query("SELECT course_code, final_grade FROM reg_grades WHERE student_no = $1 AND college = $2 AND term = $3 AND academic_year = $4 AND status = 'approved'", [no, college, term, ay]);
     const grade = new Map(gr.rows.map((g) => [g.course_code, g.final_grade]));
     const rows = combineLabLecture(subjects.map((x) => {
       const c = course.get(x.course_code) || {};
@@ -3483,10 +3484,11 @@ app.get('/api/registrar/enrollments', requireRegistrar, async (req, res) => {
     });
   }
   // Grade of each subject for its own term (blank until the grade is recorded).
-  const gr = await pool.query('SELECT course_code, term, academic_year, final_grade FROM reg_grades WHERE student_no = $1', [no]);
+  const gr = await pool.query('SELECT course_code, term, academic_year, final_grade, status FROM reg_grades WHERE student_no = $1', [no]);
   const gm = new Map(gr.rows.map((g) => [g.term + '|' + g.academic_year + '|' + g.course_code, g.final_grade]));
+  const ga = new Map(gr.rows.map((g) => [g.term + '|' + g.academic_year + '|' + g.course_code, g.status === 'approved']));
   r.rows.forEach((e) => {
-    if (Array.isArray(e.subjects)) e.subjects.forEach((x) => { x.final_grade = gm.get(e.term + '|' + e.academic_year + '|' + x.course_code) || ''; });
+    if (Array.isArray(e.subjects)) e.subjects.forEach((x) => { const k = e.term + '|' + e.academic_year + '|' + x.course_code; x.final_grade = gm.get(k) || ''; x.grade_approved = !!ga.get(k); });
   });
   // Old: has enrollment history in an earlier term. New: none.
   const t = await gradingTerm();
