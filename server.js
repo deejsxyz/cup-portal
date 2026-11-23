@@ -1441,7 +1441,7 @@ app.get('/verify-document', async (req, res) => {
       const classSection = (abbrP ? abbrP[1] : (w.program || '')) + (w.year_level ? '-' + w.year_level : '') + (w.section || '');
       const info = (k, v) => `<div><b>${esc(k)}:</b> ${esc(v ?? '')}</div>`;
       return page(`<div style="text-align:center"><div style="font-weight:bold;font-size:18px">CITY UNIVERSITY OF PASAY</div><div style="font-size:13px">(PAMANTASAN NG LUNGSOD NG PASAY)</div><div style="font-size:13px">Pasadeña St., Pasay City</div></div>
-        <h2 style="text-align:center;text-decoration:underline;margin:14px 0 8px">COPY OF GRADES</h2>
+        <h2 style="text-align:center;text-decoration:underline;margin:14px 0 8px">REPORT OF GRADES</h2>
         <h3 style="color:#047857;margin:0 0 8px">Valid</h3>
         <div style="display:grid;grid-template-columns:1fr 1fr;gap:4px 16px;font-size:14px;margin-bottom:10px">
           ${info('Fullname', holder.toUpperCase())}${info('Student No', sid)}${info('Gender', w.gender)}${info('Academic Year', termText + ' ' + ay)}
