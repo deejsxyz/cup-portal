@@ -355,7 +355,7 @@
       '.fv{flex:1;border-bottom:1px solid #000;font-weight:bold;padding:0 1mm;min-width:0;white-space:nowrap;overflow:hidden}' +
       '.gw{position:relative;overflow:hidden;width:100%;margin-top:5mm}' +
       'table{width:100%;border-collapse:collapse;font-size:9pt;table-layout:fixed}' +
-      'th,td{border:1px solid #000;padding:0 1.2mm;height:5.3mm;line-height:1;overflow:hidden;white-space:nowrap}th{font-weight:bold;text-align:center}td.c{text-align:center}td.l{text-align:left}' +
+      'th,td{border:1px solid #000;padding:0 1.2mm;height:5.3mm;line-height:1;overflow:hidden;white-space:nowrap}th{font-weight:bold;text-align:center}td.c{text-align:center}td.l{text-align:left}.lc{font-size:6pt;color:#333;font-family:monospace}' +
       '.wm{position:absolute;inset:0;z-index:10;pointer-events:none;display:flex;flex-direction:column;overflow:hidden}' +
       '.wm span{flex:1 1 0;min-height:0;overflow:hidden;display:block;white-space:nowrap;font:bold 6.5pt Arial,Helvetica,sans-serif;line-height:1;color:rgba(90,90,90,.16)}' +
       '.qr{margin-top:auto;border-top:1px dashed #000;padding-top:2mm;display:flex;align-items:center;gap:3mm;font-size:8pt;line-height:1.3}.qr img{width:18mm;height:18mm}.vc{font-size:7pt;margin-top:1mm}',
@@ -368,7 +368,7 @@
       '.il{white-space:nowrap}.iv{border-bottom:1px solid #000;font-weight:bold;padding:0 1mm;white-space:nowrap;overflow:hidden}' +
       '.gw{position:relative;overflow:hidden;width:100%;margin-top:4mm}' +
       'table{width:100%;border-collapse:collapse;table-layout:fixed}th,td{border:1px solid #000;padding:0 1mm;height:5mm;line-height:1.15;text-align:center;font-size:8.5pt;overflow:hidden}' +
-      'th{font-weight:bold}td.l{text-align:left}tr.sec td{font-weight:bold;height:5.5mm;text-align:left}' +
+      'th{font-weight:bold}td.l{text-align:left}tr.sec td{font-weight:bold;height:5.5mm;text-align:left}.lc{font-size:6.5pt;color:#333;font-family:monospace}' +
       '.wm{position:absolute;inset:0;z-index:10;pointer-events:none;display:flex;flex-direction:column;overflow:hidden}' +
       '.wm span{flex:1 1 0;min-height:0;overflow:hidden;display:block;white-space:nowrap;font:bold 5pt Arial,Helvetica,sans-serif;line-height:1;color:rgba(90,90,90,.16)}' +
       '.qr{margin-top:auto;border-top:1px dashed #000;padding-top:2mm;display:flex;align-items:center;gap:3mm;font-size:8.5pt;line-height:1.3}.qr img{width:20mm;height:20mm}.vc{font-size:7.5pt;margin-top:1mm}'
@@ -414,7 +414,7 @@
           var r = chunk[n];
           var nothing = !r && isLast && n === chunk.length;
           rows += '<tr><td class="c">' + (n + 1) + '</td><td class="' + (nothing ? 'c' : 'l') + '">' +
-            esc(r ? r.course_code : (nothing ? '—— Nothing Follows ——' : '')) + '</td>' +
+            esc(r ? r.course_code : (nothing ? '—— Nothing Follows ——' : '')) + (r && r.lc ? ' <span class="lc">' + esc(r.lc) + '</span>' : '') + '</td>' +
             '<td class="c">' + esc(r && r.units != null ? Number(r.units) : '') + '</td>' +
             '<td class="c">' + esc(r ? (r.final_grade || '') : '') + '</td><td class="c">' + esc(r ? (r.remarks || '') : '') + '</td></tr>';
         }
@@ -439,7 +439,7 @@
     list.forEach(function (g) {
       rows += '<tr class="sec"><td colspan="5">' + esc(termLabel(g.term)) + ', A.Y. ' + esc(g.ay) + '</td></tr>';
       g.items.forEach(function (x) {
-        rows += '<tr><td class="l">' + esc(x.course_code) + '</td><td class="l">' + esc(x.descriptive_title || '') + '</td>' +
+        rows += '<tr><td class="l">' + esc(x.course_code) + (x.lc ? ' <span class="lc">' + esc(x.lc) + '</span>' : '') + '</td><td class="l">' + esc(x.descriptive_title || '') + '</td>' +
           '<td>' + esc(x.units == null ? '' : Number(x.units)) + '</td><td>' + esc(x.final_grade || '') + '</td><td>' + esc(x.remarks || '') + '</td></tr>';
       });
       rows += '<tr><td></td><td class="l"><b>GPA</b></td><td></td><td><b>' + esc(g.gpa || '\u2014') + '</b></td><td></td></tr>';
