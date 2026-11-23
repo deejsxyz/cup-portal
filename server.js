@@ -991,14 +991,16 @@ app.get('/api/nstp/students', requireNstp, async (req, res) => {
   try {
     const set = await pool.query("SELECT key, value FROM reg_settings WHERE key IN ('grading_semester','grading_ay')");
     const m = Object.fromEntries(set.rows.map((r) => [r.key, r.value]));
+    const pt = await gradingTerm();
     const [students, grades] = await Promise.all([
       pool.query(`SELECT s.student_no, s.last_name, s.first_name, COALESCE(s.middle_name, '') AS middle_name, COALESCE(s.name_extension, '') AS extension,
                          COALESCE(s.email, '') AS email, COALESCE(s.contact_number, '') AS contact_number, s.year_level, s.section, s.program,
                          COALESCE(s.nstp_subject, '') AS nstp_subject, s.nstp_enrolled_at, u.name AS instructor
                     FROM reg_students s LEFT JOIN reg_users u ON u.id = s.nstp_instructor_id
                    WHERE s.college = $1 AND s.status IN ('enrolled','pre-registered') AND s.step1_status = 'verified'
+                     AND ${PRE('s','2','3')}
                      AND NOT ${nstpPassedSql('s')}
-                   ORDER BY s.year_level, s.section, s.last_name, s.first_name`, [college]),
+                   ORDER BY s.year_level, s.section, s.last_name, s.first_name`, [college, pt.term, pt.ay]),
       pool.query("SELECT student_no, course_code, final_grade FROM reg_grades WHERE college = $1 AND course_code = ANY($2::text[]) AND status = 'approved'", [college, NSTP_CODES]),
     ]);
     const gradesBy = new Map();
@@ -5326,15 +5328,17 @@ app.get('/api/csc/students', requireCsc, async (req, res) => {
   const college = String(req.query.college || '');
   if (!REG_COLLEGES.includes(college)) return res.status(400).json({ error: 'Choose a college.' });
   try {
+    const pt = await gradingTerm();
     // Students whose Steps 1 to 4 are done (same rules as the student's enrollment steps). Step 5 (CSC fee) is what this list is for.
+    // Only students pre-registered for the active term appear.
     const { rows } = await pool.query(
       `SELECT student_no, last_name, first_name, middle_name, name_extension, program, year_level, section, csc_paid_at
        FROM reg_students WHERE college = $1 AND status IN ('enrolled','pre-registered')
-         AND step1_status = 'verified'
+         AND EXISTS (SELECT 1 FROM reg_preregistrations p WHERE p.student_no = reg_students.student_no AND p.term = $2 AND p.academic_year = $3) AND step1_status = 'verified'
          AND step2_evaluated_at IS NOT NULL AND step2_advised_at IS NOT NULL AND step2_sectioned_at IS NOT NULL
          AND (NOT (NOT (${nstpPassedSql()}) AND year_level = 1) OR nstp_enrolled_at IS NOT NULL)
          AND COALESCE(student_no, '') <> ''
-       ORDER BY last_name, first_name`, [college]);
+       ORDER BY last_name, first_name`, [college, pt.term, pt.ay]);
     res.json({ students: rows });
   } catch (err) {
     console.error(err);
@@ -5600,11 +5604,13 @@ app.get('/api/registrar/step2/section-counts', requireCollegeRegistrar, async (r
   const year = String(req.query.year || '').trim();
   if (!college || !REG_COLLEGES.includes(college) || !/^[1-9]$/.test(year)) return res.status(400).json({ error: 'Choose a college and year level.' });
   try {
+    const pt = await gradingTerm();
     const counts = await pool.query(
       `SELECT program, section, COUNT(*)::int AS n
        FROM reg_students WHERE college = $1 AND status IN ('enrolled','pre-registered') AND year_level::text = $2
+         AND ${PRE('reg_students','3','4')}
          AND section IS NOT NULL AND section <> ''
-       GROUP BY program, section`, [college, year]);
+       GROUP BY program, section`, [college, year, pt.term, pt.ay]);
     // Group by the program code in brackets, e.g. "Bachelor of Science in Nursing (BSN)" -> BSN
     var byKey = {};
     counts.rows.forEach(function (r) {
