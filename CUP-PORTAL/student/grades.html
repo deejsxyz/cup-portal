@@ -465,7 +465,7 @@
       });
     });
     var idsHtml = '<div class="ids"><span class="il">Name:</span><span class="iv">' + esc(c.sName) + '</span><span class="il">Student No.:</span><span class="iv">' + textImg(profile.student_no, 13, '#000', 'bold') + '</span>' +
-      '<span class="il">Program:</span><span class="iv">' + esc(profile.program || '') + '</span></div>';
+      '<span class="il">Program:</span><span class="iv" style="grid-column:2 / span 3">' + esc(profile.program || '') + '</span></div>';
     var pageHead = gradeHeader(c) + '<div class="title">REPORT OF GRADES</div>' + idsHtml;
     var pageJs = "(function(){var PAGE_H=12*96,pages=document.getElementById('pages'),head=document.getElementById('head'),src=document.getElementById('src');" +
       "var rows=Array.prototype.slice.call(src.children),inner=null;" +
