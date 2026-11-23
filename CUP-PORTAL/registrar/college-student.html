@@ -665,7 +665,13 @@ window.cupYr = function (p, y) { var m = /\(([^)]+)\)\s*$/.exec(p || ''); return
     var rows = filtered();
     var w = window.open('', '_blank');
     if (!w) return;
-    w.document.write('<!doctype html><html><head><meta charset="utf-8"><title>' + COLLEGE + ' Student List</title><style>body{font-family:Arial,sans-serif;margin:24px}table{width:100%;border-collapse:collapse;font-size:12px}th,td{border:1px solid #888;padding:4px 6px;text-align:left}</style></head><body><h2>' + COLLEGE + ' | Student List</h2><p>' + rows.length + ' student(s)</p><table><thead><tr><th>Student ID</th><th>Last Name</th><th>First Name</th><th>Middle Name</th><th>Year Level</th><th>Section</th><th>Contact Number</th></tr></thead><tbody>' +
+    w.document.write('<!doctype html><html><head><meta charset="utf-8"><title>' + COLLEGE + ' Student List</title><style>body{font-family:Arial,sans-serif;margin:24px}table{width:100%;border-collapse:collapse;font-size:12px}th,td{border:1px solid #888;padding:4px 6px;text-align:left}</style></head><body><h2>' + COLLEGE + ' | Student List</h2>' + (function () {
+      // Heading from the filters used, e.g. BSN1–A (program abbreviation, year level, section).
+      var abbr = wantedProg ? progAbbrOf(wantedProg.program) : '';
+      var yr = $('viewYearFilter').value, sec = $('viewSecFilter').value;
+      var code = abbr + yr + (sec ? '\u2013' + sec : '');
+      return code ? '<h3>' + esc(code) + '</h3>' : '';
+    })() + '<p>' + rows.length + ' student(s)</p><table><thead><tr><th>Student ID</th><th>Last Name</th><th>First Name</th><th>Middle Name</th><th>Year Level</th><th>Section</th><th>Contact Number</th></tr></thead><tbody>' +
       rows.map(function (s) { return '<tr><td>' + esc(s.student_no) + '</td><td>' + esc(s.last_name) + '</td><td>' + esc(s.first_name) + '</td><td>' + esc(s.middle_name) + '</td><td>' + esc(progAbbrOf(s.program)) + esc(s.year_level) + '</td><td>' + esc(s.section) + '</td><td>' + esc(s.contact_number) + '</td></tr>'; }).join('') +
       '</tbody></table><scr' + 'ipt src="/protect-logo.js"></scr' + 'ipt></body></html>');
     w.document.close(); w.focus(); w.print();
