@@ -3319,6 +3319,13 @@ async function sendCoe(res, no, college) {
         const cell = ws.getCell(c + row);
         cell.font = Object.assign({}, cell.font, { size: 9 });
       });
+      // Thin line under every column of the row, text centered vertically, the # centered.
+      for (let c = 1; c <= 33; c++) {
+        const cell = ws.getCell(row, c);
+        cell.border = Object.assign({}, cell.border, { bottom: { style: 'thin', color: { argb: 'FF000000' } } });
+        cell.alignment = Object.assign({}, cell.alignment, { vertical: 'middle' });
+      }
+      ws.getCell('A' + row).alignment = { horizontal: 'center', vertical: 'middle' };
     });
     // Fit text in the template's merged cells: header fields shrink to one line; subject cells wrap inside their own cell.
     const colNo = (letters) => letters.split('').reduce((n, ch) => n * 26 + (ch.charCodeAt(0) - 64), 0);
