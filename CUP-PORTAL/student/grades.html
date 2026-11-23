@@ -316,7 +316,12 @@
         var key = x.academic_year + '|' + x.term;
         (map[key] = map[key] || { ay: x.academic_year, term: x.term, items: [] }).items.push(x);
       });
-      groups = Object.keys(map).sort().map(function (k) { return map[k]; });
+      var gpaMap = (res.j && res.j.gpa) || {};
+      groups = Object.keys(map).sort().map(function (k) {
+        var v = gpaMap[k];
+        map[k].gpa = (v == null || v === '-') ? '\u2014' : v; // GPA comes from the server, same rule as the registrar
+        return map[k];
+      });
       var ayList = Array.from(new Set(groups.map(function (g) { return g.ay; })));
       $('aySelect').innerHTML = ayList.map(function (a) { return '<option value="' + esc(a) + '">A.Y. ' + esc(a) + '</option>'; }).join('');
       if (ayList.length) $('aySelect').value = ayList[ayList.length - 1];
@@ -419,7 +424,7 @@
           '<span class="fl">Semester:</span><span class="fv">' + esc(termLabel(g.term)) + '</span></div>' +
           '<div class="gw"><table><colgroup><col style="width:9%"><col style="width:47%"><col style="width:12%"><col style="width:14%"><col style="width:18%"></colgroup>' +
           '<thead><tr><th>NO</th><th>SUBJECTS</th><th>UNITS</th><th>GRADES</th><th>REMARKS</th></tr></thead><tbody>' + rows +
-          '<tr><td class="c">15</td><td></td><td class="c"><b>GPA</b></td><td class="c"><b>' + (isLast ? esc(gradeGpa(g.items)) : '') + '</b></td><td></td></tr>' +
+          '<tr><td class="c">15</td><td></td><td class="c"><b>GPA</b></td><td class="c"><b>' + (isLast ? esc(g.gpa || '\u2014') : '') + '</b></td><td></td></tr>' +
           '</tbody></table><div class="wm" aria-hidden="true">' + wm + '</div></div>' +
           '<div class="note"><b>NOTICE:</b> This is not an official document. This document does not require signatures. It is provided solely to verify the grades available in the ' + esc(c.collegeName) + ' database. To request an official Certificate of Grades, apply through the Office of the University Registrar at the City University of Pasay.</div></div>';
       });
@@ -434,7 +439,7 @@
         rows += '<tr><td class="l">' + esc(x.course_code) + '</td><td class="l">' + esc(x.descriptive_title || '') + '</td>' +
           '<td>' + esc(x.units == null ? '' : Number(x.units)) + '</td><td>' + esc(x.final_grade || '') + '</td><td>' + esc(x.remarks || '') + '</td></tr>';
       });
-      rows += '<tr><td></td><td class="l"><b>GPA</b></td><td></td><td><b>' + esc(gradeGpa(g.items)) + '</b></td><td></td></tr>';
+      rows += '<tr><td></td><td class="l"><b>GPA</b></td><td></td><td><b>' + esc(g.gpa || '\u2014') + '</b></td><td></td></tr>';
     });
     var wm = ''; for (var k = 0; k < 130; k++) wm += '<span>' + esc(c.wmStrip.repeat(4)) + '</span>';
     return '<!doctype html><html><head><meta charset="utf-8"><title>Report of Grades</title><style>' + DOC_CSS.report + '</style></head><body><div class="page">' +

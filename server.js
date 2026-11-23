@@ -2910,6 +2910,27 @@ app.post('/api/faculty/grades/batch', requirePortal('faculty'), async (req, res)
 
 
 // Student: only grades the University Registrar has approved.
+// GPA for one term, computed the same way as the registrar's Certificate of Grades.
+async function termGpaFor(no, college, ay, term) {
+  const en = await pool.query('SELECT year_level, subjects FROM reg_enrollments WHERE student_no = $1 AND college = $2 AND academic_year = $3 AND term = $4', [no, college, ay, term]);
+  if (!en.rows.length) return '-';
+  const e = en.rows[0];
+  const subjects = Array.isArray(e.subjects) ? e.subjects : [];
+  const codes = subjects.map((x) => x.course_code);
+  const cs = await pool.query('SELECT course_code, descriptive_title, units, year_level, semester FROM reg_courses WHERE course_code = ANY($1) ORDER BY (college = $2) DESC', [codes, college]);
+  const course = new Map();
+  cs.rows.forEach((c) => { if (!course.has(c.course_code)) course.set(c.course_code, c); });
+  // Only approved grades count.
+  const gr = await pool.query("SELECT course_code, final_grade FROM reg_grades WHERE student_no = $1 AND college = $2 AND term = $3 AND academic_year = $4 AND status = 'approved'", [no, college, term, ay]);
+  const grade = new Map(gr.rows.map((g) => [g.course_code, g.final_grade]));
+  const rows = combineLabLecture(subjects.map((x) => {
+    const c = course.get(x.course_code) || {};
+    const g = grade.has(x.course_code) ? grade.get(x.course_code) : '';
+    const outOfTerm = !!c.course_code && !(Number(c.year_level) === Number(e.year_level) && c.semester === term);
+    return { code: x.course_code, title: c.descriptive_title || '', units: Number(c.units) || 0, grade: g == null ? '' : String(g), outOfTerm };
+  }));
+  return cogCompute(rows, {}).gpa;
+}
 app.get('/api/student/grades', requirePortal('student'), async (req, res) => {
   const { rows } = await pool.query(
     `SELECT g.course_code, c.descriptive_title, c.units, g.final_grade, g.remarks, g.term, g.academic_year, g.approved_at
@@ -2918,7 +2939,16 @@ app.get('/api/student/grades', requirePortal('student'), async (req, res) => {
           WHERE course_code = g.course_code
           ORDER BY (college = g.college) DESC, college LIMIT 1) c ON true
       WHERE g.student_no = $1 AND g.status = 'approved' ORDER BY g.academic_year, g.term, g.course_code`, [req.portal.student_no]);
-  res.json({ grades: rows });
+  // GPA per term, from the same rule as the registrar's Certificate of Grades.
+  const gpa = {};
+  const cr = await pool.query('SELECT college FROM reg_students WHERE student_no = $1', [req.portal.student_no]);
+  const college = cr.rows.length ? cr.rows[0].college : '';
+  const keys = [...new Set(rows.map((x) => x.academic_year + '|' + x.term))];
+  for (const k of keys) {
+    const [ay, term] = k.split('|');
+    gpa[k] = college ? await termGpaFor(req.portal.student_no, college, ay, term) : '-';
+  }
+  res.json({ grades: rows, gpa });
 });
 
 // ---- Student status (Retention Policies, section 4.17) ----
