@@ -1131,7 +1131,7 @@ app.post('/api/registrar/student-list.docx', requireRegistrar, async (req, res) 
         const addrP = paras.find((x) => x.includes('Pasade'));
         const fillPara = (pxml, text) => { let first = true; return pxml.replace(/<w:t(?: [^>]*)?>[^<]*<\/w:t>/g, () => { if (first) { first = false; return '<w:t xml:space="preserve">' + esc(text) + '</w:t>'; } return '<w:t></w:t>'; }); };
         const gap = '<w:p><w:pPr><w:pStyle w:val="Header"/></w:pPr></w:p>';
-        const collegeNameP = fillPara(cupP, String(COLLEGE_FULL_NAMES[college] || college).toUpperCase());
+        const collegeNameP = fillPara(cupP, String(COLLEGE_FULL_NAMES[college] || college).toUpperCase()).replace(/<w:rFonts w:ascii="Algerian" w:hAnsi="Algerian" w:cs="Algerian"\/>/g, '<w:rFonts w:ascii="Arial" w:hAnsi="Arial" w:cs="Arial"/>');
         const collegeAddrP = fillPara(addrP, 'Pasadeña St, F.B Harrison, Pasay City');
         headerXml = headerXml.replace(addrP, () => addrP + gap + collegeNameP + collegeAddrP);
         // Clone the CUP seal drawing to the right margin, pointing at the college logo.
