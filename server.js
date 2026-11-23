@@ -5764,6 +5764,11 @@ app.post('/api/registrar/evaluate', requireRegistrar, async (req, res) => {
   if (!no || !college) return res.status(400).json({ error: 'Choose a student.' });
   const evaluated = !!b.evaluated;
   try {
+    // Evaluated only after every submitted grade is approved.
+    if (evaluated) {
+      const pending = await pool.query("SELECT COUNT(*)::int AS n FROM reg_grades WHERE student_no = $1 AND college = $2 AND status <> 'approved'", [no, college]);
+      if (pending.rows[0].n > 0) return res.status(409).json({ error: 'Approve all of this student\'s grades first.' });
+    }
     const r = await pool.query(
       `UPDATE reg_students SET evaluated_at = CASE WHEN $3 THEN now() ELSE NULL END
        WHERE student_no = $1 AND college = $2 AND status IN ('enrolled','pre-registered') RETURNING evaluated_at`,
