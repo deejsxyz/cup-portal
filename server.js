@@ -3487,8 +3487,9 @@ app.get('/api/registrar/enrollments', requireRegistrar, async (req, res) => {
   const gr = await pool.query('SELECT course_code, term, academic_year, final_grade, status FROM reg_grades WHERE student_no = $1', [no]);
   const gm = new Map(gr.rows.map((g) => [g.term + '|' + g.academic_year + '|' + g.course_code, g.final_grade]));
   const ga = new Map(gr.rows.map((g) => [g.term + '|' + g.academic_year + '|' + g.course_code, g.status === 'approved']));
+  const gsm = new Map(gr.rows.map((g) => [g.term + '|' + g.academic_year + '|' + g.course_code, g.status || '']));
   r.rows.forEach((e) => {
-    if (Array.isArray(e.subjects)) e.subjects.forEach((x) => { const k = e.term + '|' + e.academic_year + '|' + x.course_code; x.final_grade = gm.get(k) || ''; x.grade_approved = !!ga.get(k); });
+    if (Array.isArray(e.subjects)) e.subjects.forEach((x) => { const k = e.term + '|' + e.academic_year + '|' + x.course_code; x.final_grade = gm.get(k) || ''; x.grade_approved = !!ga.get(k); x.grade_status = gsm.get(k) || ''; });
   });
   // Old: has enrollment history in an earlier term. New: none.
   const t = await gradingTerm();

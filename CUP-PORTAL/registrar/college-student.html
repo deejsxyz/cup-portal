@@ -427,6 +427,12 @@ window.cupYr = function (p, y) { var m = /\(([^)]+)\)\s*$/.exec(p || ''); return
         if (a !== null && b !== null) g = (Math.round((a * 0.7 + b * 0.3) * 4) / 4).toFixed(2);
         else g = a === null ? String(lect.final_grade).trim() : String(sl.final_grade).trim();
       }
+      // Either part waiting for approval: the combined subject shows "For Approval".
+      if (lect.final_grade === 'For Approval' || sl.final_grade === 'For Approval') {
+        out.push({ course_code: p.base, descriptive_title: String(lect.descriptive_title || sl.descriptive_title || '').replace(/\s+(Lecture|Skills Lab|Laboratory)\s*$/i, '').trim(),
+          units: (Number(lect.units) || 0) + (Number(sl.units) || 0), final_grade: 'For Approval' });
+        return;
+      }
       // No grade yet, or INC or NG in either part: the combined subject shows dashes.
       var pend = function (v) { var t = String(v == null ? '' : v).trim(); return t === '' || t === 'INC' || t === 'NG'; };
       if (pend(lect.final_grade) || pend(sl.final_grade)) { out.push({ course_code: '—', descriptive_title: '—', units: '—', final_grade: '' }); return; }
@@ -445,9 +451,12 @@ window.cupYr = function (p, y) { var m = /\(([^)]+)\)\s*$/.exec(p || ''); return
       var k = h.term + '|' + h.academic_year;
       return '<option value="' + esc(k) + '"' + (k === key ? ' selected' : '') + '>' + esc(h.term + ' · A.Y. ' + h.academic_year) + '</option>';
     }).join('');
-    // Only approved grades are shown; grades still pending approval show a dash.
-    if (cur && cur.subjects) cur.subjects.forEach(function (x) { if (!x.grade_approved) x.final_grade = ''; });
-    var hasGrades = !!cur && (cur.subjects || []).some(function (x) { return x.final_grade; });
+    // Approved grades show as they are; grades submitted but not yet approved show "For Approval"; no grade shows a dash.
+    if (cur && cur.subjects) cur.subjects.forEach(function (x) {
+      if (x.grade_approved) return;
+      x.final_grade = x.grade_status === 'submitted' ? 'For Approval' : '';
+    });
+    var hasGrades = !!cur && (cur.subjects || []).some(function (x) { return x.grade_approved && x.final_grade; });
     // Each column has a label line above its control, so the dropdown and the button share the same top and height.
     var filters = '<div class="flex flex-wrap items-start gap-3 mb-3"><div><div class="text-[10px] uppercase font-bold text-slate-500 mb-1">A.Y. and semester</div>' +
       '<select id="viewTermSel" class="h-[34px] px-3 rounded-lg border border-slate-300 text-xs bg-white">' + (opts || '<option value="">No records</option>') + '</select></div>' +
