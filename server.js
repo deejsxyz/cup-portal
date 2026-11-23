@@ -1414,11 +1414,15 @@ app.get('/verify-document', async (req, res) => {
       <button type="submit" style="padding:8px 14px">Verify</button></form>`);
   }
   try {
-    const data = await loadCertificateTerms(sid, ay, term);
-    const t = data && data.terms[0];
-    const a = Buffer.from(t ? t.code : 'x'), b = Buffer.from(code);
-    if (t && a.length === b.length && crypto.timingSafeEqual(a, b)) {
-      return page(`<h2 style="color:#047857">Valid</h2><p>This certificate matches the approved grade records for student number <b>${esc(sid)}</b>, A.Y. ${esc(ay)}, ${esc(term)} term.</p>`);
+    const data = await termCopyData(sid, ay, term);
+    const want = data && data.rows.length ? printCopyCode(sid, ay, term, data) : '';
+    const a = Buffer.from(want || 'x'), b = Buffer.from(code);
+    if (want && a.length === b.length && crypto.timingSafeEqual(a, b)) {
+      const lines = data.rows.map((r) => `<tr><td>${esc(r.course_code)}</td><td>${esc(r.descriptive_title || '')}</td><td>${esc(r.units ?? '')}</td><td>${esc(r.final_grade ?? '')}</td><td>${esc(r.remarks ?? '')}</td></tr>`).join('');
+      return page(`<h2 style="color:#047857">Valid</h2><p>This copy matches the approved grade records for student number <b>${esc(sid)}</b>, A.Y. ${esc(ay)}, ${esc(term)}.</p>
+        <p><b>Compare every line below with the printed copy.</b> If any grade, unit, remark or GPA differs, the printed copy has been altered.</p>
+        <table style="width:100%;border-collapse:collapse;font-size:14px" border="1" cellpadding="4"><thead><tr><th>Code</th><th>Subject</th><th>Units</th><th>Grade</th><th>Remarks</th></tr></thead><tbody>${lines}</tbody></table>
+        <p><b>GPA:</b> ${esc(data.gpa)}</p>`);
     }
     return page(`<h2 style="color:#b91c1c">Does not match</h2><p>This code does not match the current records for student number <b>${esc(sid)}</b>, A.Y. ${esc(ay)}, ${esc(term)} term. The certificate may have been changed or the grades may have changed since it was issued.</p>`);
   } catch (err) {
@@ -2931,54 +2935,60 @@ async function termGpaFor(no, college, ay, term) {
   }));
   return cogCompute(rows, {}).gpa;
 }
-app.get('/api/student/grades', requirePortal('student'), async (req, res) => {
+// One term's printable copy: the approved grades with lecture and skills lab combined, plus the GPA.
+// Used by the student's Copy of Grades and by /verify-document, so both always show the same figures.
+async function termCopyData(no, ay, term) {
+  const cr = await pool.query('SELECT college FROM reg_students WHERE student_no = $1', [no]);
+  if (!cr.rows.length) return null;
+  const college = cr.rows[0].college;
   const { rows } = await pool.query(
-    `SELECT g.course_code, c.descriptive_title, c.units, g.final_grade, g.remarks, g.term, g.academic_year, g.approved_at
+    `SELECT g.course_code, c.descriptive_title, c.units, g.final_grade, g.remarks, g.term, g.academic_year
        FROM reg_grades g LEFT JOIN LATERAL (
          SELECT descriptive_title, units FROM reg_courses
           WHERE course_code = g.course_code
           ORDER BY (college = g.college) DESC, college LIMIT 1) c ON true
-      WHERE g.student_no = $1 AND g.status = 'approved' ORDER BY g.academic_year, g.term, g.course_code`, [req.portal.student_no]);
-  // Verification code and QR per term: the same code /verify-document checks against the approved grades.
-  const docs = {};
-  try {
-    const cert = await loadCertificateTerms(req.portal.student_no, null, null);
-    const base = `${req.protocol}://${req.get('host')}`;
-    for (const t of (cert && cert.terms) || []) {
-      const key = t.academic_year + '|' + t.term;
-      let qr = '';
-      if (QRCodeLib) {
-        const q = new URLSearchParams({ sid: req.portal.student_no, ay: t.academic_year, term: t.term, code: t.code });
-        try { qr = await QRCodeLib.toDataURL(base + '/verify-document?' + q.toString(), { margin: 1, width: 150, errorCorrectionLevel: 'M' }); }
-        catch (err) { console.error('QR generation failed:', err); }
-      }
-      docs[key] = { code: t.code, qr };
+      WHERE g.student_no = $1 AND g.academic_year = $2 AND g.term = $3 AND g.status = 'approved' ORDER BY g.course_code`, [no, ay, term]);
+  const input = rows.map((r) => ({ code: r.course_code, title: r.descriptive_title || '', units: Number(r.units) || 0, grade: r.final_grade == null ? '' : String(r.final_grade), src: r }));
+  const combined = [];
+  combineLabLecture(input).forEach((o) => {
+    if (o.src) { combined.push(o.src); return; }
+    const parts = rows.filter((r) => r.course_code === o.code || r.course_code === o.code + ' LECT' || r.course_code === o.code + ' SL');
+    combined.push({ course_code: o.code, descriptive_title: o.title, units: o.units, final_grade: o.dash ? '—' : o.grade,
+      remarks: parts.length && parts.every((r) => r.remarks === parts[0].remarks) ? (parts[0].remarks || '') : '',
+      term, academic_year: ay });
+  });
+  const gpa = await termGpaFor(no, college, ay, term);
+  return { rows: combined, gpa };
+}
+// Verification code bound to the printed content: any change to a grade, unit, remark or GPA changes the code.
+function printCopyCode(no, ay, term, data) {
+  const canon = data.rows.map((r) => [r.course_code, r.descriptive_title || '', String(r.units ?? ''), String(r.final_grade ?? ''), String(r.remarks ?? '')].join('|')).join('\n');
+  const mac = crypto.createHmac('sha256', docVerifyKey())
+    .update(`${no}\n${ay}\n${term}\nGPA:${data.gpa}\n${canon}`).digest('hex').slice(0, 20).toUpperCase();
+  return mac.match(/.{4}/g).join('-');
+}
+app.get('/api/student/grades', requirePortal('student'), async (req, res) => {
+  const no = req.portal.student_no;
+  const { rows } = await pool.query(
+    `SELECT DISTINCT academic_year, term FROM reg_grades WHERE student_no = $1 AND status = 'approved' ORDER BY academic_year, term`, [no]);
+  const grades = [], gpa = {}, docs = {};
+  const base = `${req.protocol}://${req.get('host')}`;
+  for (const t of rows) {
+    const ay = t.academic_year, term = t.term, key = ay + '|' + term;
+    const data = await termCopyData(no, ay, term);
+    if (!data) continue;
+    gpa[key] = data.gpa;
+    data.rows.forEach((r) => grades.push(r));
+    const code = printCopyCode(no, ay, term, data);
+    let qr = '';
+    if (QRCodeLib) {
+      const q = new URLSearchParams({ sid: no, ay, term, code });
+      try { qr = await QRCodeLib.toDataURL(base + '/verify-document?' + q.toString(), { margin: 1, width: 150, errorCorrectionLevel: 'M' }); }
+      catch (err) { console.error('QR generation failed:', err); }
     }
-  } catch (err) { console.error('grade document codes:', err); }
-  // GPA per term, from the same rule as the registrar's Certificate of Grades.
-  const gpa = {};
-  const cr = await pool.query('SELECT college FROM reg_students WHERE student_no = $1', [req.portal.student_no]);
-  const college = cr.rows.length ? cr.rows[0].college : '';
-  const keys = [...new Set(rows.map((x) => x.academic_year + '|' + x.term))];
-  for (const k of keys) {
-    const [ay, term] = k.split('|');
-    gpa[k] = college ? await termGpaFor(req.portal.student_no, college, ay, term) : '-';
+    docs[key] = { code, qr };
   }
-  // Lecture and skills lab are one subject here too, the same as on the registrar's Certificate of Grades.
-  const combinedRows = [];
-  const termKeys = [...new Set(rows.map((x) => x.academic_year + '|' + x.term))];
-  for (const k of termKeys) {
-    const items = rows.filter((x) => x.academic_year + '|' + x.term === k);
-    const input = items.map((r) => ({ code: r.course_code, title: r.descriptive_title || '', units: Number(r.units) || 0, grade: r.final_grade == null ? '' : String(r.final_grade), src: r }));
-    combineLabLecture(input).forEach((o) => {
-      if (o.src) { combinedRows.push(o.src); return; }
-      const parts = items.filter((r) => r.course_code === o.code || r.course_code === o.code + ' LECT' || r.course_code === o.code + ' SL');
-      combinedRows.push({ course_code: o.code, descriptive_title: o.title, units: o.units, final_grade: o.dash ? '\u2014' : o.grade,
-        remarks: parts.length && parts.every((r) => r.remarks === parts[0].remarks) ? (parts[0].remarks || '') : '',
-        term: items[0].term, academic_year: items[0].academic_year });
-    });
-  }
-  res.json({ grades: combinedRows, gpa, docs });
+  res.json({ grades, gpa, docs });
 });
 
 // ---- Student status (Retention Policies, section 4.17) ----
