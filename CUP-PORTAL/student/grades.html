@@ -476,7 +476,7 @@
         '<thead><tr><th>SUBJECT CODE</th><th>DESCRIPTIVE TITLE</th><th>UNITS</th><th>GRADES</th><th>REMARKS</th></tr></thead><tbody>' + rowsHtml.join('') + '</tbody></table>' +
         '</div>';
     };
-    var wmPage = '<div class="wm" aria-hidden="true">' + wmImg(c.wmStrip, 110) + '</div>';
+    var wmPage = '';
     // Full pages stretch their table down to the bottom margin; the last page keeps normal row heights.
     var out = pages.map(function (rowsHtml, idx) {
       var fill = idx < pages.length - 1 ? ' fill' : '';
