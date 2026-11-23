@@ -375,6 +375,13 @@
       '" font-family="Arial, Helvetica, sans-serif" font-size="' + px + '" font-weight="' + (weight || 'bold') + '" fill="' + (color || '#000') + '">' + esc(text) + '</text></svg>';
     return '<img alt="" style="height:' + h + 'px;width:' + w + 'px;vertical-align:middle" src="data:image/svg+xml;charset=utf-8,' + encodeURIComponent(svg) + '">';
   }
+  // Courier New, as an image, so the browser cannot turn the number into a blue phone/number link.
+  function courierImg(text, px) {
+    var w = Math.ceil(String(text).length * px * 0.6) + 4, h = Math.ceil(px * 1.3);
+    var svg = '<svg xmlns="http://www.w3.org/2000/svg" width="' + w + '" height="' + h + '" viewBox="0 0 ' + w + ' ' + h + '"><text x="0" y="' + Math.round(px * 0.95) +
+      '" font-family="Courier New, Courier, monospace" font-size="' + px + '" font-weight="normal" fill="#000">' + esc(text) + '</text></svg>';
+    return '<img alt="" style="height:' + h + 'px;width:' + w + 'px;vertical-align:middle" src="data:image/svg+xml;charset=utf-8,' + encodeURIComponent(svg) + '">';
+  }
   function wmImg(strip, rows) {
     var H = rows * 20, W = 1000, lines = '';
     for (var i = 0; i < rows; i++) {
@@ -453,7 +460,7 @@
             '<div><span class="kl">College</span>: ' + esc(collegeName) + '</div>' +
             '<div><span class="kl">Program</span>: ' + esc(profile.program || '') + '</div>' +
             '<div><span class="kl">Major</span>: ' + esc(profile.major || '') + '</div>' +
-            '<div><span class="k">Student No</span>: ' + esc(profile.student_no || '') + '</div>' +
+            '<div><span class="k">Student No</span>: ' + courierImg(profile.student_no || '', 9.33) + '</div>' +
             '<div><span class="k">Academic Year</span>: ' + esc(termLabel(g.term) + ' ' + g.ay) + '</div>' +
             '<div><span class="k">Year Level</span>: ' + esc(yearText) + '</div>' +
             '<div><span class="k">Section</span>: ' + esc(profile.section || '') + '</div>' +
