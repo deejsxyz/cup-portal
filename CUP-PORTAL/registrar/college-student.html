@@ -679,13 +679,13 @@ window.cupYr = function (p, y) { var m = /\(([^)]+)\)\s*$/.exec(p || ''); return
     var wrap = '<div style="display:flex;align-items:center;justify-content:center;gap:18px;font-family:Arial,sans-serif;color:#000;line-height:1">';
     var txt = '<div style="text-align:center">';
     if (window.regRole === 'superadmin') {
-      return wrap + '<img src="' + base + '/images/logo-1994.png" style="height:90px">' + txt +
+      return wrap + '<img src="' + base + '/images/logo-1994.png" style="width:1in;height:1in;object-fit:contain;flex:none">' + txt +
         '<div style="font-weight:bold;text-transform:uppercase;font-size:15pt;color:#15803d">City University of Pasay</div>' +
         '<div style="font-size:11pt;margin-top:4px">(Pamantasan ng Lungsod ng Pasay)</div>' +
         '<div style="font-size:10pt;margin-top:4px">' + UNI_ADDR + '</div></div></div>';
     }
     var c = PRINT_COLLEGES[COLLEGE] || { name: COLLEGE, logo: '/images/cup-logo-seal.png' };
-    return wrap + '<img src="' + base + c.logo + '" style="height:90px">' + txt +
+    return wrap + '<img src="' + base + c.logo + '" style="width:1in;height:1in;object-fit:contain;flex:none">' + txt +
       '<div style="font-weight:bold;text-transform:uppercase;font-size:14pt;color:#15803d">City University of Pasay</div>' +
       '<div style="font-size:9pt;margin-top:4px">(Pamantasan ng Lungsod ng Pasay)</div>' +
       '<div style="font-size:9pt;margin-top:4px">' + UNI_ADDR + '</div>' +
@@ -694,7 +694,7 @@ window.cupYr = function (p, y) { var m = /\(([^)]+)\)\s*$/.exec(p || ''); return
   }
   $('viewPrintListBtn').addEventListener('click', function () {
     var rows = filtered();
-    var html = ('<!doctype html><html><head><meta charset="utf-8"><title>' + COLLEGE + ' Student List</title><style>@page{size:A4;margin:1in}body{font-family:Arial,sans-serif;margin:0}table{width:100%;border-collapse:collapse;font-size:12px}th,td{border:1px solid #888;padding:4px 6px;text-align:left}</style></head><body>' + printHeader() + '<h3 style="text-align:center;margin:14px 0 10px">STUDENT LIST</h3>' + (function () {
+    var html = ('<!doctype html><html><head><meta charset="utf-8"><title>' + COLLEGE + ' Student List</title><style>@page{size:A4;margin:1in}body{font-family:Arial,sans-serif;margin:0}table{width:100%;border-collapse:collapse;font-size:10pt}th,td{border:1px solid #888;padding:4px 6px;text-align:left}</style></head><body>' + printHeader() + '<h3 style="text-align:center;margin:14px 0 10px">STUDENT LIST</h3>' + (function () {
       // Heading from the filters used, e.g. BSN1–A (program abbreviation, year level, section).
       var abbr = wantedProg ? progAbbrOf(wantedProg.program) : '';
       var yr = $('viewYearFilter').value, sec = $('viewSecFilter').value;
