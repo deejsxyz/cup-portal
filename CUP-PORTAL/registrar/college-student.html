@@ -661,11 +661,36 @@ window.cupYr = function (p, y) { var m = /\(([^)]+)\)\s*$/.exec(p || ''); return
   $('viewEnrolledToggle').addEventListener('change', function () { page = 1; renderList(); });
   $('viewPrevBtn').addEventListener('click', function () { page--; renderList(); });
   $('viewNextBtn').addEventListener('click', function () { page++; renderList(); });
+  // Print header: the University seal for the University Registrar; each college's seal for a College Registrar.
+  var UNI_ADDR = 'Pasadeña St, F.B Harrison, Pasay City';
+  var PRINT_COLLEGES = {
+    COACS: { name: 'College of Office Administration and Computer Studies', logo: '/images/college-oact.png' },
+    CAS: { name: 'College of Arts and Sciences', logo: '/images/college-arts.png' },
+    CONM: { name: 'College of Nursing and Midwifery', logo: '/images/college-nursing.png' },
+    COED: { name: 'College of Education', logo: '/images/college-education.png' },
+    COBM: { name: 'College of Business and Management', logo: '/images/college-business.png' },
+    LAW: { name: 'School of Law', logo: '/images/college-law.png' },
+    GS: { name: 'Graduate School', logo: '/images/college-graduate.png' },
+    'TESDA-TVI': { name: 'TESDA-TVI', logo: '/images/tesda-logo.png' }
+  };
+  function printHeader() {
+    var base = window.location.origin;
+    var mid = '<div style="font-family:Arial,sans-serif;text-align:center;color:#000">';
+    if (window.regRole === 'superadmin') {
+      return mid + '<img src="' + base + '/images/cup-logo-seal.png" style="height:80px"><div style="font-weight:bold;text-transform:uppercase;font-size:14pt;color:#15803d;margin-top:6px">City University of Pasay</div>' +
+        '<div style="font-size:11pt">(Pamantasan ng Lungsod ng Pasay)</div><div style="font-size:10pt">' + UNI_ADDR + '</div></div>';
+    }
+    var c = PRINT_COLLEGES[COLLEGE] || { name: COLLEGE, logo: '/images/cup-logo-seal.png' };
+    return mid + '<img src="' + base + c.logo + '" style="height:72px"><div style="font-weight:bold;text-transform:uppercase;font-size:12pt;color:#15803d;margin-top:6px">City University of Pasay</div>' +
+      '<div style="font-size:9pt">(Pamantasan ng Lungsod ng Pasay)</div><div style="font-size:9pt">' + UNI_ADDR + '</div>' +
+      '<div style="font-weight:bold;text-transform:uppercase;font-size:14pt;color:#15803d;margin-top:10px">' + esc(c.name) + '</div>' +
+      '<div style="font-size:9pt">' + UNI_ADDR + '</div></div>';
+  }
   $('viewPrintListBtn').addEventListener('click', function () {
     var rows = filtered();
     var w = window.open('', '_blank');
     if (!w) return;
-    w.document.write('<!doctype html><html><head><meta charset="utf-8"><title>' + COLLEGE + ' Student List</title><style>body{font-family:Arial,sans-serif;margin:24px}table{width:100%;border-collapse:collapse;font-size:12px}th,td{border:1px solid #888;padding:4px 6px;text-align:left}</style></head><body><h2>' + COLLEGE + ' | Student List</h2>' + (function () {
+    w.document.write('<!doctype html><html><head><meta charset="utf-8"><title>' + COLLEGE + ' Student List</title><style>body{font-family:Arial,sans-serif;margin:24px}table{width:100%;border-collapse:collapse;font-size:12px}th,td{border:1px solid #888;padding:4px 6px;text-align:left}</style></head><body>' + printHeader() + '<h3 style="text-align:center;margin:14px 0 4px">Student List</h3>' + (function () {
       // Heading from the filters used, e.g. BSN1–A (program abbreviation, year level, section).
       var abbr = wantedProg ? progAbbrOf(wantedProg.program) : '';
       var yr = $('viewYearFilter').value, sec = $('viewSecFilter').value;
