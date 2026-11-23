@@ -1419,12 +1419,12 @@ app.get('/verify-document', async (req, res) => {
     const a = Buffer.from(want || 'x'), b = Buffer.from(code);
     if (want && a.length === b.length && crypto.timingSafeEqual(a, b)) {
       const lines = data.rows.map((r) => `<tr><td>${esc(r.course_code)}</td><td>${esc(r.descriptive_title || '')}</td><td>${esc(r.units ?? '')}</td><td>${esc(r.final_grade ?? '')}</td><td>${esc(r.remarks ?? '')}</td></tr>`).join('');
-      const who = await pool.query('SELECT first_name, middle_name, last_name, photo FROM reg_students WHERE student_no = $1', [sid]);
+      const who = await pool.query('SELECT first_name, middle_name, last_name FROM reg_students WHERE student_no = $1', [sid]);
       const w = who.rows[0] || {};
       const holder = [w.last_name, w.first_name, w.middle_name].filter(Boolean).join(', ');
-      const photo = w.photo && /^data:image\//.test(String(w.photo)) ? `<img src="${esc(w.photo)}" alt="Student photo" style="width:90px;height:90px;object-fit:cover;border:1px solid #ccc;border-radius:6px">` : '';
-      return page(`<h2 style="color:#047857">Valid</h2><div style="display:flex;gap:14px;align-items:center">${photo}<div><p style="margin:0"><b>${esc(holder)}</b></p><p style="margin:4px 0 0">Student number <b>${esc(sid)}</b>, A.Y. ${esc(ay)}, ${esc(term)}.</p></div></div>
-        <p><b>This copy is issued to the student above only.</b> Check the person presenting it against the photo and student ID.</p>
+
+      return page(`<h2 style="color:#047857">Valid</h2><p style="margin:0"><b>${esc(holder)}</b></p><p style="margin:4px 0 0">Student number <b>${esc(sid)}</b>, A.Y. ${esc(ay)}, ${esc(term)}.</p>
+        <p><b>This copy is issued to the student above only.</b> Check the person presenting it against the student ID.</p>
         <p><b>Compare every line below with the printed copy.</b> If any grade, unit, remark or GPA differs, the printed copy has been altered.</p>
         <table style="width:100%;border-collapse:collapse;font-size:14px" border="1" cellpadding="4"><thead><tr><th>Code</th><th>Subject</th><th>Units</th><th>Grade</th><th>Remarks</th></tr></thead><tbody>${lines}</tbody></table>
         <p><b>GPA:</b> ${esc(data.gpa)}</p>`);
