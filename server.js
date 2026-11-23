@@ -1118,6 +1118,21 @@ app.post('/api/registrar/student-list.docx', requireRegistrar, async (req, res) 
     const newTbl = tbl.replace(trs[0], () => headerRow).replace(trs[1], () => dataRows);
     doc = doc.replace(tbl, () => newTbl);
 
+    // College registrars: college seal in place of the University seal, and the college name and address under the CUP address.
+    let headerXml = fsx.readFileSync(path.join(STUDENT_LIST_DIR, 'word', 'header1.xml'), 'utf8');
+    let logoBuf = null;
+    const college = req.reg && req.reg.college;
+    if (req.reg && req.reg.role !== 'superadmin' && college && COLLEGE_LOGOS[college]) {
+      const logoPath = path.join(__dirname, 'public', COLLEGE_LOGOS[college]);
+      if (fsx.existsSync(logoPath)) logoBuf = fsx.readFileSync(logoPath);
+      const paras = headerXml.match(/<w:p[ >][\s\S]*?<\/w:p>/g);
+      const cupP = paras.find((x) => x.includes('CITY UNIVERSITY OF PASAY'));
+      const addrP = paras.find((x) => x.includes('Pasade'));
+      const fillPara = (pxml, text) => { let first = true; return pxml.replace(/<w:t(?: [^>]*)?>[^<]*<\/w:t>/g, () => { if (first) { first = false; return '<w:t xml:space="preserve">' + esc(text) + '</w:t>'; } return '<w:t></w:t>'; }); };
+      const collegeNameP = fillPara(cupP, String(COLLEGE_FULL_NAMES[college] || college).toUpperCase());
+      const collegeAddrP = fillPara(addrP, 'Pasade\u00f1a St, F.B Harrison, Pasay City');
+      headerXml = headerXml.replace(addrP, () => addrP + collegeNameP + collegeAddrP);
+    }
     const archive = archiver('zip', { zlib: { level: 6 } });
     const chunks = [];
     archive.on('data', (c) => chunks.push(c));
@@ -1131,6 +1146,8 @@ app.post('/api/registrar/student-list.docx', requireRegistrar, async (req, res) 
     files.sort((a, b) => (a === '[Content_Types].xml' ? -1 : b === '[Content_Types].xml' ? 1 : 0));
     for (const name of files) {
       if (name === 'word/document.xml') archive.append(Buffer.from(doc, 'utf8'), { name });
+      else if (name === 'word/header1.xml') archive.append(Buffer.from(headerXml, 'utf8'), { name });
+      else if (name === 'word/media/image1.png' && logoBuf) archive.append(logoBuf, { name });
       else archive.append(fsx.readFileSync(path.join(STUDENT_LIST_DIR, name)), { name });
     }
     await archive.finalize();
