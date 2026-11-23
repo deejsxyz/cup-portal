@@ -2939,6 +2939,22 @@ app.get('/api/student/grades', requirePortal('student'), async (req, res) => {
           WHERE course_code = g.course_code
           ORDER BY (college = g.college) DESC, college LIMIT 1) c ON true
       WHERE g.student_no = $1 AND g.status = 'approved' ORDER BY g.academic_year, g.term, g.course_code`, [req.portal.student_no]);
+  // Verification code and QR per term: the same code /verify-document checks against the approved grades.
+  const docs = {};
+  try {
+    const cert = await loadCertificateTerms(req.portal.student_no, null, null);
+    const base = `${req.protocol}://${req.get('host')}`;
+    for (const t of (cert && cert.terms) || []) {
+      const key = t.academic_year + '|' + t.term;
+      let qr = '';
+      if (QRCodeLib) {
+        const q = new URLSearchParams({ sid: req.portal.student_no, ay: t.academic_year, term: t.term, code: t.code });
+        try { qr = await QRCodeLib.toDataURL(base + '/verify-document?' + q.toString(), { margin: 1, width: 150, errorCorrectionLevel: 'M' }); }
+        catch (err) { console.error('QR generation failed:', err); }
+      }
+      docs[key] = { code: t.code, qr };
+    }
+  } catch (err) { console.error('grade document codes:', err); }
   // GPA per term, from the same rule as the registrar's Certificate of Grades.
   const gpa = {};
   const cr = await pool.query('SELECT college FROM reg_students WHERE student_no = $1', [req.portal.student_no]);
@@ -2962,7 +2978,7 @@ app.get('/api/student/grades', requirePortal('student'), async (req, res) => {
         term: items[0].term, academic_year: items[0].academic_year });
     });
   }
-  res.json({ grades: combinedRows, gpa });
+  res.json({ grades: combinedRows, gpa, docs });
 });
 
 // ---- Student status (Retention Policies, section 4.17) ----
@@ -6527,6 +6543,9 @@ DELETE FROM accounts a WHERE a.role IN ('registrar','university','uniregistrar',
 // ---- Admin: live applicant list and downloads (Excel + ZIP) ----
 const ExcelJS = require('exceljs');
 const archiver = require('archiver');
+// QR codes for the verification link on student grade documents (package "qrcode"; documents still print without it).
+let QRCodeLib = null;
+try { QRCodeLib = require('qrcode'); } catch (e) { console.error('qrcode package not installed: grade documents will print without QR codes.'); }
 
 async function requireAdmin(req, res, next) {
   const id = readSession(req);

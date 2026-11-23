@@ -317,9 +317,11 @@
         (map[key] = map[key] || { ay: x.academic_year, term: x.term, items: [] }).items.push(x);
       });
       var gpaMap = (res.j && res.j.gpa) || {};
+      var docMap = (res.j && res.j.docs) || {};
       groups = Object.keys(map).sort().map(function (k) {
         var v = gpaMap[k];
         map[k].gpa = (v == null || v === '-') ? '\u2014' : v; // GPA comes from the server, same rule as the registrar
+        map[k].code = (docMap[k] || {}).code || ''; map[k].qr = (docMap[k] || {}).qr || '';
         return map[k];
       });
       var ayList = Array.from(new Set(groups.map(function (g) { return g.ay; })));
@@ -356,7 +358,7 @@
       'th,td{border:1px solid #000;padding:0 1.2mm;height:5.3mm;line-height:1;overflow:hidden;white-space:nowrap}th{font-weight:bold;text-align:center}td.c{text-align:center}td.l{text-align:left}' +
       '.wm{position:absolute;inset:0;z-index:10;pointer-events:none;display:flex;flex-direction:column;overflow:hidden}' +
       '.wm span{flex:1 1 0;min-height:0;overflow:hidden;display:block;white-space:nowrap;font:bold 6.5pt Arial,Helvetica,sans-serif;line-height:1;color:rgba(90,90,90,.16)}' +
-      '.note{margin-top:auto;border-top:1px dashed #000;padding-top:2mm;font-size:8pt;font-style:italic;line-height:1.3}.note b{font-style:normal}',
+      '.qr{margin-top:auto;border-top:1px dashed #000;padding-top:2mm;display:flex;align-items:center;gap:3mm;font-size:8pt;line-height:1.3}.qr img{width:18mm;height:18mm}.vc{font-size:7pt;margin-top:1mm}',
     report: '@page{size:8.5in 13in;margin:0}body{margin:0;font-family:Arial,Helvetica,sans-serif;color:#000}' +
       '.page{position:relative;width:8.5in;box-sizing:border-box;min-height:13in;padding:12mm 12mm 10mm;font-size:9pt;line-height:1.15;display:flex;flex-direction:column;overflow:hidden}' +
       '.hdr{display:flex;align-items:center;justify-content:center;gap:3mm;text-align:center}.hdr img{width:17mm;height:17mm;object-fit:contain}' +
@@ -369,8 +371,10 @@
       'th{font-weight:bold}td.l{text-align:left}tr.sec td{font-weight:bold;height:5.5mm;text-align:left}' +
       '.wm{position:absolute;inset:0;z-index:10;pointer-events:none;display:flex;flex-direction:column;overflow:hidden}' +
       '.wm span{flex:1 1 0;min-height:0;overflow:hidden;display:block;white-space:nowrap;font:bold 5pt Arial,Helvetica,sans-serif;line-height:1;color:rgba(90,90,90,.16)}' +
-      '.note{margin-top:auto;border-top:1px dashed #000;padding-top:2mm;font-size:8.5pt;font-style:italic;line-height:1.3}.note b{font-style:normal}'
+      '.qr{margin-top:auto;border-top:1px dashed #000;padding-top:2mm;display:flex;align-items:center;gap:3mm;font-size:8.5pt;line-height:1.3}.qr img{width:20mm;height:20mm}.vc{font-size:7.5pt;margin-top:1mm}'
   };
+  // Word joiners between characters stop phone/number auto-links (the blue underlined student number).
+  function noLink(v) { return String(v == null ? '' : v).split('').join('\u2060'); }
   function gradeDocContext() {
     var origin = window.location.origin;
     var college = (profile && profile.college) || '';
@@ -379,7 +383,7 @@
     var wmLine = 'NOT AN OFFICIAL DOCUMENT • ' + profile.student_no + ' • ' + stamp + ' • ' + collegeName.toUpperCase() + ' • CITY UNIVERSITY OF PASAY';
     var prog = PROG_ABBR(profile.program);
     return {
-      origin: origin, collegeName: collegeName, wmStrip: wmLine + '          ',
+      sid: noLink(profile.student_no), origin: origin, collegeName: collegeName, wmStrip: wmLine + '          ',
       logo: origin + (COLLEGE_LOGO_PATHS[college] || '/images/cup-logo-seal.png'),
       seal: origin + '/images/logo-1994.png',
       sName: (profile.last_name + ', ' + profile.first_name + (profile.middle_name ? ' ' + String(profile.middle_name).trim().charAt(0).toUpperCase() + '.' : '')).toUpperCase(),
@@ -393,6 +397,12 @@
       '<img src="' + c.logo + '" alt="College crest"></div>';
   }
   var UNI_ADDR_TEXT = 'Pasadeña St, F.B Harrison, Pasay City';
+  // Verification block: QR code linking to /verify-document, with the code in words.
+  function qrBlock(g, c) {
+    if (!g || !g.code) return '';
+    return '<div class="qr">' + (g.qr ? '<img src="' + g.qr + '" alt="Verification QR code">' : '') +
+      '<div><b>Scan the QR code to verify</b><div class="vc">Verification code: ' + esc(noLink(g.code)) + '</div></div></div>';
+  }
   function copyDocHtml(list) {
     var c = gradeDocContext(), sheets = '';
     list.forEach(function (g) {
@@ -419,7 +429,7 @@
           '<thead><tr><th>NO</th><th>SUBJECTS</th><th>UNITS</th><th>GRADES</th><th>REMARKS</th></tr></thead><tbody>' + rows +
           '<tr><td class="c">15</td><td></td><td class="c"><b>GPA</b></td><td class="c"><b>' + (isLast ? esc(g.gpa || '\u2014') : '') + '</b></td><td></td></tr>' +
           '</tbody></table><div class="wm" aria-hidden="true">' + wm + '</div></div>' +
-          '<div class="note"><b>NOTICE:</b> This is not an official document. This document does not require signatures. It is provided solely to verify the grades available in the ' + esc(c.collegeName) + ' database. To request an official Certificate of Grades, apply through the Office of the University Registrar at the City University of Pasay.</div></div>';
+          qrBlock(g, c) + '</div>';
       });
     });
     return '<!doctype html><html><head><meta charset="utf-8"><title>Copy of Grades</title><style>' + DOC_CSS.copy + '</style></head><body>' + sheets + '</body></html>';
@@ -442,7 +452,7 @@
       '<div class="gw"><table><colgroup><col style="width:14%"><col style="width:40%"><col style="width:10%"><col style="width:17%"><col style="width:19%"></colgroup>' +
       '<thead><tr><th>SUBJECT CODE</th><th>DESCRIPTIVE TITLE</th><th>UNITS</th><th>GRADES</th><th>REMARKS</th></tr></thead><tbody>' + rows + '</tbody></table>' +
       '<div class="wm" aria-hidden="true">' + wm + '</div></div>' +
-      '<div class="note"><b>NOTICE:</b> This is not an official document. This document does not require signatures. It is provided solely to verify the grades available in the ' + esc(c.collegeName) + ' database. To request an official Report of Grades, apply through the Office of the University Registrar at the City University of Pasay.</div></div></body></html>';
+      '</div></body></html>';
   }
   // Prints in a hidden frame (no new tab), after the seals have loaded.
   function printGradeDoc(html) {
