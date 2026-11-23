@@ -2993,7 +2993,11 @@ app.get('/api/student/grades', requirePortal('student'), async (req, res) => {
     }
     docs[key] = { code, qr };
   }
-  res.json({ grades, gpa, docs });
+  // Year level of each term, for the term headings on the report ("First Year, Second Semester").
+  const years = {};
+  const yr = await pool.query('SELECT academic_year, term, year_level FROM reg_enrollments WHERE student_no = $1', [no]);
+  yr.rows.forEach((r) => { years[r.academic_year + '|' + r.term] = Number(r.year_level) || 0; });
+  res.json({ grades, gpa, docs, years });
 });
 
 // ---- Student status (Retention Policies, section 4.17) ----

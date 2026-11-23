@@ -324,6 +324,7 @@
       groups = Object.keys(map).sort().map(function (k) {
         var v = gpaMap[k];
         map[k].gpa = (v == null || v === '-') ? '\u2014' : v; // GPA comes from the server, same rule as the registrar
+        map[k].year = ((res.j && res.j.years) || {})[k] || 0;
         map[k].code = (docMap[k] || {}).code || ''; map[k].qr = (docMap[k] || {}).qr || '';
         return map[k];
       });
@@ -456,7 +457,8 @@
   function reportDocHtml(list) {
     var c = gradeDocContext(), body = [];
     list.forEach(function (g) {
-      body.push('<tr class="sec"><td colspan="5">' + esc(termLabel(g.term)) + ', A.Y. ' + esc(g.ay) + '</td></tr>');
+      var YR = ['First Year', 'Second Year', 'Third Year', 'Fourth Year'];
+      body.push('<tr class="sec"><td colspan="5">' + esc((YR[g.year - 1] ? YR[g.year - 1] + ', ' : '') + termLabel(g.term)) + '</td></tr>');
       g.items.forEach(function (x) {
         body.push('<tr><td class="l">' + esc(x.course_code) + '</td><td class="l">' + esc(x.descriptive_title || '') + '</td>' +
           '<td>' + esc(x.units == null ? '' : Number(x.units)) + '</td><td>' + esc(x.final_grade || '') + '</td><td>' + esc(x.remarks || '') + '</td></tr>');
