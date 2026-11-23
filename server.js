@@ -479,6 +479,9 @@ const REG_COLLEGES = ['COACS', 'CAS', 'CONM', 'COED', 'COBM', 'LAW', 'GS', 'TESD
 // The University's programs. Enrollment accepts the full name or the code in brackets, and stores the full name.
 const REG_PROGRAMS = ["Bachelor of Science in Office Administration (BSOA)", "Associate in Computer Technology (ACT)", "Bachelor of Arts in Political Science (ABPS)", "Bachelor of Science in Nursing (BSN)", "Bachelor in Elementary Education (BEEd)", "Bachelor in Secondary Education (BSEd)", "Bachelor of Science in Business Administration (BSBA)", "Juris Doctor (J.D.)", "Master's in Legal Studies (MLS)", "Teaching Certificate Program (TCP)", "Master's in Public Administration (MPA)", "Master of Arts in Education (MAEd)", "Bookkeeping", "Event Management"];
 // Which programs each college offers. Enrollment rejects a program the college does not offer.
+// Address line printed under the CUP address on a college's documents.
+const COLLEGE_ADDRESS = { CONM: '4th Floor Tramo Wing, Pasay City General Hospital, P. Burgos St, Pasay City' };
+function collegeAddressLine(code) { return COLLEGE_ADDRESS[code] || 'City University of Pasay, Pasadeña St, Pasay City'; }
 const COLLEGE_FULL_NAMES = {
   COACS: 'College of Office Administration and Computer Studies',
   CAS: 'College of Arts and Sciences',
@@ -1134,7 +1137,7 @@ app.post('/api/registrar/student-list.docx', requireRegistrar, async (req, res) 
         const fillPara = (pxml, text) => { let first = true; return pxml.replace(/<w:t(?: [^>]*)?>[^<]*<\/w:t>/g, () => { if (first) { first = false; return '<w:t xml:space="preserve">' + esc(text) + '</w:t>'; } return '<w:t></w:t>'; }); };
         const gap = '<w:p><w:pPr><w:pStyle w:val="Header"/></w:pPr></w:p>';
         const collegeNameP = fillPara(cupP, String(COLLEGE_FULL_NAMES[college] || college).toUpperCase()).replace(/<w:rFonts w:ascii="Algerian" w:hAnsi="Algerian" w:cs="Algerian"\/>/g, '<w:rFonts w:ascii="Arial" w:hAnsi="Arial" w:cs="Arial"/>');
-        const collegeAddrP = fillPara(addrP, 'Pasadeña St, F.B Harrison, Pasay City');
+        const collegeAddrP = fillPara(addrP, collegeAddressLine(college));
         headerXml = headerXml.replace(addrP, () => addrP + gap + collegeNameP + collegeAddrP);
         // Clone the CUP seal drawing to the right margin, pointing at the college logo.
         const seal = headerXml.match(/<w:r(?: [^>]*)?>(?:(?!<\/w:r>)[\s\S])*?<w:drawing>[\s\S]*?<\/w:drawing><\/w:r>/)[0];
@@ -4852,6 +4855,13 @@ app.post('/api/registrar/settings', requireSuperAdmin, async (req, res) => {
   try {
     await pool.query("INSERT INTO reg_settings (key, value) VALUES ('grading_semester', $1) ON CONFLICT (key) DO UPDATE SET value = EXCLUDED.value", [sem]);
     await pool.query("INSERT INTO reg_settings (key, value) VALUES ('grading_ay', $1) ON CONFLICT (key) DO UPDATE SET value = EXCLUDED.value", [ay]);
+    // A new active term starts a new enrollment: every student's step marks from the old term are cleared.
+    const prev = await pool.query("SELECT key, value FROM reg_settings WHERE key IN ('grading_semester','grading_ay')");
+    const old = Object.fromEntries(prev.rows.map((r) => [r.key, r.value]));
+    if (old.grading_semester !== sem || old.grading_ay !== ay) {
+      await pool.query(`UPDATE reg_students SET step1_status = 'awaiting', evaluated_at = NULL, step2_evaluated_at = NULL, step2_advised_at = NULL,
+        step2_sectioned_at = NULL, nstp_enrolled_at = NULL, csc_paid_at = NULL, advising_slip_at = NULL`);
+    }
     logAction(req, 'University Registrar', 'settings updated', ay + ' · ' + sem);
     res.json({ ok: true, grading_semester: sem, grading_ay: ay });
   } catch (err) {

@@ -411,10 +411,11 @@
   function gradeHeader(c) {
     return '<div class="hdr"><img src="' + c.seal + '" alt="City University of Pasay seal"><div>' +
       '<div class="u1">CITY UNIVERSITY OF PASAY</div><div class="u2">(PAMANTASAN NG LUNGSOD NG PASAY)</div><div class="u2">Pasadeña St., Pasay City</div>' +
-      '<div class="c1">' + esc(c.collegeName) + '</div><div class="addr">' + esc(UNI_ADDR_TEXT) + '</div></div>' +
+      '<div class="c1">' + esc(c.collegeName) + '</div><div class="addr">' + esc(collegeAddr((profile && profile.college) || '')) + '</div></div>' +
       '<img src="' + c.logo + '" alt="College crest"></div>';
   }
-  var UNI_ADDR_TEXT = 'Pasadeña St, F.B Harrison, Pasay City';
+  var COLLEGE_ADDR = { CONM: '4th Floor Tramo Wing, Pasay City General Hospital, P. Burgos St, Pasay City' };
+  function collegeAddr(code) { return COLLEGE_ADDR[code] || 'City University of Pasay, Pasadeña St, Pasay City'; }
   // Verification block: QR code linking to /verify-document, with the code in words.
   function qrBlock(g, c) {
     if (!g || !g.code) return '';
