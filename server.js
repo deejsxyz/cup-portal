@@ -3319,10 +3319,11 @@ async function sendCoe(res, no, college) {
         const cell = ws.getCell(c + row);
         cell.font = Object.assign({}, cell.font, { size: 9 });
       });
-      // Thin line under every column of the row, text centered vertically, the # centered.
+      // Thin lines around every column of the row, text centered vertically, the # centered.
       for (let c = 1; c <= 33; c++) {
         const cell = ws.getCell(row, c);
-        cell.border = Object.assign({}, cell.border, { bottom: { style: 'thin', color: { argb: 'FF000000' } } });
+        const line = { style: 'thin', color: { argb: 'FF000000' } };
+        cell.border = Object.assign({}, cell.border, { bottom: line, left: line, right: line });
         cell.alignment = Object.assign({}, cell.alignment, { vertical: 'middle' });
       }
       ws.getCell('A' + row).alignment = { horizontal: 'center', vertical: 'middle' };
