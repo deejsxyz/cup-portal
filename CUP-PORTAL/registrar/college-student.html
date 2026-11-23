@@ -675,22 +675,23 @@ window.cupYr = function (p, y) { var m = /\(([^)]+)\)\s*$/.exec(p || ''); return
     'TESDA-TVI': { name: 'TESDA-TVI', logo: '/images/tesda-logo.png' }
   };
   function printHeader() {
+    // Matches the official letterhead: 2.50cm seal, 9pt / 14pt / 9pt / 9pt text lines, A4.
     var base = window.location.origin;
-    var wrap = '<div style="display:flex;align-items:center;justify-content:center;gap:18px;font-family:Arial,sans-serif;color:#000;line-height:1">';
+    var seal = 'width:2.5cm;height:2.5cm;object-fit:contain;flex:none';
+    var wrap = '<div style="display:flex;align-items:center;justify-content:center;gap:12pt;font-family:Arial,sans-serif;color:#000;line-height:1.15">';
     var txt = '<div style="text-align:center">';
+    var line = function (t, css) { return '<div style="' + css + '">' + t + '</div>'; };
+    var uniLines = line('Republic of the Philippines', 'font-size:9pt') +
+      line('City University of Pasay', 'font-weight:bold;text-transform:uppercase;font-size:14pt;color:#15803d;margin-top:2pt') +
+      line('(Pamantasan ng Lungsod ng Pasay)', 'font-size:9pt;margin-top:2pt') +
+      line(UNI_ADDR, 'font-size:9pt;margin-top:2pt');
     if (window.regRole === 'superadmin') {
-      return wrap + '<img src="' + base + '/images/logo-1994.png" style="width:1in;height:1in;object-fit:contain;flex:none">' + txt +
-        '<div style="font-weight:bold;text-transform:uppercase;font-size:15pt;color:#15803d">City University of Pasay</div>' +
-        '<div style="font-size:11pt;margin-top:4px">(Pamantasan ng Lungsod ng Pasay)</div>' +
-        '<div style="font-size:10pt;margin-top:4px">' + UNI_ADDR + '</div></div></div>';
+      return wrap + '<img src="' + base + '/images/logo-1994.png" style="' + seal + '">' + txt + uniLines + '</div></div>';
     }
     var c = PRINT_COLLEGES[COLLEGE] || { name: COLLEGE, logo: '/images/cup-logo-seal.png' };
-    return wrap + '<img src="' + base + c.logo + '" style="width:1in;height:1in;object-fit:contain;flex:none">' + txt +
-      '<div style="font-weight:bold;text-transform:uppercase;font-size:14pt;color:#15803d">City University of Pasay</div>' +
-      '<div style="font-size:9pt;margin-top:4px">(Pamantasan ng Lungsod ng Pasay)</div>' +
-      '<div style="font-size:9pt;margin-top:4px">' + UNI_ADDR + '</div>' +
-      '<div style="font-weight:bold;text-transform:uppercase;font-size:15pt;color:#15803d;margin-top:10px">' + esc(c.name) + '</div>' +
-      '<div style="font-size:9pt;margin-top:4px">' + UNI_ADDR + '</div></div></div>';
+    return wrap + '<img src="' + base + c.logo + '" style="' + seal + '">' + txt + uniLines +
+      line(esc(c.name), 'font-weight:bold;text-transform:uppercase;font-size:14pt;color:#15803d;margin-top:8pt') +
+      line(UNI_ADDR, 'font-size:9pt;margin-top:2pt') + '</div></div>';
   }
   $('viewPrintListBtn').addEventListener('click', function () {
     var rows = filtered();
