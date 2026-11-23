@@ -1267,7 +1267,7 @@ function progAbbrOf(p) { var m = /\(([^)]+)\)\s*$/.exec(p || ''); return m ? m[1
       })
       .then(function (r) {
         if (!r.ok) { done(r.j.error || 'Could not generate the report of grades.'); return; }
-        var html = CupCopyDoc.build({ profile: r.j.profile, retentionLabel: r.j.retentionLabel, list: r.j.list, registrar: true });
+        var html = CupCopyDoc.build({ profile: r.j.profile, retentionLabel: r.j.retentionLabel, list: r.j.list, registrar: true, univ: r.j.univ });
         printReportHtml(html);
         done('');
       })

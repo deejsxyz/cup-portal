@@ -74,7 +74,9 @@
       yrSec: prog + '-' + (profile.year_level || '') + (profile.section || '')
     };
   }
+  var univHdr = false;
   function gradeHeader(c) {
+    if (univHdr) return '<div class="hdr"><img src="' + c.seal + '" alt="City University of Pasay seal"><div><div class="u1">CITY UNIVERSITY OF PASAY</div><div class="u2">(PAMANTASAN NG LUNGSOD NG PASAY)</div><div class="u2">Pasadeña St., Pasay City</div></div></div>';
     return '<div class="hdr"><img src="' + c.seal + '" alt="City University of Pasay seal"><div>' +
       '<div class="u1">CITY UNIVERSITY OF PASAY</div><div class="u2">(PAMANTASAN NG LUNGSOD NG PASAY)</div><div class="u2">Pasadeña St., Pasay City</div>' +
       '<div class="c1">' + esc(c.collegeName) + '</div><div class="addr">' + esc(collegeAddr((profile && profile.college) || '')) + '</div></div>' +
@@ -122,7 +124,7 @@
           '<div class="gpa"><span class="tl">Grade Point Average</span>: ' + esc(g.gpa || '\u2014') + '</div>' +
           '<div class="subj"><span class="tl">Total Subjects Enrolled</span>: ' + items.length + '</div>' : '';
         var yearText = profile.year_level ? (ORD[Number(profile.year_level) - 1] || profile.year_level) + ' Year' : '';
-        sheets += '<div class="sheet">' + gradeHeader(c) + '<div class="title">REPORT OF GRADES</div>' +
+        sheets += '<div class="sheet">' + gradeHeader(c) + '<div class="title">' + (reg ? 'CERTIFICATE OF GRADES' : 'REPORT OF GRADES') + '</div>' +
           '<div class="info">' +
             '<div><span class="kl">Fullname</span>: ' + esc(c.sName) + '</div>' +
             '<div><span class="kl">Gender</span>: ' + esc(profile.gender || '') + '</div>' +
@@ -147,7 +149,7 @@
     return '<!doctype html><html><head><meta charset="utf-8"><meta name="format-detection" content="telephone=no,date=no,address=no,email=no"><title>Report of Grades</title><style>' + DOC_CSS.copy + '</style></head><body>' + sheets + '</body></html>';
   }
   function build(opts) {
-    profile = opts.profile; retentionLabel = opts.retentionLabel || '';
+    profile = opts.profile; retentionLabel = opts.retentionLabel || ''; univHdr = !!opts.univ;
     return copyDocHtml(opts.list, !!opts.registrar);
   }
   window.CupCopyDoc = { build: build };
