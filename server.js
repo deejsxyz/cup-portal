@@ -3016,7 +3016,30 @@ app.get('/api/student/grades', requirePortal('student'), async (req, res) => {
   const years = {};
   const yr = await pool.query('SELECT academic_year, term, year_level FROM reg_enrollments WHERE student_no = $1', [no]);
   yr.rows.forEach((r) => { years[r.academic_year + '|' + r.term] = Number(r.year_level) || 0; });
-  res.json({ grades, gpa, docs, years });
+  // The full curriculum (1st and 2nd semesters of years 1 to 4), enrolled or not, with approved grades filled in.
+  const st = await pool.query('SELECT college FROM reg_students WHERE student_no = $1', [no]);
+  const college = st.rows.length ? st.rows[0].college : null;
+  const cur = college ? (await pool.query('SELECT course_code, descriptive_title, units, year_level, semester FROM reg_courses WHERE college = $1 AND year_level BETWEEN 1 AND 4 ORDER BY year_level, semester, course_code', [college])).rows : [];
+  const curriculum = [];
+  for (let y = 1; y <= 4; y++) {
+    for (const sem of ['1st Semester', '2nd Semester']) {
+      const inTerm = grades.filter((g) => g.term === sem && years[g.academic_year + '|' + g.term] === y);
+      const pick = (code) => {
+        const hits = inTerm.filter((g) => g.course_code === code);
+        return hits.find((g) => g.final_grade !== '') || hits[0] || null;
+      };
+      const items = cur.filter((r) => Number(r.year_level) === y && r.semester === sem).map((r) => {
+        const g = pick(r.course_code);
+        return { course_code: r.course_code, descriptive_title: r.descriptive_title || '', units: Number(r.units) || 0,
+          final_grade: g ? (g.final_grade || '') : '', remarks: g ? (g.remarks || '') : '' };
+      });
+      // Grades on subjects no longer in the curriculum are still printed.
+      const codes = new Set(items.map((i) => i.course_code));
+      inTerm.forEach((g) => { if (!codes.has(g.course_code) && !items.some((i) => i.course_code === g.course_code)) { codes.add(g.course_code); const x = pick(g.course_code); items.push({ course_code: g.course_code, descriptive_title: g.descriptive_title || '', units: Number(g.units) || 0, final_grade: x ? (x.final_grade || '') : '', remarks: x ? (x.remarks || '') : '' }); } });
+      curriculum.push({ year_level: y, term: sem, items });
+    }
+  }
+  res.json({ grades, gpa, docs, years, curriculum });
 });
 
 // ---- Student status (Retention Policies, section 4.17) ----

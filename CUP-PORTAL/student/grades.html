@@ -262,7 +262,7 @@
   var $ = function (id) { return document.getElementById(id); };
   var esc = function (v) { return String(v == null ? '' : v).replace(/[&<>"']/g, function (c) { return { '&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;' }[c]; }); };
   var PROG_ABBR = function (p) { var m = /\(([^)]+)\)\s*$/.exec(p || ''); return m ? m[1] : (p || ''); };
-  var profile = null, groups = [], pwFilled = { old: '', new: '' };
+  var profile = null, groups = [], curriculum = [], pwFilled = { old: '', new: '' };
 
   function api(path, opts) {
     return fetch(path, Object.assign({ credentials: 'same-origin' }, opts || {})).then(function (r) {
@@ -319,6 +319,7 @@
         var key = x.academic_year + '|' + x.term;
         (map[key] = map[key] || { ay: x.academic_year, term: x.term, items: [] }).items.push(x);
       });
+      curriculum = (res.j && res.j.curriculum) || [];
       var gpaMap = (res.j && res.j.gpa) || {};
       var docMap = (res.j && res.j.docs) || {};
       groups = Object.keys(map).sort().map(function (k) {
@@ -456,16 +457,15 @@
   }
   function reportDocHtml(list) {
     var c = gradeDocContext(), body = [];
+    // Every subject of the curriculum, year 1 to 4, is printed; grades are filled in when approved.
     list.forEach(function (g) {
       var YR = ['First Year', 'Second Year', 'Third Year', 'Fourth Year'];
-      body.push('<tr class="sec"><td colspan="5">' + esc((YR[g.year - 1] ? YR[g.year - 1] + ', ' : '') + termLabel(g.term)) + '</td></tr>');
+      body.push('<tr class="sec"><td colspan="5">' + esc(YR[g.year_level - 1] + ', ' + termLabel(g.term)) + '</td></tr>');
       g.items.forEach(function (x) {
         body.push('<tr><td class="l">' + esc(x.course_code) + '</td><td class="l">' + esc(x.descriptive_title || '') + '</td>' +
           '<td>' + esc(x.units == null ? '' : Number(x.units)) + '</td><td>' + esc(x.final_grade || '') + '</td><td>' + esc(x.remarks || '') + '</td></tr>');
       });
     });
-    // Every subject of every term is printed; a new page starts when a page is full.
-    // Legal paper: the first page carries the header, later pages only the table (with its column titles).
     var FIRST = 44, NEXT = 56, pages = [], at = 0;
     pages.push(body.slice(0, FIRST)); at = FIRST;
     while (at < body.length) { pages.push(body.slice(at, at + NEXT)); at += NEXT; }
@@ -552,7 +552,7 @@
     var g = groups.filter(function (x) { return x.ay === $('aySelect').value && x.term === $('semSelect').value; });
     if (g.length && profile) printGradeDoc(copyDocHtml(g));
   });
-  $('reportBtn').addEventListener('click', function () { if (groups.length && profile) printGradeDoc(reportDocHtml(groups)); });
+  $('reportBtn').addEventListener('click', function () { if (curriculum.length && profile) printGradeDoc(reportDocHtml(curriculum)); });
 
   /* Student status (retention policy 4.17) */
   function loadStatus() {
