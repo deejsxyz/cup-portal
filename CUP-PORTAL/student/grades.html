@@ -370,8 +370,8 @@
       '.title{text-align:center;font-weight:bold;font-size:13pt;margin:6mm 0 4mm}' +
       '.ids{display:grid;grid-template-columns:22mm 1fr 26mm 42mm;column-gap:3mm;row-gap:4mm;margin-top:3mm;align-items:end;font-size:10pt}' +
       '.il{white-space:nowrap}.iv{border-bottom:1px solid #000;font-weight:bold;padding:0 1mm;white-space:nowrap;overflow:hidden}' +
-      '#src{display:none}.sheet{position:relative;height:12in;overflow:hidden}.sheet+.sheet{break-before:page;page-break-before:always}' +
-      '.r{display:grid;grid-template-columns:15% 65% 10% 10%;border-left:0.5pt solid #000;border-right:0.5pt solid #000;border-bottom:0.5pt solid #000;min-height:5mm;font-size:8pt;line-height:1.2}' +
+      '#src{display:none}.sheet{position:relative;height:11.7in;overflow:hidden;break-inside:avoid}.sheet+.sheet{break-before:page;page-break-before:always}' +
+      '.r{break-inside:avoid;page-break-inside:avoid;display:grid;grid-template-columns:15% 65% 10% 10%;border-left:0.5pt solid #000;border-right:0.5pt solid #000;border-bottom:0.5pt solid #000;min-height:5mm;font-size:8pt;line-height:1.2}' +
       '.r>div{border-right:0.5pt solid #000;padding:1mm;display:flex;align-items:center;justify-content:center;text-align:center}.r>div:first-child,.r>div:nth-child(2){justify-content:flex-start;text-align:left}.r>div:last-child{border-right:0}' +
       '.r.hd{font-weight:bold;border-top:0.5pt solid #000}.r.hd>div{justify-content:center;text-align:center}' +
       '.r.sec{grid-template-columns:1fr;font-weight:normal}.r.sec>div{justify-content:center;text-align:center;border-right:0}'
@@ -466,9 +466,9 @@
       });
     });
     var idsHtml = '<div class="ids"><span class="il">Name:</span><span class="iv">' + esc(c.sName) + '</span><span class="il">Student No.:</span><span class="iv">' + textImg(profile.student_no, 13, '#000', 'bold') + '</span>' +
-      '<span class="il">Program:</span><span class="iv" style="grid-column:2 / span 3">' + esc(profile.program || '') + '</span></div>';
+      '<span class="il">Program:</span><span class="iv" style="grid-column:2 / span 3;white-space:normal;overflow:visible">' + esc(profile.program || '') + '</span></div>';
     var pageHead = gradeHeader(c) + '<div class="title">REPORT OF GRADES</div>' + idsHtml;
-    var pageJs = "(function(){var PAGE_H=12*96,pages=document.getElementById('pages'),head=document.getElementById('head'),src=document.getElementById('src');" +
+    var pageJs = "(function(){var PAGE_H=11.7*96,pages=document.getElementById('pages'),head=document.getElementById('head'),src=document.getElementById('src');" +
       "var rows=Array.prototype.slice.call(src.children),inner=null;" +
       "function colHead(){var d=document.createElement('div');d.className='r hd';d.innerHTML='<div>SUBJECT CODE</div><div>DESCRIPTIVE TITLE</div><div>UNITS</div><div>GRADES</div>';return d;}" +
       "function open(first){var sh=document.createElement('div');sh.className='sheet';inner=document.createElement('div');sh.appendChild(inner);pages.appendChild(sh);if(first)inner.appendChild(head);inner.appendChild(colHead());}" +
