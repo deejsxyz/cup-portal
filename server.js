@@ -1138,11 +1138,13 @@ app.post('/api/registrar/student-list.docx', requireRegistrar, async (req, res) 
         const seal = headerXml.match(/<w:r(?: [^>]*)?>(?:(?!<\/w:r>)[\s\S])*?<w:drawing>[\s\S]*?<\/w:drawing><\/w:r>/)[0];
         const right = seal
           .replace(/r:embed="rId1"/, 'r:embed="rIdCollegeSeal"')
-          .replace(/<wp:positionH relativeFrom="column">[\s\S]*?<\/wp:positionH>/, '<wp:positionH relativeFrom="margin"><wp:align>right</wp:align></wp:positionH>')
+          .replace(/<wp:positionH relativeFrom="column">[\s\S]*?<\/wp:positionH>/, '<wp:positionH relativeFrom="column"><wp:posOffset>5440000</wp:posOffset></wp:positionH>')
           .replace(/ wp14:anchorId="[^"]*"| wp14:editId="[^"]*"/g, '')
           .replace(/<wp:docPr id="\d+"/, '<wp:docPr id="901"')
           .replace(/<pic:cNvPr id="\d+"/, '<pic:cNvPr id="901"');
         headerXml = headerXml.replace(seal, () => seal + right);
+        // Slightly smaller seals (2.2cm), both in the header.
+        headerXml = headerXml.replace(/cx="897890" cy="897890"/g, 'cx="792000" cy="792000"').replace(/<a:ext cx="897890" cy="897890"\/>/g, '<a:ext cx="792000" cy="792000"/>');
         headerRels = fsx.readFileSync(path.join(STUDENT_LIST_DIR, 'word', '_rels', 'header1.xml.rels'), 'utf8')
           .replace('</Relationships>', '<Relationship Id="rIdCollegeSeal" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/image" Target="media/college-seal.png"/></Relationships>');
       }
