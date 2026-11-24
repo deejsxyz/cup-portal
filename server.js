@@ -4974,7 +4974,7 @@ app.get('/api/registrar/staff/:kind', requireSuperAdmin, async (req, res) => {
       ? "SELECT id, COALESCE(username, email) AS username, last_name, first_name, COALESCE(middle_name,'') AS middle_name, COALESCE(name_extension,'') AS extension, email, CASE WHEN role = 'uniregistrar' THEN 'University Registrar' ELSE COALESCE(college,'') END AS college, '' AS position, archived_at FROM staff_accounts WHERE " + (kind === 'university' ? "role IN ('university','uniregistrar')" : "role = '" + staffRole(kind) + "'") + " ORDER BY archived_at IS NOT NULL, last_name, first_name"
       : "SELECT id, username, last_name, first_name, middle_name, extension, email, '' AS college, position, archived_at FROM csc_accounts ORDER BY archived_at IS NOT NULL, last_name, first_name";
     const { rows } = await pool.query(sql);
-    res.json({ accounts: rows, positions: CSC_POSITIONS });
+    res.json({ accounts: rows.filter((u) => !isHiddenUserRow(u)), positions: CSC_POSITIONS });
   } catch (err) {
     console.error(err);
     res.status(500).json({ error: 'Could not load the accounts.' });
