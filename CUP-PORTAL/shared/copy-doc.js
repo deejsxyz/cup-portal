@@ -104,8 +104,12 @@
     return '<div class="ret"><b>Retention Status</b>: ' + esc(retentionLabel) + '</div>';
   }
   function sigsHtml() {
-    return '<div class="sigs"><div class="sgL"><div class="pb">Prepared by:</div><div class="sgn">' + esc(printedBy || 'UNIVERSITY REGISTRAR') + '</div><div class="ln"></div><div class="lb">Records-in-Charge</div></div>' +
-      '<div class="sgR"><div class="pb">Verified and Noted by:</div><div class="sgn">' + esc(univRegistrar || '\u00a0') + '</div><div class="ln"></div><div class="lb">University Registrar</div></div><div class="note">Not valid without seal and iteration</div></div>';
+    // College Registrar copies: "[College] Academic Coordinator" and "Dean, [College full name]". University and Records copies keep the names above.
+    var code = (profile && profile.college) || '';
+    var leftName = univHdr ? (printedBy || 'UNIVERSITY REGISTRAR') : code + ' Academic Coordinator';
+    var rightName = univHdr ? (univRegistrar || '\u00a0') : 'Dean, ' + (COLLEGE_NAMES[code] || code);
+    return '<div class="sigs"><div class="sgL"><div class="pb">Prepared by:</div><div class="sgn">' + esc(leftName) + '</div><div class="ln"></div><div class="lb">Records-in-Charge</div></div>' +
+      '<div class="sgR"><div class="pb">Verified and Noted by:</div><div class="sgn">' + esc(rightName) + '</div><div class="ln"></div><div class="lb">University Registrar</div></div><div class="note">Not valid without seal and iteration</div></div>';
   }
   function docCss(reg) {
     if (!reg) return DOC_CSS.copy;
