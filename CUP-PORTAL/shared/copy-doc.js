@@ -77,7 +77,7 @@
   var univHdr = false;
   function gradeHeader(c, reg) {
     if (!reg) return '<div class="hdr cupH"><img src="' + c.seal + '" alt="City University of Pasay seal"><div>' +
-      '<div class="u1">CITY UNIVERSITY OF PASAY</div><div class="u2">(PAMANTASAN NG LUNGSOD NG PASAY)</div><div class="u2">Pasadeña St., Pasay City</div></div></div>';
+      '<div class="u1">CITY UNIVERSITY OF PASAY</div><div class="u2">(PAMANTASAN NG LUNGSOD NG PASAY)</div><div class="u2">Pasadeña St., F.B Harisson, Pasay City</div></div></div>';
     if (univHdr) return '<div class="hdr"><img src="' + c.seal + '" alt="City University of Pasay seal"><div><div class="u1">CITY UNIVERSITY OF PASAY</div><div class="u2">(PAMANTASAN NG LUNGSOD NG PASAY)</div><div class="u2">Pasadeña St., Pasay City</div></div></div>';
     return '<div class="hdr"><img src="' + c.seal + '" alt="City University of Pasay seal"><div>' +
       '<div class="u1">CITY UNIVERSITY OF PASAY</div><div class="u2">(PAMANTASAN NG LUNGSOD NG PASAY)</div><div class="u2">Pasadeña St., Pasay City</div>' +
