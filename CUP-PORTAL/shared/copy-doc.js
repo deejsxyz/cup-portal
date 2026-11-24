@@ -48,11 +48,11 @@
       '" font-family="Courier New, Courier, monospace" font-size="' + px + '" font-weight="normal" fill="#000">' + esc(text) + '</text></svg>';
     return '<img alt="" style="height:' + h + 'px;width:' + w + 'px;vertical-align:middle" src="data:image/svg+xml;charset=utf-8,' + encodeURIComponent(svg) + '">';
   }
-  function wmImg(strip, rows, small) {
+  function wmImg(strip, rows, small, op) {
     var H = rows * 20, W = 1000, lines = '';
     for (var i = 0; i < rows; i++) {
       // Each line starts at a random point, so no line lines up with the one above it.
-      lines += '<text x="' + (-Math.round(Math.random() * W * 0.8)) + '" y="' + (i * 20 + 15) + '" font-family="Arial, Helvetica, sans-serif" font-size="' + (small ? 10 : 14) + '" font-weight="bold" fill="#000" fill-opacity="0.05">' + esc(strip.repeat(3)) + '</text>';
+      lines += '<text x="' + (-Math.round(Math.random() * W * 0.8)) + '" y="' + (i * 20 + 15) + '" font-family="Arial, Helvetica, sans-serif" font-size="' + (small ? 10 : 14) + '" font-weight="bold" fill="#000" fill-opacity="' + (op || 0.05) + '">' + esc(strip.repeat(3)) + '</text>';
     }
     var svg = '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 ' + W + ' ' + H + '" preserveAspectRatio="none" width="100%" height="100%">' + lines + '</svg>';
     return '<img class="wm-img" alt="" src="data:image/svg+xml;charset=utf-8,' + encodeURIComponent(svg) + '">';
@@ -67,7 +67,7 @@
     var wmLine = 'NOT AN OFFICIAL DOCUMENT • ' + profile.student_no + ' • ' + stamp + ' • ' + collegeName.toUpperCase() + ' • CITY UNIVERSITY OF PASAY';
     var prog = PROG_ABBR(profile.program);
     return {
-      sid: noLink(profile.student_no), origin: origin, collegeName: collegeName, wmStrip: wmLine + '          ',
+      sid: noLink(profile.student_no), origin: origin, collegeName: collegeName, wmStrip: wmLine + '          ', wmStripStu: 'CITY UNIVERSITY OF PASAY \u2022 ' + profile.student_no + ' \u2022 ' + stamp + ' \u2022 ' + (profile.last_name + ', ' + profile.first_name + (profile.middle_name ? ' ' + String(profile.middle_name).trim().charAt(0).toUpperCase() + '.' : '')).toUpperCase() + ' \u2022 CITY UNIVERSITY OF PASAY          ',
       logo: origin + (COLLEGE_LOGO_PATHS[college] || '/images/cup-logo-seal.png'),
       seal: origin + '/images/logo-1994.png',
       sName: (profile.last_name + ', ' + profile.first_name + (profile.middle_name ? ' ' + String(profile.middle_name).trim().charAt(0).toUpperCase() + '.' : '')).toUpperCase(),
@@ -159,7 +159,7 @@
           '</div>') +
           '<div class="gw"><table><colgroup>' + (reg ? '<col style="width:14%"><col style="width:46%"><col style="width:14%"><col style="width:12%"><col style="width:14%">' : '<col style="width:12%"><col style="width:38%"><col style="width:12%"><col style="width:10%"><col style="width:8%"><col style="width:10%"><col style="width:10%">') + '</colgroup>' +
           '<thead><tr><th>CODE</th><th>SUBJECT TITLE</th>' + (reg ? '' : '<th>CLASS<br>SECTION</th>') + '<th>FINAL<br>GRADE</th>' + (reg ? '' : '<th>RE-<br>EXAM</th>') + '<th>CREDIT<br>UNITS</th><th>REMARKS</th></tr></thead><tbody>' + rows + '</tbody></table>' +
-          '<div class="wm" aria-hidden="true">' + wmImg(c.wmStrip, 40, reg) + '</div></div>' +
+          '<div class="wm" aria-hidden="true">' + (reg ? wmImg(c.wmStrip, 40, reg) : wmImg(c.wmStripStu, 40, false, 0.07)) + '</div></div>' +
                     '<div class="bot"><div class="botq">' + (reg ? retHtml() : qrBlock(g, c)) + '</div>' + (totals ? '<div class="tot tot-flow">' + totals + '</div>' : '') + '</div>' + (reg ? sigsHtml() : '') +
           (reg ? '' : '<div class="disc">DISCLAIMER: The student bears the responsibility for the proper disposal of the documents printed using the student portal. Any mishandling of printed records is solely the student\'s liability, and the University cannot be held accountable for such incidents.</div>') +
           (reg ? '' : '<div class="pf"><span>Printed from City University of Pasay - Student Portal</span><span style="font-weight:normal">' + esc(printedAt) + '</span></div>') +
