@@ -4806,13 +4806,10 @@ app.post('/api/registrar/settings', requireSuperAdmin, async (req, res) => {
 });
 
 // ----- Official University Registrar name (printed on the signature line of the Certificate of Grades) -----
-// The University Registrar is Prof. Cleofe T. Castor, MAED (Dean, Office of Admissions and Scholarships).
-// Printed on every University Registrar document. Used when no name is saved in Settings.
-const UNIV_REGISTRAR_NAME = 'Prof. Cleofe T. Castor, MAED';
+// The University Registrar's name is saved in Settings (University Registrar Portal) and printed from there.
 async function univRegistrarName() {
   const { rows } = await pool.query("SELECT value FROM reg_settings WHERE key = 'univ_registrar_name'");
-  const saved = rows.length ? String(rows[0].value || '').trim() : '';
-  return saved || UNIV_REGISTRAR_NAME;
+  return rows.length ? String(rows[0].value || '').trim() : '';
 }
 app.post('/api/registrar/univ-registrar-name', requireSuperAdmin, async (req, res) => {
   const name = String((req.body || {}).name || '').replace(/\s+/g, ' ').trim();
