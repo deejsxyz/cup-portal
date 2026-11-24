@@ -75,7 +75,9 @@
     };
   }
   var univHdr = false;
-  function gradeHeader(c) {
+  function gradeHeader(c, reg) {
+    if (!reg) return '<div class="hdr"><img src="' + c.seal + '" alt="City University of Pasay seal"><div>' +
+      '<div class="u1">CITY UNIVERSITY OF PASAY</div><div class="u2">(PAMANTASAN NG LUNGSOD NG PASAY)</div></div></div>';
     if (univHdr) return '<div class="hdr"><img src="' + c.seal + '" alt="City University of Pasay seal"><div><div class="u1">CITY UNIVERSITY OF PASAY</div><div class="u2">(PAMANTASAN NG LUNGSOD NG PASAY)</div><div class="u2">Pasadeña St., Pasay City</div></div></div>';
     return '<div class="hdr"><img src="' + c.seal + '" alt="City University of Pasay seal"><div>' +
       '<div class="u1">CITY UNIVERSITY OF PASAY</div><div class="u2">(PAMANTASAN NG LUNGSOD NG PASAY)</div><div class="u2">Pasadeña St., Pasay City</div>' +
@@ -142,7 +144,7 @@
           '<div class="gpa"><span class="tl">Grade Point Average</span>: ' + esc(g.gpa || '\u2014') + '</div>' +
           '<div class="subj"><span class="tl">Total Subjects Enrolled</span>: ' + items.length + '</div>' : '';
         var yearText = profile.year_level ? (ORD[Number(profile.year_level) - 1] || profile.year_level) + ' Year' : '';
-        sheets += '<div class="sheet' + (reg ? ' reg' : '') + '">' + gradeHeader(c) + '<div class="title">' + (reg ? 'CERTIFICATE OF GRADES' : 'REPORT OF GRADES') + '</div>' +
+        sheets += '<div class="sheet' + (reg ? ' reg' : '') + '">' + gradeHeader(c, reg) + '<div class="title">' + (reg ? 'CERTIFICATE OF GRADES' : 'REPORT OF GRADES') + '</div>' +
           (reg ? certHtml(g, c) : '<div class="info">' +
             '<div><span class="kl">Fullname</span>: ' + esc(c.sName) + '</div>' +
             '<div><span class="kl">Gender</span>: ' + esc(profile.gender || '') + '</div>' +
