@@ -159,7 +159,7 @@
           '</div>') +
           '<div class="gw"><table><colgroup>' + (reg ? '<col style="width:14%"><col style="width:46%"><col style="width:14%"><col style="width:12%"><col style="width:14%">' : '<col style="width:12%"><col style="width:38%"><col style="width:12%"><col style="width:10%"><col style="width:8%"><col style="width:10%"><col style="width:10%">') + '</colgroup>' +
           '<thead><tr><th>CODE</th><th>SUBJECT TITLE</th>' + (reg ? '' : '<th>CLASS<br>SECTION</th>') + '<th>FINAL<br>GRADE</th>' + (reg ? '' : '<th>RE-<br>EXAM</th>') + '<th>CREDIT<br>UNITS</th><th>REMARKS</th></tr></thead><tbody>' + rows + '</tbody></table>' +
-          '<div class="wm" aria-hidden="true">' + (reg ? wmImg(c.wmStrip, 40, reg) : wmImg(c.wmStripStu, 40, false, 0.07)) + '</div></div>' +
+          '<div class="wm" aria-hidden="true">' + (reg ? '' : wmImg(c.wmStripStu, 40, false, 0.07)) + '</div></div>' +
                     '<div class="bot"><div class="botq">' + (reg ? retHtml() : qrBlock(g, c)) + '</div>' + (totals ? '<div class="tot tot-flow">' + totals + '</div>' : '') + '</div>' + (reg ? sigsHtml() : '') +
           (reg ? '' : '<div class="disc">DISCLAIMER: The student bears the responsibility for the proper disposal of the documents printed using the student portal. Any mishandling of printed records is solely the student\'s liability, and the University cannot be held accountable for such incidents.</div>') +
           (reg ? '' : '<div class="pf"><span>Printed from City University of Pasay - Student Portal</span><span style="font-weight:normal">' + esc(printedAt) + '</span></div>') +
