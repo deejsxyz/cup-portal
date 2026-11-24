@@ -1270,7 +1270,7 @@ function progAbbrOf(p) { var m = /\(([^)]+)\)\s*$/.exec(p || ''); return m ? m[1
         // The "Prepared by" name is the account that is printing (First M. Last).
         return fetch('/api/registrar/me', { credentials: 'same-origin' }).then(function (m) { return m.json(); }, function () { return {}; })
           .then(function (me) {
-            var html = CupCopyDoc.build({ profile: r.j.profile, retentionLabel: r.j.retentionLabel, list: r.j.list, registrar: true, univ: r.j.univ, printedBy: me && me.fullName, univRegistrar: r.j.univRegistrar });
+            var html = CupCopyDoc.build({ profile: r.j.profile, retentionLabel: r.j.retentionLabel, list: r.j.list, registrar: true, univ: !!r.j.univ || !!(me && me.role === 'records'), printedBy: me && me.fullName, univRegistrar: r.j.univRegistrar });
             printReportHtml(html);
             done('');
           });
@@ -1452,7 +1452,7 @@ function progAbbrOf(p) { var m = /\(([^)]+)\)\s*$/.exec(p || ''); return m ? m[1
 })();
 </script>
 <script src="/CUP-PORTAL/portal-search.js"></script>
-<script src="/CUP-PORTAL/shared/copy-doc.js?v=20261124g"></script>
+<script src="/CUP-PORTAL/shared/copy-doc.js?v=20261124h"></script>
 <script>
   // ESC: closes the warning if open; otherwise presses the visible Cancel button.
   // If the form has unsaved work, a warning asks to Confirm (discard) or Close (keep editing).
