@@ -106,8 +106,8 @@
   function sigsHtml() {
     // College Registrar copies: "[College] Academic Coordinator" and "Dean, [College full name]". University and Records copies keep the names above.
     var code = (profile && profile.college) || '';
-    var leftName = univHdr ? (printedBy || 'UNIVERSITY REGISTRAR') : '\u00a0';
-    var rightName = univHdr ? (univRegistrar || '\u00a0') : '\u00a0';
+    var leftName = univHdr ? (printedBy || 'UNIVERSITY REGISTRAR') : (printedBy || '\u00a0');
+    var rightName = univHdr ? (univRegistrar || '\u00a0') : (collegeDean || '\u00a0');
     var leftLb = univHdr ? 'Records-in-Charge' : code + ' Academic Coordinator';
     var rightLb = univHdr ? 'University Registrar' : 'Dean, ' + (COLLEGE_NAMES[code] || code);
     return '<div class="sigs"><div class="sgL"><div class="pb">Prepared by:</div><div class="sgn">' + esc(leftName) + '</div><div class="ln"></div><div class="lb">' + esc(leftLb) + '</div></div>' +
@@ -174,9 +174,9 @@
     });
     return '<!doctype html><html><head><meta charset="utf-8"><meta name="format-detection" content="telephone=no,date=no,address=no,email=no"><title>Report of Grades</title><style>' + docCss(reg) + '</style></head><body>' + sheets + '</body></html>';
   }
-  var printedBy = '', univRegistrar = '';
+  var printedBy = '', univRegistrar = '', collegeDean = '';
   function build(opts) {
-    profile = opts.profile; retentionLabel = opts.retentionLabel || ''; univHdr = !!opts.univ; printedBy = opts.printedBy || ''; univRegistrar = opts.univRegistrar || '';
+    profile = opts.profile; retentionLabel = opts.retentionLabel || ''; univHdr = !!opts.univ; printedBy = opts.printedBy || ''; univRegistrar = opts.univRegistrar || ''; collegeDean = opts.collegeDean || '';
     return copyDocHtml(opts.list, !!opts.registrar);
   }
   window.CupCopyDoc = { build: build };
