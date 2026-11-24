@@ -105,6 +105,12 @@
     return '<div class="sigs"><div class="sgL"><div class="pb">Prepared by:</div><div class="sgn">UNIVERSITY REGISTRAR</div><div class="ln"></div><div class="lb">Records-in-Charge</div></div>' +
       '<div class="sgR"><div class="pb">Verified and Noted by:</div><div class="sgn">&nbsp;</div><div class="ln"></div><div class="lb">University Registrar</div></div><div class="note">Not valid without seal and iteration</div></div>';
   }
+  function docCss(reg) {
+    if (!reg) return DOC_CSS.copy;
+    return DOC_CSS.copy
+      .replace('@page{size:A4 portrait;margin:0.25in}', '@page{size:A4 portrait;margin:0.75in}')
+      .replace('width:calc(210mm - 0.5in);height:calc(297mm - 0.5in - 10mm);box-sizing:border-box;padding:5mm 9mm 4mm;', 'width:calc(210mm - 1.5in);height:calc(297mm - 1.5in - 2mm);box-sizing:border-box;padding:0;');
+  }
   function copyDocHtml(list, reg) {
     var c = gradeDocContext(), sheets = '', ROWS = 20;
     var pv = {};
@@ -158,7 +164,7 @@
           '</div>';
       });
     });
-    return '<!doctype html><html><head><meta charset="utf-8"><meta name="format-detection" content="telephone=no,date=no,address=no,email=no"><title>Report of Grades</title><style>' + DOC_CSS.copy + '</style></head><body>' + sheets + '</body></html>';
+    return '<!doctype html><html><head><meta charset="utf-8"><meta name="format-detection" content="telephone=no,date=no,address=no,email=no"><title>Report of Grades</title><style>' + docCss(reg) + '</style></head><body>' + sheets + '</body></html>';
   }
   function build(opts) {
     profile = opts.profile; retentionLabel = opts.retentionLabel || ''; univHdr = !!opts.univ;
