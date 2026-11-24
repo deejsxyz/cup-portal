@@ -645,7 +645,8 @@ function requireSuperAdmin(req, res, next) {
 // Sliding session for registrar and portal requests (renews 5-minute inactivity timer on each activity)
 app.use('/api/registrar/', (req, res, next) => {
   const s = readRegSession(req);
-  if (s && !/\/logout$/.test(req.path)) setRegCookie(req, res, s);
+  // Keep the stored role: Records-in-Charge sessions are read as role 'registrar' with records:true, so save them back as 'records'.
+  if (s && !/\/logout$/.test(req.path)) setRegCookie(req, res, s.records ? { role: 'records', college: s.college, id: s.id } : s);
   next();
 });
 app.use('/api/portal/', (req, res, next) => {
@@ -2405,7 +2406,6 @@ app.get('/api/registrar/report-of-grades', requireRegistrar, async (req, res) =>
     const retLabel = { 'REGULAR': 'Regular', 'WARNING': 'Warning', 'PROBATION': 'Probation', 'PERMANENT DISQUALIFICATION': 'Permanent Disqualification', 'IRREGULAR': 'Irregular' }[ret && ret.status] || (ret && ret.status) || '';
     const profile = Object.assign({}, st.rows[0], { year_level: en.rows[0].year_level, section: en.rows[0].section });
     const items = data.rows.map((r) => ({ course_code: r.course_code, descriptive_title: r.descriptive_title || '', units: r.units, final_grade: r.final_grade ?? '', remarks: r.remarks ?? '' }));
-    console.log('[COG-DEBUG]', JSON.stringify({ role: req.reg.role, records: !!req.reg.records, college: req.reg.college, univ: req.reg.role !== 'registrar' || !!req.reg.records }));
     res.json({ profile, retentionLabel: retLabel, univ: req.reg.role !== 'registrar' || !!req.reg.records, univRegistrar: await univRegistrarName(), collegeDean: ((await officialsSettings()).college_deans || {})[college] || '', list: [{ ay, term, gpa: data.gpa, items }] });
   } catch (err) {
     console.error('report of grades', err);
