@@ -2405,7 +2405,7 @@ app.get('/api/registrar/report-of-grades', requireRegistrar, async (req, res) =>
     const retLabel = { 'REGULAR': 'Regular', 'WARNING': 'Warning', 'PROBATION': 'Probation', 'PERMANENT DISQUALIFICATION': 'Permanent Disqualification', 'IRREGULAR': 'Irregular' }[ret && ret.status] || (ret && ret.status) || '';
     const profile = Object.assign({}, st.rows[0], { year_level: en.rows[0].year_level, section: en.rows[0].section });
     const items = data.rows.map((r) => ({ course_code: r.course_code, descriptive_title: r.descriptive_title || '', units: r.units, final_grade: r.final_grade ?? '', remarks: r.remarks ?? '' }));
-    res.json({ profile, retentionLabel: retLabel, univ: req.reg.role !== 'registrar', list: [{ ay, term, gpa: data.gpa, items }] });
+    res.json({ profile, retentionLabel: retLabel, univ: req.reg.role !== 'registrar', univRegistrar: await univRegistrarName(), list: [{ ay, term, gpa: data.gpa, items }] });
   } catch (err) {
     console.error('report of grades', err);
     if (!res.headersSent) res.status(500).json({ error: 'Could not build the report of grades.' });
@@ -4772,9 +4772,9 @@ app.put('/api/registrar/faculty/:id/subjects', requireRegistrar, async (req, res
 // Global grading period settings (Academic Year and Semester)
 app.get('/api/portal/settings', async (req, res) => {
   try {
-    const { rows } = await pool.query("SELECT key, value FROM reg_settings WHERE key IN ('grading_semester','grading_ay','enrollment_open','enrollment_schedule')");
+    const { rows } = await pool.query("SELECT key, value FROM reg_settings WHERE key IN ('grading_semester','grading_ay','enrollment_open','enrollment_schedule','univ_registrar_name')");
     const m = Object.fromEntries(rows.map((r) => [r.key, r.value]));
-    res.json({ grading_semester: m.grading_semester || '', grading_ay: m.grading_ay || '', ...enrollmentStateFrom(m) });
+    res.json({ grading_semester: m.grading_semester || '', grading_ay: m.grading_ay || '', univ_registrar_name: m.univ_registrar_name || '', ...enrollmentStateFrom(m) });
   } catch (err) {
     console.error(err);
     res.status(500).json({ error: 'Could not load settings.' });
@@ -4802,6 +4802,24 @@ app.post('/api/registrar/settings', requireSuperAdmin, async (req, res) => {
   } catch (err) {
     console.error(err);
     res.status(500).json({ error: 'Could not save settings.' });
+  }
+});
+
+// ----- Official University Registrar name (printed on the signature line of the Certificate of Grades) -----
+async function univRegistrarName() {
+  const { rows } = await pool.query("SELECT value FROM reg_settings WHERE key = 'univ_registrar_name'");
+  return rows.length ? String(rows[0].value || '') : '';
+}
+app.post('/api/registrar/univ-registrar-name', requireSuperAdmin, async (req, res) => {
+  const name = String((req.body || {}).name || '').replace(/\s+/g, ' ').trim();
+  if (name.length > 120) return res.status(400).json({ error: 'The name is too long.' });
+  try {
+    await pool.query("INSERT INTO reg_settings (key, value) VALUES ('univ_registrar_name', $1) ON CONFLICT (key) DO UPDATE SET value = EXCLUDED.value", [name]);
+    logAction(req, 'University Registrar', 'university registrar name updated', name || '(cleared)');
+    res.json({ ok: true, univ_registrar_name: name });
+  } catch (err) {
+    console.error(err);
+    res.status(500).json({ error: 'Could not save the name.' });
   }
 });
 

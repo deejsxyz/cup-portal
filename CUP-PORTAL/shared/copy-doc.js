@@ -105,7 +105,7 @@
   }
   function sigsHtml() {
     return '<div class="sigs"><div class="sgL"><div class="pb">Prepared by:</div><div class="sgn">' + esc(printedBy || 'UNIVERSITY REGISTRAR') + '</div><div class="ln"></div><div class="lb">Records-in-Charge</div></div>' +
-      '<div class="sgR"><div class="pb">Verified and Noted by:</div><div class="sgn">&nbsp;</div><div class="ln"></div><div class="lb">University Registrar</div></div><div class="note">Not valid without seal and iteration</div></div>';
+      '<div class="sgR"><div class="pb">Verified and Noted by:</div><div class="sgn">' + esc(univRegistrar || '\u00a0') + '</div><div class="ln"></div><div class="lb">University Registrar</div></div><div class="note">Not valid without seal and iteration</div></div>';
   }
   function docCss(reg) {
     if (!reg) return DOC_CSS.copy;
@@ -168,9 +168,9 @@
     });
     return '<!doctype html><html><head><meta charset="utf-8"><meta name="format-detection" content="telephone=no,date=no,address=no,email=no"><title>Report of Grades</title><style>' + docCss(reg) + '</style></head><body>' + sheets + '</body></html>';
   }
-  var printedBy = '';
+  var printedBy = '', univRegistrar = '';
   function build(opts) {
-    profile = opts.profile; retentionLabel = opts.retentionLabel || ''; univHdr = !!opts.univ; printedBy = opts.printedBy || '';
+    profile = opts.profile; retentionLabel = opts.retentionLabel || ''; univHdr = !!opts.univ; printedBy = opts.printedBy || ''; univRegistrar = opts.univRegistrar || '';
     return copyDocHtml(opts.list, !!opts.registrar);
   }
   window.CupCopyDoc = { build: build };

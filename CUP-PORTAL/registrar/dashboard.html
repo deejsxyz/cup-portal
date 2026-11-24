@@ -241,6 +241,11 @@
             <strong>GLOBAL SYSTEM SETTINGS</strong>
             <span class="gss-note">Set the active Academic Year and Semester for the whole portal.</span>
           </div>
+          <form id="ur-form" novalidate class="gss-row">
+            <label>University Registrar<input type="text" id="ur-name" maxlength="120" placeholder="First M. Last" aria-label="University Registrar name" style="min-width:16rem"></label>
+            <button type="button" id="ur-save" class="btn green">Save Name</button>
+            <p class="hint" id="ur-msg">Printed on the Certificate of Grades signature line.</p>
+          </form>
           <form id="gp-form" novalidate class="gss-row">
             <label>A.Y.<select id="gp-ay" aria-label="Academic year"></select></label>
             <label>Semester<select id="gp-sem" aria-label="Semester"><option>1st Semester</option><option>2nd Semester</option><option>Summer</option></select></label>
@@ -1837,8 +1842,16 @@ function cupYr(p, y) { var m = /\(([^)]+)\)\s*$/.exec(p || ''); return (m ? m[1]
       fetch('/api/portal/settings', { credentials: 'same-origin' }).then(function (r) { return r.json(); }).then(function (j) {
         if (j.grading_ay) { if (!sel.querySelector('option[value="' + j.grading_ay + '"]')) sel.insertAdjacentHTML('afterbegin', '<option value="' + j.grading_ay + '">A.Y. ' + j.grading_ay + '</option>'); sel.value = j.grading_ay; }
         if (j.grading_semester) $('#gp-sem').value = j.grading_semester;
+        if ($('#ur-name')) $('#ur-name').value = j.univ_registrar_name || '';
       }).catch(function () {});
     })();
+    safeOn('#ur-save', 'click', function () {
+      $('#ur-msg').textContent = '';
+      fetch('/api/registrar/univ-registrar-name', { method: 'POST', credentials: 'same-origin', headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ name: $('#ur-name').value }) })
+        .then(function (r) { return r.json().then(function (j) { return { ok: r.ok, j: j }; }); })
+        .then(function (res) { $('#ur-msg').textContent = res.ok ? 'University Registrar name saved.' : (res.j.error || 'Could not save.'); });
+    });
     safeOn('#gp-save', 'click', function () {
       $('#gp-msg').textContent = '';
       fetch('/api/registrar/settings', { method: 'POST', credentials: 'same-origin', headers: { 'Content-Type': 'application/json' },
