@@ -106,10 +106,12 @@
   function sigsHtml() {
     // College Registrar copies: "[College] Academic Coordinator" and "Dean, [College full name]". University and Records copies keep the names above.
     var code = (profile && profile.college) || '';
-    var leftName = univHdr ? (printedBy || 'UNIVERSITY REGISTRAR') : code + ' Academic Coordinator';
-    var rightName = univHdr ? (univRegistrar || '\u00a0') : 'Dean, ' + (COLLEGE_NAMES[code] || code);
-    return '<div class="sigs"><div class="sgL"><div class="pb">Prepared by:</div><div class="sgn">' + esc(leftName) + '</div><div class="ln"></div><div class="lb">Records-in-Charge</div></div>' +
-      '<div class="sgR"><div class="pb">Verified and Noted by:</div><div class="sgn">' + esc(rightName) + '</div><div class="ln"></div><div class="lb">University Registrar</div></div><div class="note">Not valid without seal and iteration</div></div>';
+    var leftName = univHdr ? (printedBy || 'UNIVERSITY REGISTRAR') : '\u00a0';
+    var rightName = univHdr ? (univRegistrar || '\u00a0') : '\u00a0';
+    var leftLb = univHdr ? 'Records-in-Charge' : code + ' Academic Coordinator';
+    var rightLb = univHdr ? 'University Registrar' : 'Dean, ' + (COLLEGE_NAMES[code] || code);
+    return '<div class="sigs"><div class="sgL"><div class="pb">Prepared by:</div><div class="sgn">' + esc(leftName) + '</div><div class="ln"></div><div class="lb">' + esc(leftLb) + '</div></div>' +
+      '<div class="sgR"><div class="pb">Verified and Noted by:</div><div class="sgn">' + esc(rightName) + '</div><div class="ln"></div><div class="lb">' + esc(rightLb) + '</div></div><div class="note">Not valid without seal and iteration</div></div>';
   }
   function docCss(reg) {
     if (!reg) return DOC_CSS.copy;
