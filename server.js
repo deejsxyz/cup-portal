@@ -2405,7 +2405,7 @@ app.get('/api/registrar/report-of-grades', requireRegistrar, async (req, res) =>
     const retLabel = { 'REGULAR': 'Regular', 'WARNING': 'Warning', 'PROBATION': 'Probation', 'PERMANENT DISQUALIFICATION': 'Permanent Disqualification', 'IRREGULAR': 'Irregular' }[ret && ret.status] || (ret && ret.status) || '';
     const profile = Object.assign({}, st.rows[0], { year_level: en.rows[0].year_level, section: en.rows[0].section });
     const items = data.rows.map((r) => ({ course_code: r.course_code, descriptive_title: r.descriptive_title || '', units: r.units, final_grade: r.final_grade ?? '', remarks: r.remarks ?? '' }));
-    res.json({ profile, retentionLabel: retLabel, univ: req.reg.role !== 'registrar', univRegistrar: await univRegistrarName(), list: [{ ay, term, gpa: data.gpa, items }] });
+    res.json({ profile, retentionLabel: retLabel, univ: req.reg.role !== 'registrar' || !!req.reg.records, univRegistrar: await univRegistrarName(), list: [{ ay, term, gpa: data.gpa, items }] });
   } catch (err) {
     console.error('report of grades', err);
     if (!res.headersSent) res.status(500).json({ error: 'Could not build the report of grades.' });
