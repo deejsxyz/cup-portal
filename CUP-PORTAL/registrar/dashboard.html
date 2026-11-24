@@ -254,6 +254,18 @@
           </form>
         </div>
 
+        <div class="gss" id="off-sec">
+          <div class="gss-head">
+            <strong>UNIVERSITY OFFICIALS AND COLLEGE DEANS</strong>
+            <span class="gss-note">Stored names and positions for printed documents. University officials are from About Us &gt; Directors and Deans; college deans are from About Us &gt; Academic Officials.</span>
+          </div>
+          <div id="off-list"></div>
+          <p><button type="button" id="off-add" class="btn">Add University Official</button></p>
+          <div class="gss-head"><strong>COLLEGE DEANS</strong></div>
+          <div id="dean-list"></div>
+          <p><button type="button" id="off-save" class="btn green">Save Officials and Deans</button> <span class="hint" id="off-msg"></span></p>
+        </div>
+
         <div class="gss" id="enr-sec">
           <div class="gss-head">
             <strong>ENROLLMENT SECTION</strong>
@@ -1845,6 +1857,44 @@ function cupYr(p, y) { var m = /\(([^)]+)\)\s*$/.exec(p || ''); return (m ? m[1]
         if ($('#ur-name')) $('#ur-name').value = j.univ_registrar_name || '';
       }).catch(function () {});
     })();
+    var OFF = { officials: [], deans: {}, colleges: [] };
+    function offEsc(v) { return String(v == null ? '' : v).replace(/&/g, '&amp;').replace(/"/g, '&quot;').replace(/</g, '&lt;'); }
+    function offRender() {
+      $('#off-list').innerHTML = OFF.officials.map(function (o, i) {
+        return '<div class="gss-row"><label>Name<input type="text" data-off="name" data-i="' + i + '" value="' + offEsc(o.name) + '"></label>' +
+          '<label>Position<input type="text" data-off="position" data-i="' + i + '" value="' + offEsc(o.position) + '"></label>' +
+          '<button type="button" class="btn" data-off-del="' + i + '">Remove</button></div>';
+      }).join('');
+      $('#dean-list').innerHTML = OFF.colleges.map(function (c) {
+        return '<div class="gss-row"><label>' + offEsc(c) + '<input type="text" data-dean="' + offEsc(c) + '" value="' + offEsc(OFF.deans[c] || '') + '"></label></div>';
+      }).join('');
+    }
+    function offLoad() {
+      fetch('/api/registrar/officials', { credentials: 'same-origin' }).then(function (r) { return r.json(); }).then(function (j) {
+        OFF.officials = (j.univ_officials || []).map(function (o) { return { name: o.name || '', position: o.position || '' }; });
+        OFF.deans = j.college_deans || {}; OFF.colleges = j.colleges || [];
+        offRender();
+      }).catch(function () {});
+    }
+    if ($('#off-sec')) {
+      offLoad();
+      $('#off-add').addEventListener('click', function () { offCollect(); OFF.officials.push({ name: '', position: '' }); offRender(); });
+      $('#off-list').addEventListener('click', function (e) {
+        var i = e.target && e.target.getAttribute('data-off-del');
+        if (i !== null && i !== undefined) { offCollect(); OFF.officials.splice(Number(i), 1); offRender(); }
+      });
+      $('#off-save').addEventListener('click', function () {
+        offCollect(); $('#off-msg').textContent = '';
+        fetch('/api/registrar/officials', { method: 'POST', credentials: 'same-origin', headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ univ_officials: OFF.officials, college_deans: OFF.deans }) })
+          .then(function (r) { return r.json().then(function (j) { return { ok: r.ok, j: j }; }); })
+          .then(function (res) { $('#off-msg').textContent = res.ok ? 'Saved.' : (res.j.error || 'Could not save.'); });
+      });
+    }
+    function offCollect() {
+      document.querySelectorAll('#off-list [data-off]').forEach(function (el) { var i = Number(el.getAttribute('data-i')); if (OFF.officials[i]) OFF.officials[i][el.getAttribute('data-off')] = el.value; });
+      document.querySelectorAll('#dean-list [data-dean]').forEach(function (el) { OFF.deans[el.getAttribute('data-dean')] = el.value; });
+    }
     safeOn('#ur-save', 'click', function () {
       $('#ur-msg').textContent = '';
       fetch('/api/registrar/univ-registrar-name', { method: 'POST', credentials: 'same-origin', headers: { 'Content-Type': 'application/json' },

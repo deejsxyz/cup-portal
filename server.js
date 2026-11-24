@@ -4823,6 +4823,59 @@ app.post('/api/registrar/univ-registrar-name', requireSuperAdmin, async (req, re
   }
 });
 
+// ----- Official names for printed documents: University officials (Directors and Deans) and College deans -----
+const DEFAULT_UNIV_OFFICIALS = [
+  { name: 'Prof. Cleofe T. Castor, MAED', position: 'Dean, Office of Admissions and Scholarships' },
+  { name: 'Kenneth Nyl C. Oresco, MA, RGC, LPT, CMHFR', position: 'Director of Guidance and Counseling; Dean, Office of Student Affairs' },
+  { name: 'Dr. Rowena Remoroza', position: 'Religious Guidance' },
+  { name: 'Dr. Ma. Epifania Teresa Ty', position: 'Community Extension Services' },
+  { name: 'Dr. Lurida Ramos', position: 'Research Director' },
+  { name: 'Elain Redo, LPT, MAEd', position: 'Accreditation' },
+  { name: 'Engr. Rommel Hernandez', position: 'Finance Officer' },
+  { name: 'Dr. Honeyliza Poblete', position: 'Job Placement Office' },
+  { name: 'Dr. Alan Balangon', position: 'Gender and Development' },
+  { name: 'Dr. Lovelyn C. Fernando', position: 'Head, CUP-PLP Alumni Association' },
+  { name: 'Mylene Hilapo, MAEd, LPT', position: 'TESDA Representative/Coordinator' },
+  { name: 'Mr. Rizalde E. Lopez, MPA', position: 'Clerk, CUP TESDA TVI' }
+];
+const DEFAULT_COLLEGE_DEANS = {
+  COACS: 'Dr. Maribel Gabuat', CAS: 'Engr. Marcos B. Geronga', CONM: 'Iris Castillon, RN, RM', COED: 'Dr. Melvin Crisostomo',
+  COBM: 'Atty. Severo Madrona Jr.', LAW: 'Atty. Severo Madrona Jr.', GS: 'Dr. Romulo Navarra', 'TESDA-TVI': ''
+};
+async function officialsSettings() {
+  const { rows } = await pool.query("SELECT key, value FROM reg_settings WHERE key IN ('univ_officials','college_deans')");
+  const m = Object.fromEntries(rows.map((r) => [r.key, r.value]));
+  let officials = null, deans = null;
+  try { officials = m.univ_officials ? JSON.parse(m.univ_officials) : null; } catch (_) { officials = null; }
+  try { deans = m.college_deans ? JSON.parse(m.college_deans) : null; } catch (_) { deans = null; }
+  return {
+    univ_officials: Array.isArray(officials) ? officials : DEFAULT_UNIV_OFFICIALS,
+    college_deans: deans && typeof deans === 'object' ? deans : DEFAULT_COLLEGE_DEANS,
+    colleges: REG_COLLEGES
+  };
+}
+app.get('/api/registrar/officials', requireSuperAdmin, async (req, res) => {
+  try { res.json(await officialsSettings()); } catch (err) { console.error(err); res.status(500).json({ error: 'Could not load the officials.' }); }
+});
+app.post('/api/registrar/officials', requireSuperAdmin, async (req, res) => {
+  const b = req.body || {};
+  const clean = (v, max) => String(v == null ? '' : v).replace(/\s+/g, ' ').trim().slice(0, max);
+  const officials = (Array.isArray(b.univ_officials) ? b.univ_officials : [])
+    .map((o) => ({ name: clean(o && o.name, 120), position: clean(o && o.position, 160) }))
+    .filter((o) => o.name || o.position);
+  const deans = {};
+  for (const c of REG_COLLEGES) deans[c] = clean(b.college_deans && b.college_deans[c], 120);
+  try {
+    await pool.query("INSERT INTO reg_settings (key, value) VALUES ('univ_officials', $1) ON CONFLICT (key) DO UPDATE SET value = EXCLUDED.value", [JSON.stringify(officials)]);
+    await pool.query("INSERT INTO reg_settings (key, value) VALUES ('college_deans', $1) ON CONFLICT (key) DO UPDATE SET value = EXCLUDED.value", [JSON.stringify(deans)]);
+    logAction(req, 'University Registrar', 'officials updated', officials.length + ' university official(s), college deans saved');
+    res.json({ ok: true });
+  } catch (err) {
+    console.error(err);
+    res.status(500).json({ error: 'Could not save the officials.' });
+  }
+});
+
 // ----- Enrollment schedule (open/close switch and per-college enrollment dates) -----
 function enrollmentStateFrom(m) {
   let schedule = {};
