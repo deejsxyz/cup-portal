@@ -162,8 +162,8 @@
           '<div class="gpa"><span class="tl">Grade Point Average</span>: ' + esc(g.gpa || '\u2014') + '</div>' +
           '<div class="subj"><span class="tl">Total Subjects Enrolled</span>: ' + items.length + '</div>' : '';
         var yearText = profile.year_level ? (ORD[Number(profile.year_level) - 1] || profile.year_level) + ' Year' : '';
-        sheets += '<div class="sheet' + (reg ? ' reg' : '') + '">' + gradeHeader(c, reg) + '<div class="title">' + (reg ? 'COPY OF GRADES' : 'REPORT OF GRADES') + '</div>' +
-          (reg ? regDetailsHtml(c) : '<div class="info">' +
+        sheets += '<div class="sheet' + (reg ? ' reg' : '') + '">' + gradeHeader(c, reg) + '<div class="title">' + (reg ? (univHdr ? 'CERTIFICATE OF GRADES' : 'COPY OF GRADES') : 'REPORT OF GRADES') + '</div>' +
+          (reg && !univHdr ? regDetailsHtml(c) : reg ? certHtml(g, c) : '<div class="info">' +
             '<div><span class="kl">Fullname</span>: ' + esc(c.sName) + '</div>' +
             '<div><span class="kl">Gender</span>: ' + esc(profile.gender || '') + '</div>' +
             '<div><span class="kl">College</span>: ' + esc(collegeName) + '</div>' +
